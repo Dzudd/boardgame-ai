@@ -189,7 +189,8 @@ The same player may act repeatedly. Human actions go through exactly the same va
 **Completion:** all Phase 1 tasks are implemented. Test-only deterministic and
 hidden-card engines exercise the contract; see `INFORMATION_BOUNDARIES.md` for
 visibility, failure, and randomness policies. CI is configured for GitHub Actions;
-hosted execution requires publishing this currently local repository.
+hosted execution runs in the private
+[GitHub repository](https://github.com/Dzudd/boardgame-ai/actions) on pushes to `master`.
 
 **Acceptance criteria:** a dummy game can reset, expose observations/actions, execute steps, terminate, and pass interface tests.
 
@@ -265,7 +266,8 @@ selects Tic-Tac-Toe. Hidden-game replay adapters remain game-specific future wor
 **Phase 3 complete:** all seven tasks are implemented. Baseline benchmarks run
 thousands of valid games and reproduce, metrics are recorded, humans can play,
 and public game logs round-trip through engine validation. All 360 tests and
-local development checks pass; hosted CI still awaits a GitHub remote.
+local development checks pass. The private GitHub remote is configured and hosted
+CI runs on pushes; see [Actions](https://github.com/Dzudd/boardgame-ai/actions).
 
 ### Phase 4 — First learning agent
 

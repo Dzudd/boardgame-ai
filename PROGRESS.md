@@ -2,8 +2,13 @@
 
 Current status: Phases 1–3 are complete. All 360 tests and local development checks
 pass. Next is Phase 4, Task 1: encode observations as PyTorch tensors.
+Published privately at [Dzudd/boardgame-ai](https://github.com/Dzudd/boardgame-ai),
+with `master` tracking `origin/master`. Hosted Windows/Linux CI is enabled; current
+results are available in [GitHub Actions](https://github.com/Dzudd/boardgame-ai/actions).
 Entries below are historical
 task records; earlier references to incomplete behavior describe that task's stage.
+Earlier statements about an absent remote or unexecuted hosted CI also describe
+the state at that task's completion; see the publication record below.
 
 ## Phase 1, Task 1 — Python project and development environment
 
@@ -454,4 +459,31 @@ Integrated on 2026-10-14 from the user-provided downloaded plan:
 
 Documentation-only update; no implementation or completion status changed.
 Verified the imported section, phase checkboxes, numbering, and next task.
+Next remains Phase 4, Task 1 — encode observations as PyTorch tensors.
+
+## Initial GitHub publication — Phases 1–3 and roadmap v0.2
+
+Published on 2026-10-14:
+
+- Created the private personal repository `Dzudd/boardgame-ai` after confirming
+  that it did not already exist. Preserved the existing `master` branch; the local
+  repository had no earlier commits or remotes.
+- Committed the complete foundation as `3e758b3`, covering Phases 1–3, public
+  replay support, baseline measurements, and the v0.2 forward-planning roadmap.
+  No Phase 4 implementation is included. Package version remains `0.1.0`;
+  `0.2` is the roadmap version.
+- Reviewed all 61 committed paths and checked for credential patterns. Expanded
+  ignore rules for credentials, machine configuration, environments, caches,
+  generated runs/data, and model artifacts. Local artifacts remain untracked.
+- Re-ran all 360 tests, Ruff lint/format, strict mypy for the package/tests and
+  both scripts, dependency checks, CLI diagnostics/help, batch verification,
+  and baseline metric reproduction. All passed. Pytest required execution
+  outside the sandbox to access its temporary directories.
+- Configured `origin`, pushed `master`, and verified the remote commit matched
+  local HEAD. The initial push triggered Windows and Linux jobs in
+  [CI run 38636204906](https://github.com/Dzudd/boardgame-ai/actions/runs/38636204906).
+  Both were in progress when first inspected; use Actions for final results.
+- Updated current documentation to record publication and hosted CI, while
+  retaining earlier task records as historical context.
+
 Next remains Phase 4, Task 1 — encode observations as PyTorch tensors.

@@ -2,6 +2,9 @@
 
 Current status: Phases 1–3 are complete, including baselines, seeded simulation,
 outcome metrics, human play, and public Tic-Tac-Toe replays. Next is Phase 4.
+The private repository is [Dzudd/boardgame-ai](https://github.com/Dzudd/boardgame-ai),
+with `master` tracking `origin/master` and Windows/Linux checks in GitHub Actions.
+Earlier references to a local-only repository describe the state at that task.
 TicTacToeEngine supports the full engine contract. The entries below record decisions as each task
 was implemented; intermediate limitations are superseded by later entries.
 
@@ -113,7 +116,8 @@ second copy under `PROJECT_PLAN.md`.
   tests private observations, event visibility, mutable payload isolation, and
   unseen-state equivalence. It is test infrastructure, not Phase 5 implementation.
 - GitHub Actions checks Python 3.12 on Linux and Windows with CPU PyTorch.
-  Hosted CI cannot run until the local repository is published to a GitHub remote.
+  At this task's completion, hosted CI awaited publication; the repository is now
+  published with checks at https://github.com/Dzudd/boardgame-ai/actions.
   Dependency ranges remain in place; cross-version bitwise reproducibility and
   exhaustive game correctness are not promised by these checks.
 
@@ -251,8 +255,8 @@ second copy under `PROJECT_PLAN.md`.
   terminal clones, concrete subclass preservation, and progressed RNG isolation.
 - Phase 2 is complete. The distinct reachable-state audit, targeted rule tests,
   public-view tests, and clone conformance establish local correctness coverage.
-  Simulation runners and baseline agents remain Phase 3 work; hosted CI still
-  requires publishing this local repository.
+  Simulation runners and baseline agents remained Phase 3 work at this stage;
+  hosted CI then awaited publication. See the current status above.
 
 ## 2026-10-14: RandomAgent baseline
 

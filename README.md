@@ -86,9 +86,11 @@ illegal-action errors, reset requirements, and deterministic seed rules.
 
 `.github/workflows/ci.yml` runs lint, formatting, strict typing, tests, dependency
 checks, and CLI smoke checks on Python 3.12 for Windows and Linux, using CPU
-PyTorch. It triggers on pushes, pull requests, and manual dispatch once this
-repository is hosted on GitHub. No remote is currently configured, so hosted CI
-has not run. These checks can also be run locally using the commands above.
+PyTorch. It triggers on pushes, pull requests, and manual dispatch. The private repository is
+[Dzudd/boardgame-ai](https://github.com/Dzudd/boardgame-ai), with `master` tracking
+`origin/master`. See [GitHub Actions](https://github.com/Dzudd/boardgame-ai/actions)
+for hosted check results. These checks can also be run locally using the commands
+above.
 
 ## Tic-Tac-Toe
 
