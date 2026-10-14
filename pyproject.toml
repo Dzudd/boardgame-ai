@@ -1,0 +1,47 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "boardgame-ai"
+version = "0.1.0"
+description = "A modular platform for general-purpose board game AI."
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "numpy>=2,<3",
+    "torch>=2.6,<3",
+]
+
+[project.scripts]
+boardgame-ai = "boardgame_ai.cli:main"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3,<10",
+    "ruff>=0.11,<1",
+    "mypy>=1.15,<2",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+boardgame_ai = ["py.typed"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--import-mode=importlib"
+
+[tool.ruff]
+target-version = "py312"
+line-length = 88
+include = ["*.py", "*.pyi", "pyproject.toml"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+files = ["src", "tests"]
