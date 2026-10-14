@@ -1,7 +1,10 @@
 # Progress
 
-Current status: Phases 1–3 are complete. All 360 tests and local development checks
-pass. Next is Phase 4, Task 1: encode observations as PyTorch tensors.
+Current status: Phases 1–4 are complete under the minimal random-baseline
+criterion. All 616 tests and development checks pass. The unchanged checkpoint
+improves balanced score over a random control by +0.3160 (approximate 95% interval
+[+0.2644,+0.3676]), but heuristic robustness remains poor. Next roadmap task is
+Phase 5, Task 1; no Phase 5 work was started. Work stops after Phase 4 today.
 Published privately at [Dzudd/boardgame-ai](https://github.com/Dzudd/boardgame-ai),
 with `master` tracking `origin/master`. Hosted Windows/Linux CI is enabled; current
 results are available in [GitHub Actions](https://github.com/Dzudd/boardgame-ai/actions).
@@ -487,3 +490,307 @@ Published on 2026-10-14:
   retaining earlier task records as historical context.
 
 Next remains Phase 4, Task 1 — encode observations as PyTorch tensors.
+
+## Phase 4, Task 1 — Observation tensor encoding
+
+Completed on 2026-10-14:
+
+- Added pure `encode_tic_tac_toe_observation`, exported from
+  `boardgame_ai.models.encoders`, using the existing filtered Observation.
+- Defined fresh contiguous CPU float32 tensors shaped `(6, 3, 3)` with own,
+  opponent, empty, own-turn, opponent-turn, and terminal planes. Perspective is
+  observer-relative with fixed row-major coordinates, supporting inactive seats.
+- Finished views retain their board with zero turn planes and a one terminal
+  plane. Schema errors raise ValueError without exposing input contents;
+  validation does not attempt engine rules or reachability checks.
+- Kept authoritative state, rewards, seeds, RNG, and legal actions outside encoder
+  inputs; core/agent/engine interfaces and GameSpec are unchanged.
+- Added 26 tests for exact channel values/orientation, seat perspective, both
+  starters, wins/draws, actor and inactive observations, independent storage,
+  deterministic snapshot behavior, PyTorch RNG purity, and schema/state rejection.
+- Updated roadmap, architecture, information boundaries, and README example.
+
+Validation: all 386 tests pass; Ruff lint/format, strict mypy (53 source files
+plus both scripts), pip check, and CLI numerical diagnostics pass. Full pytest
+required approved execution outside the sandbox because existing temporary-file
+fixtures could not create directories inside it. Hosted CI was not run this task.
+Only Task 1 is complete; no action masking, networks, training, or search was added.
+
+Next: Phase 4, Task 2 — encode legal actions and implement action masking.
+
+## Phase 4, Task 2 — Legal-action encoding and masking
+
+Completed on 2026-10-14:
+
+- Added fixed Tic-Tac-Toe action indices 0–8, fresh CPU bool legal masks `(9,)`,
+  and decoding that returns the matching supplied Action object.
+- Kept row-major coordinates identical for both players. Supplied legal tuples
+  determine availability; no board/engine query or legality inference is used.
+- Empty terminal/inactive choices encode as all-false masks. Schema errors,
+  duplicate cells, invalid/unavailable indices reject with ValueError.
+- Added differentiable `mask_action_logits` with exact shape/device validation,
+  finite floating-point logits, bool masks, and at least one legal entry per row.
+  Illegal logits become -inf and have zero gradients; legal values/gradients
+  preserve dtype/device. Inputs and RNG remain unchanged. Batched inputs work.
+- Added 44 tests for all cell round-trips, object identity, ordering and storage,
+  both-seat complete games, inactive/terminal choices, probabilities/gradients,
+  malformed action schemas, empty rows/batches, and shape/dtype/device failures.
+- Updated roadmap, architecture, visibility policy, and README usage.
+
+Validation: all 430 tests pass; Ruff lint/format, strict mypy (56 source files
+plus both scripts), pip check, and CLI diagnostics pass. Full pytest used approved
+execution outside the sandbox for existing temporary-directory fixtures. Hosted
+CI was not run this task. Only Task 2 was completed; no networks, trajectory
+collection, training, or search was added.
+
+Next: Phase 4, Task 3 — implement policy and value networks.
+
+## Phase 4, Task 3 — Policy and value networks
+
+Completed on 2026-10-14:
+
+- Added exported `TicTacToeActorCritic` nn.Module: shared 54→64→64 tanh body,
+  linear nine-action policy head, and unbounded scalar value head.
+- Defined nonempty input shape `(..., 6, 3, 3)` and output tuple shapes
+  `(..., 9)`/`(...)`, supporting single views and arbitrary batch dimensions.
+- Both heads consume only player-visible encoded observations. Value perspective
+  is the observing player; masking remains separate and uses supplied choices.
+- Construction uses CPU float32 and standard caller-seeded PyTorch initialization.
+  Explicit model/input dtype/device conversion is supported; malformed, empty,
+  nonfinite, or mismatched inputs reject without printing their values.
+- Terminal tensors produce raw predictions; future trajectory collection must
+  bootstrap zero at true termination. Terminal/inactive masks still forbid actions.
+- Added 25 tests for batching, raw logits/unbounded values, both-head/shared-body
+  gradients, masking, seeded initialization, inference purity, dtype conversion,
+  equivalent player views, both starters, terminal inputs, and tensor rejection.
+- Updated roadmap, architecture, information boundaries, and README usage.
+
+Validation: all 455 tests pass; Ruff lint/format, strict mypy (58 source files
+plus both scripts), pip check, and CLI diagnostics pass. Full pytest used approved
+execution outside the sandbox for existing temporary-file fixtures. Hosted CI
+was not run this task. Only Task 3 was completed; no neural Agent adapter,
+trajectory collection, GAE, optimizer, checkpoint workflow, training, or search
+was added. The model is untrained; playing strength has not been evaluated.
+
+Next: Phase 4, Task 4 — implement trajectory collection and advantage estimation
+(GAE).
+
+## Phase 4, Task 4 — Trajectory collection and advantage estimation
+
+Completed on 2026-10-14:
+
+- Added bounded reset-to-boundary Tic-Tac-Toe collection and separate per-seat
+  trajectories: visible observation tensors, supplied-choice masks, sampled action
+  indices, old log probabilities, values, interval rewards, and global step indices.
+- Used independent per-seat CPU sampling generators; shared or separate models
+  receive only filtered tensors. Collection changes no global RNG, weights,
+  gradients, or model train/eval modes. Records own detached CPU tensor storage.
+- Defined per-player decision-clock discounting. A decision receives that seat's
+  incremental rewards until its next decision or rollout end, including rewards
+  from opponent steps. Pre-first-decision rewards appear only in total_rewards.
+- Implemented detached GAE and lambda-return targets over one player's segment,
+  with explicit gamma/lambda/bootstrap, empty-vector handling, and validation.
+- Forced zero bootstrap at true termination without terminal inference; live
+  step-limit cutoffs use each nonempty seat's filtered view, including inactive
+  seats. Termination beats a coinciding limit. Every collection call resets.
+- Added 48 tests for independent GAE calculations, coefficient/shape/overflow
+  failures, both-seat wins/losses/draws, repeated actors and general-sum rewards,
+  terminal/cutoff/empty segments, old log probabilities, reproducible sampling,
+  storage/RNG/gradient isolation, seed/config validation, and failure propagation.
+- Updated roadmap, architecture, visibility policy, and README usage/contracts.
+
+Validation: all 503 tests pass; Ruff lint/format, strict mypy (62 source files
+plus both scripts), pip check, and CLI diagnostics pass. Full pytest used approved
+execution outside the sandbox for existing temporary-file fixtures. Hosted CI
+was not run this task. Only Task 4 was completed; no PPO losses, optimization,
+checkpointing, baseline opponent schedule, training updates, or search was added.
+Models remain untrained; no playing-strength claim is made.
+
+Next: Phase 4, Task 5 — implement PPO losses, optimization, and checkpointing.
+
+## Phase 4, Task 5 — PPO losses, optimization, and checkpointing
+
+Completed on 2026-10-14:
+
+- Added immutable PPO configuration, owned detached on-policy batches, and
+  per-player-segment GAE preparation before sample concatenation.
+- Implemented clipped policy loss, weighted half-MSE value loss, legal-only
+  entropy, approximate KL, and clip fraction. Old targets detach defensively;
+  illegal entropy terms avoid 0 times negative infinity.
+- Added bounded CPU float32 Adam updates with private seeded minibatch shuffling,
+  optional full-batch advantage normalization, partial minibatches, nonfinite
+  checks, gradient clipping, and update/optimizer-step counters/diagnostics.
+- Added version-1 checkpoints with complete model/config/Adam state, mode,
+  counters, and shuffle RNG. Restricted loading validates compatibility before
+  returning a fresh CPU trainer; construction preserves global Torch RNG.
+- Saving validates then atomically replaces the explicit path. Checkpoints omit
+  engine/rollout data, sampling seeds, gradients, and global RNG. Exact continuation
+  is at an update boundary with the same next batch/runtime, not mid-episode.
+- Added 54 tests covering hand-calculated clipping/value/entropy, detached and
+  illegal gradients, actual parameter updates and gradient bounds, per-segment
+  targets, normalization/validation, exact restored continuation, corrupted
+  checkpoints, and preservation of files on invalid saves.
+- Updated roadmap, architecture, information boundaries, and README examples.
+
+Validation: all 557 tests pass; Ruff lint/format, strict mypy (66 source files
+plus both scripts), pip check, and CLI diagnostics pass. Full pytest used approved
+execution outside the sandbox for temporary-file fixtures. Hosted CI was not run
+this task. Only Task 5 was completed; updates were exercised in tests, but no
+self-play/baseline training schedule, strength experiment, held-out evaluation,
+or search was added. PPO requires caller-selected samples from the learner policy;
+other-policy opponent trajectories must be excluded.
+
+Next: Phase 4, Task 6 — train with self-play and/or baseline opponents.
+
+## Phase 4, Task 6 — User-run self-play and CUDA support
+
+Implemented on 2026-10-14; full training deliberately left to the user:
+
+- Added train CLI with CUDA default, explicit cpu/cuda:N selection, device-only
+  preflight, budgets, PPO flags, output protection, progress, and resume.
+- Extended PPO tensors/losses/Adam from CPU-only to CPU/CUDA float32 with explicit
+  batch/index transfers. Parameters, forward/backward, clipping, and Adam use
+  the selected device; engines, frozen-policy inference, sampling, and GAE stay CPU.
+- Added seeded shared-policy self-play collection/update scheduling. Both seats'
+  segments are eligible; no baseline-opponent samples are mixed into PPO.
+- Added immutable run manifest, per-update portable latest.pt, and trusted JSONL
+  diagnostics/self-play outcomes. Absolute update/game seed derivation and saved
+  optimizer/shuffle state reproduce uninterrupted execution in CPU unit tests.
+- Extended checkpoint loading with explicit device selection and portable CPU
+  serialization for GPU weights/Adam moments. Existing version-1 CPU files remain
+  supported; same-runtime/device identity is tested, cross-device identity is not.
+- Added 24 tests: 22 passed for tiny CPU orchestration, resume, CLI/preflight,
+  output/config validation, RNG preservation; 2 real CUDA tests skipped because
+  a CUDA-enabled runtime is unavailable. No full experiment was launched.
+- Updated roadmap, architecture, information boundaries, and README installation,
+  launch, tuning, interrupt/resume, and artifact instructions.
+
+Validation: 579 tests pass and 2 conditional CUDA tests skip (581 collected).
+Ruff lint/format, strict mypy (70 source files plus both scripts), pip check,
+CLI diagnostics/train help, and CPU device-only preflight pass. Full pytest used
+approved execution outside the sandbox for temporary files; only tiny test runs
+executed updates. Hosted CI and CUDA execution were not performed this task.
+
+Hardware diagnostic: NVIDIA GeForce RTX 4070 Ti, driver 610.88. The installed
+PyTorch is 2.14.1+cpu with CUDA unavailable. The user must install an appropriate
+CUDA-enabled PyTorch build and verify train --device cuda --check-device before
+launching. No dependencies or drivers were changed in this session.
+
+**Task 6 implementation ready; training experiment pending user execution.**
+The roadmap training checkbox remains unchecked and no playing-strength claim
+is made. Next: the user runs training, then Task 7 adds fixed evaluation opponents
+and held-out seeds. Baseline training scheduling remains optional future work.
+
+
+## Windows CUDA investigation and repair
+
+Completed on 2026-10-14; no full training experiment launched:
+
+- Reverified RTX 4070 Ti (12 GB), NVIDIA driver 610.88 (CUDA driver support 13.3),
+  Python 3.12.14, and project-local pip/interpreter/import paths. The venv was
+  isolated from system/user packages; no conflicting torch distribution or
+  environment override was found. Bare python is a WindowsApps alias.
+- Root cause: README setup installed torch 2.14.1+cpu; its CUDA runtime was None,
+  availability False, device count zero. Existing PPO transfers and fail-fast
+  CUDA selection were correct; no demonstrated application defect required fixing.
+- Checked current official PyTorch Windows instructions, official wheel availability,
+  and NVIDIA driver compatibility. Replaced only torch with 2.14.1+cu130 using
+  the official CUDA 13.0 index, --force-reinstall --no-deps. Python, driver,
+  dependency ranges, and other installed packages were preserved. No Toolkit needed.
+- Actual GPU diagnostics: torch.version.cuda=13.0, is_available=True, one device,
+  NVIDIA GeForce RTX 4070 Ti, capability 8.9. A CUDA 4x4 tensor matmul returned the
+  expected value 14.0. Both requested info and train --device cuda --check-device
+  commands passed; preflight selected cuda:0 without training/output creation.
+- Strengthened the two conditional CUDA tests: every PPO batch field, model
+  parameter, finite gradient, and Adam exp_avg/exp_avg_sq resides on CUDA during
+  optimization. Portable checkpoint model/optimizer tensors serialize on CPU;
+  loading restores CUDA moments and reproduces the next update exactly. Tiny
+  GPU runner save/load/resume matches uninterrupted parameters, optimizer, counters,
+  and shuffle state. Adam's scalar step bookkeeping may remain on CPU by design.
+- Targeted CUDA selection: 6 passed, 575 deselected, zero skipped. Both real
+  hardware tests executed. Full suite: 581 passed, zero skipped (14.10 seconds).
+  Ruff check and format check passed (72 files); strict mypy passed (70 source
+  files); pip check found no broken requirements. Hosted CI was not triggered.
+- Updated README setup/repair commands and compatibility explanation, architecture,
+  roadmap, and this progress record. No player-visible information boundary changed;
+  CPU simulation/inference/GAE and CUDA PPO optimization remain intentional.
+
+Limits: only small diagnostics/tests ran; no full experiment, speed benchmark,
+held-out evaluation, or strength claim. Task 6 training remains pending user execution.
+
+## Phase 4, Task 6 run completion and Task 7 — Independent evaluation
+
+Completed on 2026-10-15:
+
+- User confirmed 1,000 completed CUDA updates in runs/tic-tac-toe-cuda/latest.pt.
+  The saved checkpoint reports 29,020 optimizer steps; training configuration
+  has seed 42 and 64 games per update (64,000 self-play games). No additional
+  training experiment was launched by the agent.
+- Added frozen CPU TicTacToePolicyAgent using the existing Agent interface,
+  player-visible encoders/legal masks, private resettable sampling RNG, and
+  explicit sampled/greedy modes. Source model state/mode/gradients remain untouched.
+- Added fixed random/heuristic evaluation cases balanced across X/O, with separate
+  versioned held-out RNG seed namespaces, deterministic absolute-index shards,
+  immutable checkpoint byte identity/counters, and trusted JSON match summaries.
+- Added evaluate CLI using existing match/outcome adapters. No source checkpoint,
+  training configuration, or training log is written. CLI protects known training
+  artifacts from report overwrite and surfaces errors/truncations without private
+  exception text. Evaluation runs entirely on CPU without optimizer updates.
+- Added 21 tests for model/source snapshots, masked legal selection, RNG/reset,
+  both seats, fixed cases, seed separation, reproducibility/sharding, checkpoint
+  source replacement, sanitized failures, and CLI output protections.
+- After training finished, evaluated the unchanged checkpoint on 4,000 games
+  with held-out root seed 20261015, sampled mode, 1,000 per opponent/learner seat:
+  random X 770/66/164 and O 484/73/443 W/D/L; heuristic X 0/3/997 and O 0/0/1000.
+  All games completed without errors/truncations. Identity/protocol/limitations
+  are recorded in POLICY_EVALUATION.md and the generated trusted JSON report.
+- The results expose tactical weakness hidden by the final self-play outcomes.
+  No model/configuration change or claim of robust/optimal play was made.
+- Updated roadmap, architecture, information boundaries, README, and progress.
+
+Validation: initially 600 CPU tests passed with 2 CUDA workloads deliberately
+excluded while the user's training was active. After completion, the full suite
+passed all 602 tests with no skips. Ruff lint/format, strict mypy (74 source files
+plus both scripts), and pip check pass. Pytest and actual CPU evaluation required
+approved execution outside the sandbox for temporary checkpoint snapshots/files.
+The checkpoint's SHA-256 remained unchanged after evaluation. Hosted CI was not run.
+
+Task 6 and Task 7 are complete. Next: Phase 4, Task 8 — plot training curves and
+compare against baseline controls; assess independent improvement before declaring
+Phase 4 complete. A matched-seed random-policy control has not yet been measured.
+
+## Phase 4, Task 8 — Curves, controls, and acceptance
+
+Completed on 2026-10-15:
+
+- Added reusable paired baseline assessment, validated log parsing, and analyze CLI.
+  Controls replace only the learner under matching engine/opponent/index schedules.
+  Estimate matched mean-score effects with equal-seat stratified normal intervals.
+- Added optional Matplotlib analysis extra and CI installation. Installed Matplotlib
+  3.11.2 and its plotting dependencies; PyTorch remains 2.14.1+cu130. No training
+  configuration, log, checkpoint, or engine behavior was changed.
+- Generated and visually verified PNG/SVG training and control-comparison figures.
+  Raw curves and labeled 25-update trailing means retain gaps; real log has all
+  1,000 rows. Preserved aggregate chart copies in docs/phase4 for branch publication.
+- Compared 12,000 games with no errors: policy Task 7 results reproduced exactly.
+  Matched random controls score +.318 X / -.303 O versus random, versus policy
+  +.606 / +.041. Equal-seat improvement +.3160 with approximate 95% interval
+  [.2644,.3676] supports minimal Phase 4 acceptance for this checkpoint/protocol.
+- Heuristic control remains much stronger; policy is worse than random controls
+  against the heuristic. Last-25 self-play X wins reach 99.81% as entropy falls
+  to .1455. Root cause is not diagnosed and no model was silently repaired.
+- Added 14 tests covering independent statistics, pairing/protocol failures,
+  log validation, smoothing/gaps, reproducible controls, figure generation, and
+  CLI artifact protection. Updated all roadmap/architecture/boundary/usage records
+  and added PHASE4_RESULTS.md with protocol, figures, acceptance, and limitations.
+
+Validation: all 616 tests pass including CUDA checks; Ruff lint/format, strict
+mypy (78 source files plus both scripts), pip check, and diagnostics pass.
+Chart generation/comparison and tests used approved execution outside the sandbox
+for temporary snapshots/caches. Checkpoint SHA-256 remains unchanged. Hosted CI
+was not run locally; the branch push will exercise configured hosted checks.
+
+Phase 4 complete under its minimal criterion; single-run/heuristic weaknesses
+remain documented. No additional training or Phase 5 implementation. Stop for
+today; next roadmap task is Phase 5, Task 1. User requested committing and pushing
+these changes to a new codex branch, without changing master.

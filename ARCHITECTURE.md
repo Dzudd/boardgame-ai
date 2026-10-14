@@ -1,7 +1,10 @@
 # Architecture decisions
 
 Current status: Phases 1–3 are complete, including baselines, seeded simulation,
-outcome metrics, human play, and public Tic-Tac-Toe replays. Next is Phase 4.
+outcome metrics, human play, and public Tic-Tac-Toe replays. Phase 4, Tasks 1–7
+are complete: the user finished CUDA self-play and fixed-opponent evaluation is
+implemented. Task 8 curves/baseline controls are complete; the minimal random-baseline
+criterion is met, with heuristic robustness explicitly unresolved.
 The private repository is [Dzudd/boardgame-ai](https://github.com/Dzudd/boardgame-ai),
 with `master` tracking `origin/master` and Windows/Linux checks in GitHub Actions.
 Earlier references to a local-only repository describe the state at that task.
@@ -478,3 +481,349 @@ second copy under `PROJECT_PLAN.md`.
   boundary. Do not pass an authoritative hidden-state clone to a planner; hidden
   simulations need information-compatible worlds and information-set-aware action
   selection to avoid leakage and strategy fusion. No code/API changes were made.
+
+## 2026-10-14: Observation tensor encoding (Phase 4, Task 1)
+
+- Export `encode_tic_tac_toe_observation` from `boardgame_ai.models.encoders`.
+  This pure game-specific function consumes only
+  `Observation[TicTacToeObservation]`; no engine/state, legal choices, rewards,
+  seed, or RNG is accepted or queried. Existing core/agent interfaces and
+  GameSpec remain unchanged. Numerical imports stay in the learning layer.
+- Return a fresh contiguous CPU `torch.float32` tensor shaped `(6, 3, 3)`,
+  without a batch dimension or autograd history. Channels in order are own
+  marks, opponent marks, empty cells, own turn, opponent turn, terminal.
+  All values are 0/1; the last three channels are constant planes.
+- Perspective follows `player_id`, including inactive observers. Swap seats
+  by swapping mark and turn channels, keeping empty/terminal channels and board
+  coordinates fixed. Row-major cell `i` maps to `(i // 3, i % 3)`.
+- Live phase `play` requires actor 0 or 1. Finished phase `finished` requires
+  actor None: keep all board channels, zero both turn planes, fill terminal
+  with ones. No result/reward channel is added. Terminal encoding does not
+  authorize action selection or make private information public.
+- Reject incompatible observation payloads, seats (including bool/float),
+  nine-cell tuple schemas, and phase/actor pairs with ValueError. This checks
+  schema compatibility, not reachability or game rules. Diagnostics omit values.
+- Allocation is explicit about dtype/device and consumes no randomness.
+  Callers may use `torch.stack` to batch or `.to(device)` to transfer later.
+  Avoid generic encoder registries and model configuration until needed.
+- Tests cover standalone views, exact orientation/perspective, detached actor
+  inputs and inactive views, both starters, terminal wins/draws, fresh storage,
+  snapshot stability, RNG purity, schema rejection, and GameState rejection.
+  Only observation encoding is implemented; Task 2 remains next.
+
+## 2026-10-14: Legal-action encoding and masking (Phase 4, Task 2)
+
+- Add game-specific action helpers in `boardgame_ai.models.encoders`: encode a
+  place/cell Action as a Python integer 0–8, encode supplied legal choices as a
+  fresh contiguous CPU bool mask `(9,)`, and decode an index back to the matching
+  supplied Action object. Coordinates remain row-major for both observers.
+- Actions require exactly one integer cell parameter; booleans/floats, wrong
+  schemas, duplicate indices, and unavailable decoded indices raise ValueError.
+  Legal inputs remain tuples. No engine/board query or rules inference is added;
+  callers must supply the correct player's already-filtered legal choices.
+- Empty tuples produce all-false masks for terminal/inactive records. Even a
+  terminal board with empty cells has no selectable actions. Action decoding
+  from an empty tuple rejects; masking an all-false row also rejects.
+- `boardgame_ai.models.masking.mask_action_logits` requires finite floating-point
+  logits and bool masks of identical nonempty shape `(..., action_count)` and
+  device. No broadcasting or automatic device conversion occurs. Every row must
+  have at least one legal choice; filter terminal rows before constructing a
+  distribution. Empty batches reject explicitly.
+- Return a new tensor with illegal logits -inf, retaining legal logits, dtype,
+  device, and autograd connectivity. Softmax gives illegal choices zero probability;
+  illegal logit gradients are zero. Inputs are not mutated; no randomness,
+  distribution, sampling policy, network, or training implementation is added.
+- Masks may be stacked and explicitly moved to the logits' device by callers.
+  This fixed nine-action adapter is specific to Tic-Tac-Toe, while the masking
+  helper accepts any action count. No action-space registry is introduced.
+- Tests cover all cell round-trips, supplied-object identity, order independence,
+  storage/RNG purity, both-seat gameplay, terminal/inactive masks, schema failures,
+  batched probabilities/gradients across float dtypes, and shape/device failures.
+  Next is Phase 4, Task 3: policy and value networks.
+
+## 2026-10-14: Policy and value networks (Phase 4, Task 3)
+
+- Export `TicTacToeActorCritic` from `boardgame_ai.models`. This game-specific
+  nn.Module flattens the six observation planes to 54 features, then uses
+  two 64-unit tanh layers shared by linear policy (9) and value (1) heads.
+  A small shared body keeps the initial PPO model simple; no recurrence,
+  convolution, search, or general game registry is added.
+- Forward accepts nonempty tensors shaped `(..., 6, 3, 3)`, returning a tuple
+  of raw logits `(..., 9)` and scalar values `(...)`. Single observations produce
+  logits `(9,)` and a rank-zero value. Arbitrary leading batch dimensions and
+  noncontiguous tensors work; only trailing observation dimensions are flattened.
+- Policy indices retain the fixed row-major action contract. Logits are neither
+  probabilities nor masked. Apply the existing mask helper separately to live
+  decisions using supplied legal choices; no sampling or Agent adapter is added.
+- The value is an unbounded estimate of future return for observation.player_id,
+  regardless of current actor or absolute mark. Its eventual discount/target
+  construction belongs to trajectory work. Both heads consume exactly the same
+  filtered tensor; no privileged critic, reward input, or engine reference exists.
+- Terminal/inactive views are accepted as observations. Terminal output values
+  remain predictions, not exact outcomes or hard-coded zeros. Future trajectory
+  code must bootstrap zero at true termination independently of model output;
+  all-false terminal/inactive masks still reject action selection.
+- Parameters start CPU float32 explicitly, independent of default floating dtype.
+  Use standard PyTorch Linear initialization and caller-controlled PyTorch seeds;
+  construction consumes PyTorch randomness, while forward does not. No custom
+  model seed API, global reseeding, dropout, or mutable running statistics is added.
+- Model/input dtype and device must match; callers use `.to(...)` explicitly.
+  Wrong/empty shapes, non-floating or nonfinite inputs, and mismatches raise
+  ValueError without input values in diagnostics. Validation checks tensor
+  compatibility, not binary-plane semantics, visibility, or game reachability.
+- Differentiation remains enabled by default. For inference use eval() with
+  no_grad()/inference_mode(); train/eval produce the same predictions here.
+  Both heads can backpropagate into the shared body without mutating inputs.
+- Tests verify batching against individual predictions, raw output semantics,
+  separate policy/value gradient paths, masked illegal gradients, deterministic
+  seeded construction, inference purity, dtype conversion, seat relabeling,
+  detached gameplay and terminal views, and invalid tensor/device rejection.
+  Trajectory collection/GAE is next; no optimizer or checkpoint workflow is added.
+
+## 2026-10-14: Trajectory collection and GAE (Phase 4, Task 4)
+
+- Export `collect_tic_tac_toe_rollout`, `PlayerTrajectory`, `TicTacToeRollout`,
+  and `generalized_advantage_estimation` from `boardgame_ai.training`.
+  Collection is trusted orchestration, specialized to two-seat Tic-Tac-Toe
+  observation/action schemas. Core/Agent/runner interfaces remain unchanged.
+- Reset the supplied engine and collect one bounded game with two supplied
+  actor-critic models (a shared instance is allowed). Follow engine actors,
+  including consecutive decisions by one seat. Pass only detached decision_for
+  views through encoders to inference, and decode back to a supplied legal action.
+  Standard actor/result/termination checks apply; errors propagate without retries.
+- Frozen records own mutable detached CPU tensors. Per player with T decisions:
+  observations `(T,6,3,3)` float32, legal_masks `(T,9)` bool, actions and global
+  step_indices `(T,)` int64, old log_probs/values/rewards `(T,)` float32, plus
+  scalar bootstrap_value. Empty seats retain these shapes and zero bootstrap.
+  Finite float32 storage is checked. These are trusted per-seat learning records,
+  not public replay logs; no seeds, full observations, events, or state are retained.
+- Inference uses no_grad and explicit conversion to each model's dtype/device.
+  Modes, weights, and existing gradients are unchanged. Mask raw logits, compute
+  log_softmax, and sample with torch.multinomial using one private CPU generator
+  per seat. Generator seeds are create_rng(sampling_seed).getrandbits(64);
+  None uses system entropy. No global RNG or engine RNG is consumed by sampling.
+  Reproduction requires fixed weights, seeds, ordering, runtime, and configuration.
+- Each record's reward sums that seat's incremental engine rewards after its
+  action until just before its next action or the rollout end, including opponent
+  actions. Thus both winner and loser receive terminal rewards. Increments before
+  a seat's first action belong only to total_rewards, not policy credit.
+- Explicit discount clock: gamma advances once per player's recorded decision;
+  intervening rewards are summed without internal discounting. GAE lambda also
+  advances on this clock. This is not atomic-step discounting, and no alternating
+  sign trick is used. Future games requiring time-based discount need a separate
+  duration-aware contract. Never interleave seats or concatenate episodes for GAE.
+- True termination takes precedence on the final allowed step and bootstraps zero
+  without terminal model calls. Reaching max_steps while live is truncation, not
+  a draw: bootstrap each nonempty segment from its own filtered cutoff observe,
+  including inactive views. Empty or initially terminal games have no samples.
+  max_steps=0 is valid. The engine remains at the cutoff, but every collection
+  call resets; resumable collector/RNG state and batched schedules are deferred.
+- GAE accepts matching finite floating 1-D reward/value tensors, finite bootstrap,
+  and gamma/lambda in [0,1]. Backward recursion uses delta=r+gamma*next_value-value,
+  A=delta+gamma*lambda*A_next; returns=A+value. Outputs are detached and retain
+  dtype/device; empty segments are supported. Invalid inputs/overflow reject.
+  Bootstrap zero at true termination is the collector/caller's responsibility.
+- Tests use hand-calculated GAE, independent discounted-return sums, repeated
+  actors/general-sum interval rewards, real wins/losses/draws for both starters,
+  terminal inference rejection, seat-dependent cutoff bootstraps, empty segments,
+  masked log-prob reconstruction, deterministic sampling, storage/RNG/gradient
+  isolation, and input/failure checks. PPO losses, optimization, checkpointing,
+  baseline opponent collection, and training schedules remain future tasks.
+
+## 2026-10-14: PPO losses, optimization, and checkpoints (Phase 4, Task 5)
+
+- Add `PPOConfig`, `PPOBatch`, `PPOLoss`, `PPOUpdate`, `PPOTrainer`,
+  `prepare_ppo_batch`, `ppo_loss`, and save/load checkpoint helpers, exported
+  from training. No engine/Agent interface changes or training schedule are added.
+- Prepare GAE separately for each player's episode segment before concatenating
+  samples. Skip empty segments, reject an entirely empty batch, and clone/detach
+  visible observations, masks, actions, old log probabilities, advantages, and
+  returns. Callers must supply only samples from the policy being updated;
+  exclude baseline/other-policy opponents. Policy provenance is not inferred.
+- Batches use CPU float32 observations `(N,6,3,3)` and targets `(N,)`, bool masks
+  `(N,9)`, and int64 actions `(N,)`. Require finite data, nonpositive old log
+  probabilities, and sampled actions legal under saved masks. No rewards/state
+  become model features; old targets detach defensively in the loss.
+- Policy loss is negative mean min(r*A, clamp(r,1-epsilon,1+epsilon)*A), with
+  r=exp(new_log_prob-old_log_prob). Value loss is half mean squared error to
+  detached GAE returns, without value clipping. Total = policy + value_coefficient
+  * value_loss - entropy_coefficient * mean legal-action entropy. Replace illegal
+  log terms with zero before entropy multiplication to avoid 0 times -infinity.
+- Configuration defaults: learning rate 3e-4, gamma .99, lambda .95, clip .2,
+  value coefficient .5, entropy coefficient .01, four epochs, minibatches 64,
+  gradient norm limit .5, advantage normalization enabled. Normalize once across
+  the full update batch with population standard deviation and 1e-8 floor;
+  singleton/constant advantages become zero, preserving finite value/entropy loss.
+- Initial updater explicitly supports CPU float32 actor-critic parameters, using
+  Adam. Snapshot all batch tensors and freeze targets across bounded epochs.
+  Private CPU randperm shuffling uses create_rng(shuffle_seed).getrandbits(64)
+  without global RNG changes; include final partial minibatches. Clip gradients
+  with nonfinite rejection before stepping. Model train/eval mode is unchanged.
+- Diagnostics are sample-weighted means over pre-step minibatches/epochs:
+  total/policy/value loss, entropy, approximate KL mean((r-1)-log(r)), clip fraction,
+  sample count, and executed optimizer steps. These are update diagnostics, not
+  evaluation scores. Track completed update calls and successful optimizer steps.
+  Failed later minibatches do not roll back earlier steps; no KL early stopping,
+  optimizer schedule, rollout scheduling, or claims of playing strength are added.
+- Checkpoint version 1 fixes Tic-Tac-Toe observation/action/model identity and
+  saves CPU model state, Adam moments/groups, complete config, update/step counters,
+  model mode, and private shuffle RNG. It excludes games, rollouts, engine/sampling
+  seeds, gradients, and global RNG. This is an update-boundary snapshot, not
+  mid-minibatch/episode resumption or a complete future experiment checkpoint.
+- Save validates before writing a temporary sibling and atomically replacing
+  the chosen path (existing parent required). Load uses torch.load weights_only=True
+  on CPU, checks exact schema/config/weights/Adam/RNG compatibility, then restores
+  a fresh trainer. Model construction preserves global Torch RNG with fork_rng.
+  Exact next-update continuation is tested for the same batch/runtime; cross-version
+  optimizer compatibility is not promised. Unsupported/corrupt content rejects.
+- Tests independently calculate clipping for both advantage signs, entropy and
+  value losses, clipped/illegal gradients, detached targets, per-segment returns,
+  actual parameter changes, gradient bounds, singleton normalization, configuration
+  failures, deterministic checkpoint continuation, corruption rejection, and
+  preservation of existing files on invalid saves. Task 6 remains next.
+
+## 2026-10-14: User-run CUDA self-play (Phase 4, Task 6 implementation)
+
+- Add `TrainingConfig`, `run_self_play_training`, explicit device resolution, and
+  lazy `boardgame-ai train`. Default device is CUDA; cpu/cuda:N are explicit.
+  Missing CUDA, unsupported/indexed devices fail before output/collection. The
+  check-device flag prints device/GPU and exits without training or files.
+- Extend PPOBatch/loss/trainer from CPU-only to colocated CPU/CUDA float32.
+  Snapshot/normalize targets, then transfer the full update batch to model device.
+  Shuffle with the existing private CPU generator, transferring indices explicitly.
+  Model forward/backward, clipping, and Adam operate on the chosen device.
+- Training is shared-policy self-play: freeze a CPU policy snapshot for every
+  complete-game collection batch, sharing it across seats. All seat segments
+  belong to the learner policy. CPU inference avoids a GPU transfer/kernel per
+  move; engines, sampling, and GAE stay on CPU. No baseline scheduler or fixed
+  evaluation opponents are introduced, and no speedup/strength claim is made.
+- Default CLI budget is 1000 updates with 64 complete games per update; tune
+  PPO flags explicitly. Initialization, shuffle, engine, and per-seat sampling
+  seeds use separate streams. Versioned training seed derivation hashes UTF-8
+  boardgame-ai/training/v1:{seed}:{absolute_game_index}:{stream}, retaining the
+  first eight SHA-256 bytes as an unsigned big-endian integer. Initialization
+  and shuffle streams use index zero; games use update_index*games_per_update+i.
+  CPU initialization preserves global CPU/CUDA RNG, as do collection and shuffling.
+- Save version-1 PPO checkpoints as portable CPU tensors, including Adam moments
+  from CUDA. Loading optionally selects a device; validate on CPU, then restore
+  the model and optimizer moments on requested hardware. CPU is load default;
+  same-device/runtime next-update identity is tested, cross-device identity is not.
+- A new run requires an absent/empty output directory. Save immutable training.json
+  (format/game/mode, seed, games_per_update, complete PPO config) and initial
+  latest.pt. Every completed update saves latest.pt before appending diagnostics
+  to updates.jsonl and invoking the progress callback. Counters in checkpoint are
+  authoritative; a crash between save/log can leave missing diagnostics.
+- Resume requires the same manifest/PPO configuration and a total update budget
+  at least the saved count. Future game seeds derive from absolute indices;
+  saved Adam/shuffle state and frozen-policy collection reproduce uninterrupted
+  runs on the same runtime/device. Interrupted unsaved updates restart from the
+  preceding checkpoint. No mid-minibatch/episode resume or background launch.
+- Diagnostics include update index, device, sample/optimizer counts, PPO metrics,
+  and X/O wins/draws from training self-play. These are not held-out evaluation
+  or public hidden-game logs. The user runs the actual experiment; this session
+  performs only tiny unit verification and no full training.
+- CPU tests exercise CLI preflight/config/output protection, sampling schedule,
+  tiny self-play, exact resume, and previous PPO/checkpoint compatibility. Real
+  CUDA update/portable-checkpoint and runner tests are conditional. Current
+  environment has PyTorch 2.14.1+cpu and CUDA unavailable despite an RTX 4070 Ti;
+  CUDA dependency installation and GPU execution remain user actions.
+- Task 6 implementation is ready, but the training checkbox and Phase 4 acceptance
+  remain pending user execution. Task 7 held-out evaluation is next afterward.
+
+
+## 2026-10-14: Windows CUDA environment repair and hardware validation
+
+- Root cause was the initial CPU wheel installation, not PPO placement or driver
+  incompatibility: the project venv imported torch 2.14.1+cpu, with
+  torch.version.cuda=None and zero CUDA devices. Python is 3.12.14, 64-bit Windows;
+  NVIDIA detects RTX 4070 Ti with driver 610.88. User/system site packages are
+  excluded, no PYTHONPATH/Conda/CUDA override was present, and only one torch
+  distribution was installed. Bare python resolves to the WindowsApps alias;
+  always use the explicit project interpreter and its python -m pip.
+- Replaced only torch with the official cp312 win_amd64 2.14.1+cu130 wheel,
+  within torch>=2.6,<3. Used --no-deps to preserve existing dependencies;
+  pip check passes. No driver, dependency range, or application code change.
+- Consulted official PyTorch Windows installation and wheel indexes plus NVIDIA
+  CUDA compatibility documentation (links in README). Driver CUDA support 13.3
+  is distinct from the wheel runtime 13.0 and from a local Toolkit. No separate
+  Toolkit is required for these prebuilt operations; no custom CUDA build exists.
+- Hardware checks now see one device, compute capability 8.9. CUDA matmul and
+  actual PPO optimization pass. Strengthened conditional tests cover all batch
+  fields, parameters, finite gradients, both Adam moments, CPU-portable serialized
+  tensors, restored CUDA moments, identical next updates, and tiny GPU runner
+  resume matching uninterrupted parameters/Adam/shuffle state.
+- Preserve intentional CPU game simulation, frozen rollout inference, and GAE.
+  CUDA optimization and fail-fast device selection already behaved correctly.
+  Player information boundaries and checkpoint contents are unchanged.
+- Full training and held-out strength/speed evaluation remain user-run work.
+
+## 2026-10-15: Fixed evaluation opponents and held-out seeds (Task 7)
+
+- Add TicTacToePolicyAgent in its own module, preserving lightweight baseline
+  imports and the existing Agent contract. It owns a frozen CPU float32 model
+  snapshot in eval mode with no gradients and an independent resettable generator.
+  Use only player-visible observations/supplied legal choices. Default sampled
+  selection matches collection; greedy mode uses lowest-index ties. No engine,
+  rewards, privileged value inputs, or search enters the agent.
+- Add evaluate_policy_checkpoint/save_policy_evaluation and CLI evaluate. Read
+  source bytes once, hash them, validate/load a temporary CPU snapshot with the
+  existing restricted checkpoint loader, and never reopen source during games.
+  This ties all cases to exactly the reported bytes/update/optimizer counters.
+  Source/training files are never written; no optimization or CUDA work occurs.
+- Fixed cases: existing random-v1 and heuristic-v1, each with learner X/O, equal
+  games_per_seat (default 1000), X-first engine rules, nine-step bound. Reuse
+  evaluate_batch, run_match, and the terminal public-board outcome adapter.
+  Do not infer wins from reward totals, truncation, or model value estimates.
+- Independent seed root defaults 20261015. Case seeds are unsigned big-endian
+  SHA-256 of UTF-8 boardgame-ai/evaluation/v1:{root}:{opponent}:{learner_seat},
+  then the unchanged batch-v1 engine/seat seed schedule uses absolute indices.
+  start_index supports deterministic shards. This separates RNG schedules from
+  training; Tic-Tac-Toe board positions are not guaranteed disjoint.
+- Reports contain checkpoint SHA-256/counters, mode, schedule/root/index, fixed
+  case labels, original per-match outcomes/lengths/seeds, and fixed error categories.
+  No weights, observations, boards, private events, or exception text are exported.
+  Sampled/greedy results are separate protocols. Deterministic greedy versus the
+  heuristic repeats one path per seat, not independent policy trials.
+- CLI prints W/D/L, completion/error/truncation counts and saves trusted JSON.
+  Guard source-checkpoint and known training-artifact overwrite paths. Parent
+  must exist; explicit report destinations overwrite after JSON serialization.
+  Errors/truncations remain in reports and produce a nonzero CLI exit status.
+- User completed Task 6 with 1000 CUDA updates/64 games per update/seed 42.
+  CPU evaluation of the unchanged checkpoint executed 4000 games with no errors.
+  Random: X 770/66/164 and O 484/73/443 W/D/L. Heuristic: X 0/3/997 and O 0/0/1000.
+  Record identity/protocol/limitations in POLICY_EVALUATION.md. Positive random
+  results do not establish robustness against tactics or matched-control improvement.
+- Tests cover snapshots/source isolation, legal selection/ties/RNG/reset, both
+  seats, fixed cases, separate seed namespaces, exact repeats/shards, checkpoint
+  replacement during evaluation, configuration failures, sanitized error reports,
+  and CLI artifact protection. No training implementation/configuration changed.
+  Task 8 plots and controlled baseline comparisons remain before phase acceptance.
+
+## 2026-10-15: Curves, baseline controls, and Phase 4 acceptance (Task 8)
+
+- Add CPU analysis/CLI analyze, optional Matplotlib extra, and headless PNG/SVG
+  figure generation. Read saved diagnostics/checkpoint only; all outputs go to a
+  separate absent/empty directory. No optimization, game-rule change, or retraining.
+- Freeze the sampled policy with Task 7's protocol; replace only the learner with
+  random/heuristic controls. Reuse identical engine/seat seeds, indices, bounds,
+  opponent versions, and both-seat game counts. Reject incomplete/error records
+  or misaligned protocols before comparisons. Actions/trajectories can differ.
+- Primary assessment: paired policy-minus-random score versus random opponents,
+  equal seat weighting. Normal approximate 95% intervals use sample SE of paired
+  differences; stratified SE = .5*sqrt(SE_X²+SE_O²). Positive lower bound and >=30
+  games per seat support the minimal checkpoint-level criterion. Match uncertainty
+  does not measure variation across training runs or establish heuristic robustness.
+- Parse strictly increasing finite log rows/counts. Plot faint raw series and
+  labeled 25-update trailing means; gaps break curves and restart smoothing.
+  Self-play curves are not held-out strength trajectories. Export grouped mean-score
+  controls with match-mean intervals. Figures were rendered and visually inspected.
+- Actual 12,000-game comparison reproduces Task 7 exactly; no errors/truncations.
+  Random control scores X +.318/O -.303 versus random; policy +.606/+.041.
+  Balanced effect +.3160, approximate 95% interval [.2644,.3676]. Heuristic control
+  +.963/+.843 versus random, while policy loses nearly all heuristic games and is
+  worse there than random controls. Last-25 self-play X win rate reaches 99.81%
+  and entropy .1455: low loss/self-play dominance do not establish robust tactics.
+- Preserve chart copies under docs/phase4 and protocol/acceptance in PHASE4_RESULTS.md.
+  Raw JSON/logs/weights remain ignored in runs. Optional analysis dependencies are
+  installed in CI for render tests. All eight tasks and the minimal phase criterion
+  are complete; no Phase 5 work was started and no additional training was run.

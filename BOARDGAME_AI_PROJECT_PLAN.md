@@ -1,7 +1,7 @@
 # General-Purpose Board Game AI — Project Plan
 
 **Version:** 0.2<br>
-**Status:** Phase 3 complete — next: Phase 4, Task 1<br>
+**Status:** Phases 1–4 complete (minimal random-baseline criterion); heuristic weakness remains — next: Phase 5, Task 1<br>
 **Primary language:** Python<br>
 **Initial ML framework:** PyTorch
 
@@ -273,16 +273,74 @@ CI runs on pushes; see [Actions](https://github.com/Dzudd/boardgame-ai/actions).
 
 **Deliverable:** a trained agent that outperforms a random baseline on the first game.
 
-- [ ] Encode observations as PyTorch tensors.
-- [ ] Encode legal actions and implement action masking.
-- [ ] Implement policy and value networks.
-- [ ] Implement trajectory collection and advantage estimation (GAE).
-- [ ] Implement PPO losses, optimization and checkpointing.
-- [ ] Train with self-play and/or baseline opponents.
-- [ ] Add fixed evaluation opponents and held-out random seeds.
-- [ ] Plot training curves and compare against baselines.
+- [x] Encode observations as PyTorch tensors.
+- [x] Encode legal actions and implement action masking.
+- [x] Implement policy and value networks.
+- [x] Implement trajectory collection and advantage estimation (GAE).
+- [x] Implement PPO losses, optimization and checkpointing.
+- [x] Train with self-play and/or baseline opponents.
+- [x] Add fixed evaluation opponents and held-out random seeds.
+- [x] Plot training curves and compare against baselines.
 
 **Acceptance criteria:** a reproducible training run produces measurable improvement over a random agent, evaluated independently of training opponents.
+
+**Task 1 complete:** pure Tic-Tac-Toe observation encoding produces fresh CPU
+float32 tensors of shape `(6, 3, 3)`: own marks, opponent marks, empty cells,
+observer turn, opponent turn, terminal. Perspective follows the observing seat;
+coordinates remain row-major. Finished views retain the board with zero turn
+planes and a one terminal plane. Only filtered observations are consumed.
+**Task 2 complete:** placements map to fixed row-major indices 0–8. Supplied
+legal choices produce fresh CPU bool masks `(9,)`; empty choices produce all-false
+masks. Decoding returns a supplied legal action. Differentiable logit masking
+supports exact-shape batches, assigns -inf to illegal entries, and rejects rows
+without legal actions.
+
+**Task 3 complete:** `TicTacToeActorCritic` shares a 54→64→64 tanh body with
+nine raw policy logits and an unbounded scalar value head. Both use only encoded
+player observations, with observer-relative value perspective and explicit
+batch/dtype/device contracts. Terminal predictions are raw; future trajectories
+must use zero bootstrap at true termination. Masking stays separate. Trajectory
+collection/GAE follows below; PPO optimization, training, and search remain pending.
+
+**Task 4 complete:** bounded Tic-Tac-Toe rollouts retain separate player decision
+sequences with visible tensors/masks, sampled indices, old log probabilities,
+values, and interval rewards. Per-seat generators isolate sampling randomness.
+GAE uses each player's decision clock; true termination bootstraps zero, live
+cutoffs use filtered per-player values. Empty segments, repeated actors, and
+opponent-step terminal losses are tested.
+
+**Task 5 complete:** detached per-segment GAE targets form on-policy batches.
+Clipped policy loss, half-MSE value loss, and legal-only entropy drive bounded
+CPU float32 Adam updates with private minibatch shuffling and gradient clipping.
+Versioned checkpoints validate model/config/Adam/RNG state and reproduce the next
+update. No strength experiment or search was added.
+
+**Task 6 implementation ready:** a user-launched shared-policy self-play runner
+supports explicit CUDA/CPU PPO updates, frozen CPU rollout inference, seeded
+schedules, progress/JSONL diagnostics, portable checkpoints, and deterministic
+update-boundary resume. CUDA is the CLI default with no silent CPU fallback.
+Windows CUDA was verified on 2026-10-14 with RTX 4070 Ti, driver 610.88,
+Python 3.12.14, and PyTorch 2.14.1+cu130 after replacing the CPU wheel.
+Tiny CUDA optimization, portable checkpoints, and resume tests pass.
+**Task 6 run complete (2026-10-15):** the user completed 1,000 CUDA updates
+with 64 games per update, seed 42. The saved checkpoint reports 29,020 optimizer
+steps. No additional training was launched by the agent.
+
+**Task 7 complete:** a frozen CPU policy adapter and evaluation CLI test fixed
+random/heuristic opponents equally as X/O under independent held-out RNG schedules.
+Reports identify checkpoint bytes/counters and retain outcome/length/seed/error
+metadata. The completed checkpoint's 4,000-game sampled evaluation has no errors:
+random win rates 77.0% X / 48.4% O, heuristic win rates 0% for both seats (3 X draws).
+See POLICY_EVALUATION.md. This reveals substantial tactical weakness; baseline
+control comparisons and plots follow in Task 8.
+
+**Task 8 complete:** validated training curves and 12,000 matched-protocol games
+(policy/random/heuristic controls) establish balanced mean-score improvement
++0.3160 over random versus random opponents, approximate 95% interval
+[+0.2644,+0.3676]. All matches completed without errors. See PHASE4_RESULTS.md
+and tracked PNG/SVG figures. The minimal Phase 4 acceptance criterion is met for
+this checkpoint/protocol; near-universal heuristic losses remain a documented
+robustness failure. No further training or Phase 5 implementation was performed.
 
 ### Phase 5 — Complex mechanics and partial observability
 
@@ -511,7 +569,7 @@ v0.2, not a renumbering of the development phases. Foundation and the simple-gam
 engine are complete; position evaluators, rollout search, and MCTS are not yet
 implemented. The existing Tic-Tac-Toe heuristic is an action-selection policy,
 and GameOutcome evaluation classifies terminal results; neither is a general
-position-value evaluator. Phase 4, Task 1 remains the next implementation task.
+position-value evaluator. Phase 4 is complete under the minimal random-baseline criterion; heuristic robustness remains unresolved.
 
 1. **Foundation:** implement the engine interface, independent cloning, deterministic tests, and legal-action generation at each decision point.
 2. **Simple game:** test forward simulations and a heuristic evaluator on Tic-Tac-Toe or another fully observable deterministic game.
@@ -529,10 +587,9 @@ position-value evaluator. Phase 4, Task 1 remains the next implementation task.
 Phases 1–3 are complete: the package, shared contracts, tested Tic-Tac-Toe
 engine, simulation/baselines, benchmarks, human play, and replays are implemented.
 
-1. Encode observations as PyTorch tensors (Phase 4, Task 1).
-2. Implement legal-action encoding/masking and policy/value networks in later Phase 4 tasks.
-3. Build and test the PPO training pipeline one task at a time.
-4. Move to the minimal hidden-card game after the deterministic pipeline works.
+1. Phase 5, Task 1: multiple atomic decisions within one turn, one small task at a time.
+2. Retain the documented heuristic weakness when choosing policy-robustness follow-up work.
+3. Continue hidden-information mechanics only with explicit information-boundary tests.
 
 **First milestone:** one fully working deterministic game, one reproducible training pipeline, and an agent that reliably improves over a random baseline.
 
