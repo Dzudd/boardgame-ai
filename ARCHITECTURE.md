@@ -1,5 +1,28 @@
 # Architecture decisions
 
+## 2026-10-15: Training throughput follow-up (planned)
+
+Phase 4.5 now includes a performance task before learning-protocol experiments.
+PPO actually runs on CUDA when selected, but current collection/inference and
+GAE use CPU, with one game/move at a time. Small minibatches, repeated CUDA
+scalar validation/diagnostic reads, and kernel launch costs are candidate
+overheads; device placement alone does not establish efficient hardware use.
+
+A short temporary probe on RTX 4070 Ti / PyTorch 2.14.1+cu130 with eight CPU
+threads used two updates of 64 games per device, CUDA first, then CPU. The second
+update took 0.413 s CUDA versus 0.325 s CPU; optimization alone took 0.183 s versus
+0.068 s. This is a single post-warm-up sample per device with timing instrumentation,
+not a repeated benchmark, a bottleneck proof, or a prediction for all 1,000 updates.
+No original checkpoint/configuration was read for training or modified.
+
+Pending work: repeat stage/end-to-end measurements; consolidate GPU diagnostics
+and redundant synchronization without removing failure checks; assess batched
+inference across independent games. Preserve observation boundaries, frozen
+weights, per-seat sampling streams, targets, and documented resume guarantees.
+Use CPU if measured faster. Larger optimization minibatches or changed sample
+schedules require separate learning-quality comparisons. No performance change
+has been implemented yet. Detailed timing observations are retained in PROGRESS.md.
+
 ## 2026-10-15: Self-play methodology and Phase 4.5 (design only)
 
 This decision supersedes earlier suggestions of baseline training opponents,

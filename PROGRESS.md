@@ -7,7 +7,8 @@ improves balanced score over a random control by +0.3160 (approximate 95% interv
 Phase 4.5, Task 1: read-only tactical and learning-signal diagnosis. Phase 4.5
 is planned, not implemented; Phase 5 has not started. Training remains latest
 shared-policy self-play only, with MuZero-style search learning as the long-term
-direction. The latest change updates documentation after the encoding audit.
+direction. The latest change adds a planned Phase 4.5 throughput task and records
+the preliminary CPU/CUDA timing probe; no optimization has been implemented.
 Published privately at [Dzudd/boardgame-ai](https://github.com/Dzudd/boardgame-ai),
 with `master` tracking `origin/master`. Hosted Windows/Linux CI is enabled; current
 results are available in [GitHub Actions](https://github.com/Dzudd/boardgame-ai/actions).
@@ -15,6 +16,41 @@ Entries below are historical
 task records; earlier references to incomplete behavior describe that task's stage.
 Earlier statements about an absent remote or unexecuted hosted CI also describe
 the state at that task's completion; see the publication record below.
+
+## 2026-10-15: CPU/CUDA timing probe and planned throughput work
+
+- Verified train --device cuda --check-device selects RTX 4070 Ti with PyTorch
+  2.14.1+cu130. Existing 1,000-update logs identify cuda:0; collection/inference
+  and GAE deliberately remain CPU-side. Correct placement is not utilization.
+- Ran two temporary fresh-policy updates per device (CUDA first, then CPU),
+  64 games/update, default PPO, seed 42, eight CPU threads. No existing training
+  checkpoint was used or changed. Temporary outputs were removed automatically.
+  Timing wrappers synchronized CUDA after measured calls when initialized.
+  The second update had 483 decisions and 32 optimizer steps on each device:
+
+  | Stage | CUDA run | CPU run |
+  |---|---:|---:|
+  | Collection including inference | 0.176 s | 0.208 s |
+  | GAE / batch preparation | 0.042 s | 0.040 s |
+  | PPO optimization | 0.183 s | 0.068 s |
+  | Checkpoint save | 0.007 s | 0.004 s |
+  | End-to-end update | 0.413 s | 0.325 s |
+
+  First-update totals were 2.180 s CUDA / 0.313 s CPU and include startup costs.
+  Only one post-warm-up sample per device was measured; order, runtime warm-up,
+  instrumentation, and changing policies limit inference. This does not establish
+  sustained performance, original-run duration, or an expected speedup.
+- Added Phase 4.5 Task 3 for repeated profiling, synchronization reduction, and
+  batched inference assessment. Existing learning-experiment/search/review tasks
+  move to Tasks 4–6; Task 1 remains the immediate next task. Preserve failure
+  checks, information boundaries, RNG ownership, targets, and resume guarantees.
+  Larger minibatches/changed sampling require learning-quality comparisons.
+- Updated roadmap, architecture, README, and this record. This follow-up changes
+  documentation only; it implements no optimization and launches no new training.
+
+Validation: local Markdown links/heading targets and diff whitespace checked.
+No test rerun for this documentation-only change; prior suite result is 617
+passing tests. The bounded timing workload above ran before this doc update.
 
 ## 2026-10-15: Self-play learning direction and Phase 4.5 planning
 

@@ -9,7 +9,7 @@ hidden-information games and multiple atomic decisions per turn.
 Phases 1–4 meet the original minimal criterion, but the trained policy loses
 nearly every heuristic matchup. [Phase 4.5](BOARDGAME_AI_PROJECT_PLAN.md#phase-45--self-play-diagnosis-and-learning-reliability-planned)
 is planned before harder games: diagnose learning signals and tactical failures,
-add checkpoint monitoring, test controlled self-play improvements, and design
+add checkpoint monitoring, profile/optimize throughput, test controlled self-play improvements, and design
 the search-learning bridge. None of these new tasks is implemented yet.
 
 Training uses **self-play only**: one latest-policy snapshot plays both seats.
@@ -38,6 +38,14 @@ budgets and credit assignment. It requires its own learner design; old PPO
 trajectories cannot simply become ordinary on-policy training batches. A perfect
 solver is not required for this methodology. See the roadmap and architecture
 for the current constraints and pending tasks.
+
+CUDA placement is verified on the RTX 4070 Ti, but small-model training need not
+be faster on GPU. A short temporary timing probe measured one post-warm-up
+64-game update at 0.413 s on CUDA versus 0.325 s on CPU. These are preliminary
+samples, not a general speed claim. Phase 4.5 will benchmark repeated stage and
+end-to-end timings, reduce unnecessary CPU/GPU synchronization, and assess
+batched game inference while preserving learning semantics. Minibatch-size
+changes remain separate learning experiments. See PROGRESS.md for probe details.
 
 ## Development setup
 

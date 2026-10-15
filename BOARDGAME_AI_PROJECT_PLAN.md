@@ -398,14 +398,28 @@ this phase addresses its unresolved policy weakness. All tasks below are pending
    outcomes, and optimizer/sample counts. Keep the resume checkpoint separate
    from the checkpoint chosen by a declared development metric. Preserve exact
    update-boundary resume; reserve fresh final-test seeds for final assessment.
-3. [ ] **Test self-play improvements.** After diagnosis, compare one change at a
+3. [ ] **Profile and optimize training throughput.** Add a reproducible bounded
+   CPU/CUDA benchmark with warm-up, repeated measurements, explicit CPU thread
+   count, and CUDA synchronization at timing boundaries. Separate collection,
+   inference, GAE/batch preparation, optimization, and checkpoint costs; report
+   games/decisions per second and end-to-end time at equal learning budgets.
+   First reduce repeated CUDA scalar reads, redundant validation, and diagnostic
+   synchronization while retaining input/nonfinite failure checks. Then assess
+   inference batched across games, preserving player-visible inputs, frozen
+   collection weights, per-game/per-seat RNG ownership, targets, and resume.
+   Benchmark CPU as a valid device for small models; GPU utilization alone is
+   not success. Treat larger minibatches, collection sizes, or changed sampling
+   order as learning-protocol experiments, not transparent speed optimizations.
+   Test semantic equivalence and deterministic resume where promised; document
+   numerical differences. No speedup claim without repeated end-to-end evidence.
+4. [ ] **Test self-play improvements.** After diagnosis, compare one change at a
    time to the unchanged PPO baseline: exploration/entropy settings, collection
    size, or optimizer settings as evidence warrants. Record distinct positions
    and action diversity; keep latest-policy self-play, game rewards, and both-seat
    training. Predeclare game and optimizer budgets, development criteria, and at
    least three training seeds; report every run and both-seat uncertainty. Fix
    proven defects before tuning. More randomness or more games alone is not a fix.
-4. [ ] **Define the search-learning bridge.** Specify bounded policy/value-guided
+5. [ ] **Define the search-learning bridge.** Specify bounded policy/value-guided
    MCTS using simulation constructed only from the permitted public observation,
    player-relative backups, terminal handling, and seeded exploration. Then
    specify a separate search-target learner: self-play search visit distributions,
@@ -413,13 +427,14 @@ this phase addresses its unresolved policy weakness. All tasks below are pending
    as a comparison; do not insert search-chosen actions into PPO with incorrect
    behavior probabilities. This task is a design, not implementation of MCTS or
    MuZero. Learned representation/dynamics/prediction follow in the search track.
-5. [ ] **Review the evidence and next milestone.** Publish the diagnosis, all
+6. [ ] **Review the evidence and next milestone.** Publish the diagnosis, all
    bounded experiment results, and an explicit decision to retain PPO or prioritize
    search-guided self-play. Do not require PPO to solve Tic-Tac-Toe indefinitely
    before progressing, and do not treat X dominance or low loss as agent strength.
 
 **Acceptance criteria:** traced learning signals are correct (or defects fixed
-and tested); monitoring is reproducible and isolated; controlled multi-seed
+and tested); monitoring is reproducible and isolated; repeated CPU/CUDA timing
+and correctness/resume checks substantiate any throughput change; controlled multi-seed
 self-play comparisons and seat-specific diagnostics are reported; and a documented
 decision identifies the next implementation task. No external training opponents
 or teacher targets enter any run. Report failure to improve honestly; this phase
@@ -677,7 +692,7 @@ Phases 1–4 are complete under the original minimal criterion. The remaining
 policy weakness motivates Phase 4.5 before expansion to harder games.
 
 1. Phase 4.5, Task 1: read-only tactical and learning-signal diagnosis, one small task at a time.
-2. Add checkpoint monitoring, then bounded self-play experiments and a search-learning design.
+2. Add checkpoint monitoring, profile/optimize throughput, then run bounded self-play experiments and specify search learning.
 3. Review whether to bring the Phase 7 search track forward; Phase 5 remains the next game-mechanics milestone.
 
 **First milestone:** one fully working deterministic game, one reproducible training pipeline, and an agent that reliably improves over a random baseline.
