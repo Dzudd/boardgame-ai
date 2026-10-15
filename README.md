@@ -13,12 +13,18 @@ hidden-information games and multiple atomic decisions per turn.
 | [Architecture](ARCHITECTURE.md) | Implemented interfaces, tensor contracts, learning protocol, seeds, and resume |
 | [Information boundaries](INFORMATION_BOUNDARIES.md) | Required player visibility and isolation rules |
 | [Phase 4 results](PHASE4_RESULTS.md) | Training curves, matched controls, measurements, and limitations |
+| [Phase 4.5 results](PHASE45_RESULTS.md) | Monitoring, throughput, controlled comparison and decision |
+| [Search-learning design](SEARCH_LEARNING_DESIGN.md) | Public simulation, search backups and separate target learner |
+| [Frozen policy diagnosis](POLICY_DIAGNOSIS.md) | Public tactics, per-seat signals, isolated PPO update evidence |
 | [Policy evaluation](POLICY_EVALUATION.md) | Checkpoint identity and fixed-opponent results |
 | [Baseline benchmarks](BASELINE_BENCHMARKS.md) | Random/heuristic control measurements |
 
 Phases 1–4 meet the original minimal criterion; policy robustness remains poor.
-[Phase 4.5](BOARDGAME_AI_PROJECT_PLAN.md#phase-45--self-play-diagnosis-and-learning-reliability-planned)
-is planned. Start with the read-only tactical/learning-signal diagnosis.
+[Phase 4.5](BOARDGAME_AI_PROJECT_PLAN.md#phase-45--self-play-diagnosis-and-learning-reliability-complete)
+is complete at its declared bounded scope. Monitoring, repeated profiling and
+a three-seed entropy comparison are implemented and measured. The comparison did
+not establish improvement; next is the public simulator adapter and bounded search
+evaluation. See Phase 4.5 results for limitations and the milestone decision.
 Training uses latest-policy self-play only; baseline opponents are evaluation
 instruments. The current protocol and future MuZero direction are described in
 the architecture and roadmap. This README covers setup and supported usage.
@@ -414,11 +420,63 @@ after saving but before logging can leave a missing log row; `latest.pt` is the
 authoritative progress marker. No mid-minibatch/episode resume is attempted.
 
 The completed 1,000-update run is documented in [Phase 4 results](PHASE4_RESULTS.md).
-The current runner retains latest.pt rather than historical snapshots and does
-not evaluate automatically during training. CUDA placement is verified, but a
-small timing probe found CPU faster for this workload; see [progress](PROGRESS.md)
-for measurements and limitations. Repeated profiling and optimization are planned
-in Phase 4.5, separately from learning-protocol experiments.
+The runner always retains latest.pt for resume. Optional monitoring saves periodic
+immutable snapshots and isolated development evaluations; its selected checkpoint
+is separate from the resume marker. Repeated CPU/CUDA measurements and their
+limitations are in [Phase 4.5 results](PHASE45_RESULTS.md).
+
+## Optional checkpoint monitoring
+
+For a new run, add these flags to the training command (repeat them on resume):
+
+```powershell
+.\.venv\Scripts\python.exe -m boardgame_ai train --device cpu --output runs/monitored --updates 200 --seed 42 --monitor-interval 50 --monitor-retain 3 --monitor-games-per-seat 128 --monitor-self-play-games 64 --monitor-seed 20261022
+```
+
+Defaults leave monitoring disabled. `monitoring.json` fixes its configuration;
+resume rejects changes. Reports `development-NNNNNNNN.json` contain checkpoint
+hashes/counters, four sampled fixed-opponent cases, both-seat tactics, entropy,
+coverage and action diversity. `snapshots/` retains the newest three immutable
+checkpoints plus an older best if needed. `best.json` points to the development
+choice: equal-case mean score over random/heuristic × X/O, earliest tie wins.
+`latest.pt` remains the resume marker. Missing current-boundary evaluation retries
+on resume; failed evaluation does not undo an already-saved update. Checkpoints
+publish complete bytes atomically; corrupt existing files reject. Snapshot storage
+requires hard-link support in the run directory. Old unmonitored runs still resume
+with monitoring disabled. Missing log history yields an unknown cumulative sample
+count. Evaluation uses independent copies/RNG and never supplies training samples.
+
+## Phase 4.5 bounded benchmark and comparison
+
+The [protocol](PHASE45_PROTOCOL.md) fixes budgets before execution. The comparison
+runs six fresh CPU self-play runs: seeds 42/43/44, entropy .01 versus .05, 200
+updates × 64 games each, monitoring every 50 updates. All development choices are
+frozen before 512-game-per-case final evaluations with reserved seed 20261029.
+
+```powershell
+$env:OMP_NUM_THREADS='1'
+.\.venv\Scripts\python.exe -m boardgame_ai.training.experiments --output runs/phase45/entropy-comparison
+```
+
+Output must be absent; use `--resume` with the identical protocol for an interrupted
+comparison. Raw reports and immutable selection manifests remain in that folder.
+These final-test seeds are consumed by this investigation; reserve fresh seeds
+for subsequent tuning or final claims.
+
+The benchmark takes an explicit saved pre-change PPO source file. To reproduce
+this comparison from the repository history, create a new output directory name:
+
+```powershell
+git show fe66184e5f43269c41e1c79842ec54ee4c4ec273:src/boardgame_ai/training/ppo.py | Set-Content runs/phase45-reference-ppo.py
+.\.venv\Scripts\python.exe -m boardgame_ai.training.benchmark --reference-ppo runs/phase45-reference-ppo.py --output runs/phase45-benchmark-rerun
+```
+
+The command executes that explicitly supplied local reference source. It compares
+three repetitions per device with two warm-up and five measured updates, one CPU
+thread and synchronized CUDA stage boundaries. It checks exact same-device
+parameter/Adam/shuffle equivalence and reports each timing/count, plus a separate
+fixed-corpus batched-inference probe. The production collector stays sequential.
+A faster forward pass does not establish a collection or overall training speedup.
 
 ## Fixed-opponent evaluation
 
@@ -455,6 +513,30 @@ The completed checkpoint's measured [results](POLICY_EVALUATION.md) show 77.0%
 X and 48.4% O wins against random, but essentially all losses against the heuristic.
 There were no errors/truncations in 4,000 games. This exposes weakness hidden by
 self-play outcomes; no claim of robust or optimal play is made. Matched controls are described below.
+
+## Frozen policy tactical and learning-signal audit
+
+With training stopped, run the bounded CPU diagnostic:
+
+```powershell
+$env:OMP_NUM_THREADS='1'
+.\.venv\Scripts\python.exe -m boardgame_ai.policy_audit runs/tic-tac-toe-cuda/latest.pt --output runs/phase45-task1.json --games 1024 --update-games 64 --seed 20261016
+```
+
+The output must be new, its parent must exist, and it must be outside the source
+checkpoint directory. The report includes all 4,520 reachable live X-first public
+boards, nine-action probabilities, X/O tactical counts, 1,024 sampled frozen-policy
+self-play games, first-observed outcome traces, and independently checked rewards,
+GAE, targets and PPO calculations. No O win occurred in the recorded sample;
+winning X and losing O trajectories are traced. Only the first 64 unselected
+self-play games enter a bounded update on disposable copies retaining saved Adam
+and shuffle state. Updated weights are never saved. Source checkpoint/config/log
+hashes are verified unchanged. No tactical labels enter PPO or model features.
+
+[Findings and protocol](POLICY_DIAGNOSIS.md): mean immediate-win mass is about 53%
+across the board census; required-block mass is 32–36%. Self-play visits only 29
+distinct acting-seat boards. No checked signal defect was demonstrated. Passing
+these diagnostics does not fix strength or establish the cause of specialization.
 
 ## Training curves and baseline controls
 

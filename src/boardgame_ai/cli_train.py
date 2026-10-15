@@ -6,6 +6,7 @@ from typing import Any
 import torch
 
 from boardgame_ai.training.device import resolve_training_device
+from boardgame_ai.training.monitoring import MonitoringConfig
 from boardgame_ai.training.ppo import PPOConfig
 from boardgame_ai.training.run import TrainingConfig, run_self_play_training
 
@@ -47,7 +48,24 @@ def train_from_args(args: Namespace) -> None:
             flush=True,
         )
 
+    if args.monitor_interval < 0:
+        raise ValueError("Monitoring interval must be nonnegative")
+    monitoring = (
+        MonitoringConfig(
+            interval=args.monitor_interval,
+            retain=args.monitor_retain,
+            games_per_seat=args.monitor_games_per_seat,
+            self_play_games=args.monitor_self_play_games,
+            seed=args.monitor_seed,
+        )
+        if args.monitor_interval
+        else None
+    )
     trainer = run_self_play_training(
-        args.output, config, resume=args.resume, on_update=progress
+        args.output,
+        config,
+        resume=args.resume,
+        on_update=progress,
+        monitoring=monitoring,
     )
     print(f"Saved {trainer.update_count} completed updates in {args.output}/latest.pt")

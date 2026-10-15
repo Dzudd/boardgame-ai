@@ -14,6 +14,11 @@ from boardgame_ai.games.tic_tac_toe import TicTacToeEngine
 from boardgame_ai.models import TicTacToeActorCritic
 from boardgame_ai.training.checkpoint import load_ppo_checkpoint, save_ppo_checkpoint
 from boardgame_ai.training.device import resolve_training_device
+from boardgame_ai.training.monitoring import (
+    MonitoringConfig,
+    configure_monitoring,
+    monitor_checkpoint,
+)
 from boardgame_ai.training.ppo import PPOConfig, PPOTrainer, prepare_ppo_batch
 from boardgame_ai.training.rollout import PlayerTrajectory, collect_tic_tac_toe_rollout
 
@@ -56,6 +61,7 @@ def run_self_play_training(
     *,
     resume: bool = False,
     on_update: Callable[[dict[str, Any]], None] | None = None,
+    monitoring: MonitoringConfig | None = None,
 ) -> PPOTrainer:
     """Run requested updates, saving each completed update before log/callback.
 
@@ -65,7 +71,7 @@ def run_self_play_training(
     Save portable latest.pt at every boundary; resume derives future rollout
     seeds from absolute update/game indices. Only checkpoints are authoritative:
     a crash after save can leave a missing metrics row. Existing history is not
-    replayed. No evaluation, opponent pool, or trained-strength assertion.
+    replayed. Optional isolated development monitoring never supplies training data.
     """
     device = resolve_training_device(config.device)
     directory = Path(output)
@@ -95,6 +101,7 @@ def run_self_play_training(
             raise ValueError("Checkpoint and training manifest configurations disagree")
         if trainer.update_count > config.updates:
             raise ValueError("Requested total updates precede the checkpoint")
+        configure_monitoring(directory, monitoring, resume=True)
     else:
         if directory.exists() and (not directory.is_dir() or any(directory.iterdir())):
             raise ValueError(
@@ -106,11 +113,36 @@ def run_self_play_training(
             model, config.ppo, shuffle_seed=_seed(config.seed, 0, "shuffle")
         )
         directory.mkdir(parents=True, exist_ok=True)
+        configure_monitoring(directory, monitoring, resume=False)
         (directory / "training.json").write_text(
             json.dumps(manifest, indent=2) + "\n", encoding="utf-8"
         )
         save_ppo_checkpoint(trainer, checkpoint)
 
+    samples_seen: int | None = 0
+    log_path = directory / "updates.jsonl"
+    if trainer.update_count:
+        rows = (
+            [
+                json.loads(line)
+                for line in log_path.read_text(encoding="utf-8").splitlines()
+            ]
+            if log_path.exists()
+            else []
+        )
+        samples_seen = (
+            sum(row["ppo"]["num_samples"] for row in rows)
+            if [row["update"] for row in rows]
+            == list(range(1, trainer.update_count + 1))
+            else None
+        )
+    if monitoring is not None and trainer.update_count % monitoring.interval == 0:
+        monitor_checkpoint(
+            directory,
+            monitoring,
+            games_seen=trainer.update_count * config.games_per_update,
+            samples_seen=samples_seen,
+        )
     game = TicTacToeEngine()
     for update_index in range(trainer.update_count, config.updates):
         # One frozen policy for all collection in this update. No CUDA inference
@@ -155,6 +187,15 @@ def run_self_play_training(
         }
         with (directory / "updates.jsonl").open("a", encoding="utf-8") as stream:
             stream.write(json.dumps(record, allow_nan=False) + "\n")
+        if samples_seen is not None:
+            samples_seen += report.num_samples
+        if monitoring is not None and trainer.update_count % monitoring.interval == 0:
+            monitor_checkpoint(
+                directory,
+                monitoring,
+                games_seen=trainer.update_count * config.games_per_update,
+                samples_seen=samples_seen,
+            )
         if on_update is not None:
             on_update(record)
     return trainer
