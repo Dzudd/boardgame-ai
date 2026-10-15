@@ -2,8 +2,10 @@
 
 **Status:** Phases 1–4 complete under the original minimal criterion; Phase 4.5
 complete at the declared bounded investigation scope.
-**Next:** Phase 7 public simulator adapter and bounded search evaluation,
-prioritized before Phase 5. PPO remains the comparison baseline.
+**Current:** The brought-forward Phase 7 public simulator, bounded search
+evaluation and diagnosis are complete; see PHASE7_RESULTS.md.
+**Next:** Return to Phase 5 game mechanics and information boundaries. PPO and
+Tic-Tac-Toe search remain references; robust Tic-Tac-Toe play is not a gate.
 
 ## Goal and principles
 
@@ -154,6 +156,13 @@ Phase 7 track, which can be brought forward after this review before Phase 5.
 
 **Deliverable:** a small custom card/worker-placement test game.
 
+Start with one minimal playable engine through the shared interfaces: explicit
+phases, consecutive same-player decisions, public worker placement, hidden hands,
+public deck/discard counts and engine-resolved draws. Validate complete scripted/
+random games and indistinguishable-world observations/actions before adding
+encoders, recurrent memory or PPO. Keep the search milestone frozen as a reference;
+additional Tic-Tac-Toe tuning is optional, not a prerequisite.
+
 - [ ] Implement multiple atomic decisions within one turn.
 - [ ] Add explicit decision phases and turn/round transitions.
 - [ ] Implement hidden hands, deck, discard pile and public card counts.
@@ -188,10 +197,11 @@ Phase 7 track, which can be brought forward after this review before Phase 5.
 - [ ] Implement explicit or learned hidden-state belief estimates.
 - [ ] Validate belief estimates against known simulated outcomes without leaking them at inference.
 - [ ] Implement information-set-aware search baseline.
-- [ ] Define evaluator perspective and return semantics separately from action selection.
-- [ ] Add bounded rollout evaluation and engine-based MCTS on a perfect-information game.
+- [x] Define evaluator perspective and return semantics separately from action selection.
+- [x] Add bounded policy/value PUCT on public-rule Tic-Tac-Toe simulation (no authoritative clone).
+- [ ] Add separate rollout comparison if warranted.
 - [ ] Compare heuristic, rollout, neural, and hybrid evaluation against fixed baselines.
-- [ ] Integrate policy/value guidance into search.
+- [x] Integrate policy/value guidance into bounded public search.
 - [ ] Implement search-guided self-play with policy/value targets and sampled self-generated replay as a separate learner.
 - [ ] Implement MuZero-style learned representation, dynamics, and prediction as the long-term search-learning extension.
 - [ ] Test chance-event modeling and same-player search backups.
@@ -216,16 +226,19 @@ Phase 7 track, which can be brought forward after this review before Phase 5.
 
 ## Search direction
 
-The Phase 4.5 review prioritizes Phase 7 search evaluation before Phase 5 game
-mechanics, retaining PPO as reference. The next small task is the public simulator
-adapter followed by bounded search evaluation. The sequence is:
+The Phase 4.5 review brought the first Phase 7 milestone forward. Public simulation,
+16/32 search evaluation and heuristic-O trace diagnosis are now complete. Return
+to Phase 5's minimal game and visibility tests; neither more search tuning nor
+solving Tic-Tac-Toe is required first. Prior-concentration ablation is deferred
+optional research. The longer-term search sequence remains:
 
 1. Validate bounded policy/value-guided search with permitted rule-based simulation.
 2. Train from self-play search policies and outcomes using budgeted replay sampling.
 3. Add learned representation, dynamics, and prediction; compare against rule-based search.
 4. Extend explicitly for chance, hidden information, same-player actions, and multiple players.
 
-PPO remains a comparison baseline. Search is not implemented. A rules simulator
+PPO remains a comparison baseline. Public-rule bounded search is implemented;
+search-target learning is not. A rules simulator
 provides transitions, not expert opponent decisions. Hidden-information planning
 must respect information sets; cloning true hidden state or searching sampled
 worlds as though their secrets were known is invalid.

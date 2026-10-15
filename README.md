@@ -14,6 +14,7 @@ hidden-information games and multiple atomic decisions per turn.
 | [Information boundaries](INFORMATION_BOUNDARIES.md) | Required player visibility and isolation rules |
 | [Phase 4 results](PHASE4_RESULTS.md) | Training curves, matched controls, measurements, and limitations |
 | [Phase 4.5 results](PHASE45_RESULTS.md) | Monitoring, throughput, controlled comparison and decision |
+| [Phase 7 results](PHASE7_RESULTS.md) | Public search evaluation and heuristic-O diagnosis |
 | [Search-learning design](SEARCH_LEARNING_DESIGN.md) | Public simulation, search backups and separate target learner |
 | [Frozen policy diagnosis](POLICY_DIAGNOSIS.md) | Public tactics, per-seat signals, isolated PPO update evidence |
 | [Policy evaluation](POLICY_EVALUATION.md) | Checkpoint identity and fixed-opponent results |
@@ -23,8 +24,10 @@ Phases 1–4 meet the original minimal criterion; policy robustness remains poor
 [Phase 4.5](BOARDGAME_AI_PROJECT_PLAN.md#phase-45--self-play-diagnosis-and-learning-reliability-complete)
 is complete at its declared bounded scope. Monitoring, repeated profiling and
 a three-seed entropy comparison are implemented and measured. The comparison did
-not establish improvement; next is the public simulator adapter and bounded search
-evaluation. See Phase 4.5 results for limitations and the milestone decision.
+not establish improvement. Public simulation and bounded search evaluation are now
+implemented; see [Phase 7 results](PHASE7_RESULTS.md) for measured gains and the
+remaining heuristic-O failure. The next implementation milestone is Phase 5
+game mechanics and information-boundary tests; further Tic-Tac-Toe tuning is optional.
 Training uses latest-policy self-play only; baseline opponents are evaluation
 instruments. The current protocol and future MuZero direction are described in
 the architecture and roadmap. This README covers setup and supported usage.
@@ -805,3 +808,15 @@ hook and does not automatically make game-specific actions public.
 
 See [the roadmap](BOARDGAME_AI_PROJECT_PLAN.md), [architecture decisions](ARCHITECTURE.md),
 and [current progress](PROGRESS.md).
+
+
+Frozen public-search evaluation (CPU, separate from training):
+
+```powershell
+python -m boardgame_ai.search.evaluation runs/monitored-seed45/latest.pt runs/new-search-evaluation
+```
+
+The output directory must not exist. This executes the fixed 3,072-game and
+4,520-board-per-condition protocol in [PHASE7_PROTOCOL.md](PHASE7_PROTOCOL.md);
+see [PHASE7_RESULTS.md](PHASE7_RESULTS.md) for the measured limits and results.
+It preserves checkpoint/configuration/log files and never trains from evaluation.

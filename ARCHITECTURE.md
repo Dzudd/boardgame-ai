@@ -261,7 +261,7 @@ Checkpoint evaluation hashes/loads one byte snapshot without modifying source
 weights, logs, or configuration. Reports identify hash/counters/mode/protocol,
 seeds, outcomes, lengths, and fixed errors; source and known training artifact
 overwrite paths are guarded. Parents must exist; explicit JSON reports overwrite.
-Errors/truncations remain visible and yield nonzero CLI status. No optimizer/search.
+Errors/truncations remain visible and yield nonzero CLI status. No optimizer in policy evaluation. Separate bounded search evaluation is described below.
 Held-out RNG namespaces do not imply unseen board positions.
 
 Analysis replaces only the learner with random/heuristic controls under matching
@@ -379,3 +379,31 @@ isolation, optimizer changes, corruption rejection, exact checkpoint continuatio
 and CPU/CUDA resume. CUDA tests check real inputs/parameters/gradients/Adam device
 placement; portable files serialize tensors on CPU. Current validation results
 belong in PROGRESS.md rather than historical per-task test counts here.
+
+
+## Public search evaluation
+
+`boardgame_ai.search` implements the public Tic-Tac-Toe adapter, observation-only
+frozen neural evaluator and bounded PUCT Agent. It does not wrap or clone an
+engine. Constructor reachability/root-choice validation and independent exhaustive
+engine comparison cover both starters. Public branch states are immutable.
+
+Backups carry two seat returns; for leaf actor s, G[s]=v and G[1-s]=-v,
+then each edge adds its incremental rule rewards with gamma=1. Terminal continuation
+is zero. Selection reads Q for the parent actor, without turn-based sign flips.
+Limits, tie-breaking, private exploration namespaces and node accounting are in
+SEARCH_LEARNING_DESIGN.md. PPO values are clipped heuristic estimates.
+
+`python -m boardgame_ai.search.evaluation CHECKPOINT NEW_OUTPUT_DIRECTORY`
+executes PHASE7_PROTOCOL.md on frozen CPU copies with global RNG isolation.
+It reports fixed-opponent matches, full tactical census, evaluator counts and
+latency; hashes verify source artifacts. No optimizer, replay or training targets.
+
+
+SearchAgent's optional `on_simulation` observer receives immutable public paths,
+rewards, leaf continuation, stop reason and per-edge vector returns after backup.
+It is diagnostic only and does not change selection; callback exceptions propagate.
+`boardgame_ai.search.diagnosis` replays prior heuristic-O match-zero records,
+independently reconstructs N/W/rewards, and exports public trees and leaf predictions.
+Post-decision one-step probes are separate from search calls; no diagnostic labels
+or baseline trajectories enter training. The destination must not exist.

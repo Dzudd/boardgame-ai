@@ -1,6 +1,6 @@
 # Search-learning bridge — Phase 4.5 Task 5
 
-**Design only.** No search or search-target learner is implemented by Phase 4.5.
+**Phase 4.5 design; Phase 7 evaluation now implemented.** Search-target learning remains unimplemented.
 The first milestone is bounded policy/value-guided search for deterministic,
 fully public, two-seat, zero-sum Tic-Tac-Toe. PPO stays a comparison baseline.
 Hidden information, chance, general-sum games and learned dynamics require
@@ -17,12 +17,12 @@ the separation; the budgets, interfaces and acceptance tests below are our choic
 Preserve `Agent.select_action(observation, legal_actions)` and per-seat reset.
 The search agent receives no live engine, authoritative state, seed, RNG,
 reward tuple, opponent view or clone. `PublicTicTacToeSimulator.from_observation`
-is a future game-specific adapter constructed from the supplied public board,
+is the game-specific adapter constructed from the supplied public board,
 actor and phase. It validates seat counts, reachability, absence of post-terminal
 moves, and equality of root legal choices with the supplied tuple. A small
 immutable public simulator can share rule helpers with the engine, but must not
 receive or inspect the real engine. Any constructor internals belong to trusted
-rules code, not model features. This adapter does not yet exist.
+rules code, not model features. The adapter is implemented in `boardgame_ai.search.simulator`.
 
 The simulator owns only reconstructed public board data and implements legal
 placements, public next observations, terminal status and seat-indexed incremental
@@ -143,8 +143,33 @@ prioritized replay and learned beliefs are separate, unapproved extensions.
    sampling weights/sequence masks and perspective are tested independently.
    Checkpoint replay/RNG/optimizer resume must match an uninterrupted tiny run.
 
-**Next implementation milestone if prioritized by the Phase 4.5 review:** implement
-the public simulator adapter and bounded search **evaluation only**, compare raw
-policy versus 16/32 simulations on both seats with fixed latency/evaluator-call
-budgets and fresh evaluation seeds. Implement search-target replay learning only
-after those contracts pass. Do not claim search strength gains before measuring.
+**Implemented milestone:** public simulator and bounded search evaluation, with
+raw greedy policy versus 16/32 simulations. See PHASE7_PROTOCOL.md and
+PHASE7_RESULTS.md. Search-target replay learning remains a separate later task.
+
+
+## Implementation details
+
+`SearchAgent` implements the shared Agent contract; `Evaluator` takes only an
+acting-seat public observation and simulated legal tuple, returning legal-order
+priors and an observer-relative scalar. `NeuralEvaluator` snapshots CPU float32
+weights. Reconstructed immutable states have no engine reference. The constructor
+validates both possible starting seats by public forward reachability, stopping at
+first terminal; it checks complete root choices (order may differ).
+
+The node cap counts retained live `Node` objects including root; edge statistics
+are allocated at expansion (at most nine per node). Terminal/frontier states are
+transient immutable public values, not retained nodes. No frontier `Node` is
+allocated when the cap is exhausted. Depth counts traversed placements from root.
+SearchResult exposes actual calls, node count, maximum depth and cutoff counts,
+and root edges with legal priors, vector W and N. Normalize N by simulations for
+visit probabilities; unavailable cells have no edge and zero mass.
+
+Per-game reset seed comes from existing batch-v1 absolute game/seat schedules.
+It initializes a private Random to derive 256 bits; search-v1 hashes those bits,
+seat, public occupied-cell count (real decision index), and purpose using SHA256.
+Noise and action sampling use independent private Random instances. Evaluation
+uses neither. Same-runtime replay is supported; cross-version RNG identity is not.
+Exploration is implemented for correctness probes only; no search data collector
+or learner is introduced. Generic same-actor backup arithmetic is tested, but the
+simulator deliberately supports only deterministic alternating Tic-Tac-Toe.

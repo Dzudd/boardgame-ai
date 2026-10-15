@@ -37,7 +37,7 @@ unselected self-play samples enter that update, with reward-derived targets and
 existing visible features. No updated model is persisted. These diagnostics
 introduce no privileged critic or change to training opponents or observations.
 
-## Development monitoring and planned search
+## Development monitoring and public search
 
 Monitoring evaluates independent CPU checkpoint copies. It restores Python/NumPy
 and CPU/initialized-CUDA global RNG even on failure, and never changes the acting
@@ -47,7 +47,7 @@ measurement only. Development reports are trusted reconstructive metadata; best
 checkpoint selection cannot inject opponent samples into PPO. Final-test seeds
 are separate and must be replaced when their results guide later tuning.
 
-The search-learning design permits a future Tic-Tac-Toe simulator built only from
+The search-learning design now has a Tic-Tac-Toe simulator built only from
 public observations and supplied root actions. No live engine or authoritative
 clone reaches a search agent. Search visit distributions/outcomes need a separate
 learner; they cannot masquerade as raw-policy PPO samples. Self-generated replay
@@ -354,3 +354,13 @@ Plots use trusted training diagnostics and result summaries. Raw reports contain
 reconstructive seed metadata and belong in trusted output directories. Public
 figure copies contain aggregate diagnostics/results only, no observations,
 private events, engine snapshots, or model weights. Source files are read-only.
+
+
+The search agent and simulator import no authoritative engine. The constructor
+accepts only the public TicTacToeObservation wrapper and supplied root actions;
+unsupported payloads reject through schema validation. Reachability enumeration
+uses public rules only and stores no solved values or opponent decisions.
+Imagined observations are constructed for the leaf actor; the evaluator sees only
+that observation and rule-derived legal actions. Simulated incremental rewards
+remain search bookkeeping, never model features. Terminal network calls are
+skipped. Evaluation tactics and baseline trajectories remain measurement only.

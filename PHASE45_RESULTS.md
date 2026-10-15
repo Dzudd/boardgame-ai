@@ -2,7 +2,7 @@
 
 Protocol: [predeclared budgets and criteria](PHASE45_PROTOCOL.md).
 Diagnosis: [Task 1](POLICY_DIAGNOSIS.md). Search milestone:
-[Task 5 design](SEARCH_LEARNING_DESIGN.md). All changes remain uncommitted.
+[Task 5 design](SEARCH_LEARNING_DESIGN.md).
 
 ## Monitoring and isolation
 
@@ -199,12 +199,12 @@ did not establish robust improvement at its declared budget. This is a reason
 to stop extending this particular tuning loop, not evidence that PPO is incapable
 or that search already improves play. Preserve all runs, including regressions.
 
-Next small task: implement and exhaustively test the public Tic-Tac-Toe simulator
-adapter, then bounded policy/value-guided search evaluation at 16/32 simulations
-using the Task 5 design. Measure both seats, tactics, evaluator calls and latency
+The follow-on Phase 7 public simulator and bounded 16/32 search evaluation are
+now implemented and measured in [Phase 7 results](PHASE7_RESULTS.md), using the
+Task 5 design, reporting both seats, tactics, evaluator calls and latency
 against raw-policy play. Search-target replay learning and learned MuZero dynamics
-remain later steps; no search code, external training opponents, teacher labels,
-reward bonuses or opponent pool were added here.
+remain later steps; Phase 4.5 itself added no search code, external training
+opponents, teacher labels, reward bonuses or opponent pool.
 
 Phase 4.5 Tasks 1–6 are complete at the stated bounded scope. The numerical
 learning checks establish tested signal/update consistency; monitoring makes

@@ -1,61 +1,61 @@
 # Current progress
 
-Updated: 2026-10-15. The [roadmap](BOARDGAME_AI_PROJECT_PLAN.md) owns task lists;
-[Phase 4.5 results](PHASE45_RESULTS.md) owns the measured protocols and decision.
+Updated: 2026-10-16. The [roadmap](BOARDGAME_AI_PROJECT_PLAN.md) owns task lists;
+[Phase 4.5 results](PHASE45_RESULTS.md) and [Phase 7 results](PHASE7_RESULTS.md)
+contain measured protocols, evidence and limitations.
 
 ## Status
 
 | Area | State |
 |---|---|
 | Phases 1–3 | Complete: contracts, engine, simulation, baselines, CLI and replays |
-| Phase 4 | Complete under its original random-baseline criterion |
+| Phase 4 | Complete under its original improvement-over-random criterion |
 | Phase 4.5 | Tasks 1–6 complete at the declared bounded scope |
-| Next milestone | Public Tic-Tac-Toe simulator adapter and bounded search evaluation, before Phase 5 |
+| Phase 7 brought-forward milestone | Public simulator, bounded 16/32 search evaluation and heuristic-O diagnosis complete |
+| Phase 5 | Next: minimal playable card/worker-placement game and visibility tests |
 
-**Next small task:** implement and exhaustively test public-observation simulation,
-then policy/value-guided search evaluation at 16/32 simulations. Follow the
-[search-learning design](SEARCH_LEARNING_DESIGN.md). Search-target replay learning,
-MuZero dynamics and hidden-game mechanics remain later steps. PPO stays a reference.
+**Next small task:** define and implement the minimal Phase 5 game through the
+existing engine/agent interfaces, with explicit decision phases, consecutive
+same-player actions, hidden hands, public worker placements and engine-resolved
+card draws. Establish rules, information boundaries and scripted/random complete
+games before observation encoders or recurrent PPO. Tic-Tac-Toe need not be solved
+before progressing. Prior-concentration ablation is optional deferred research;
+search-target learning, replay and MuZero dynamics remain later work.
 
 ## Current evidence and concerns
 
-- Original seed-42 update-1000 policy meets the Phase 4 random-control criterion,
-  but remains tactically weak. The [frozen audit](POLICY_DIAGNOSIS.md) found about
-  53% immediate-win mass and 32–36% block mass across 4,520 live boards. In 1,024
-  self-play games it visited only 29 distinct acting-seat boards. Its source
-  checkpoint, manifest and logs remain byte-identical.
-- Terminal rewards reach both seats; checked per-seat GAE/targets and disposable
-  PPO/Adam calculations agree. No signal implementation defect was demonstrated.
-  Exploration, optimization and specialization remain causal hypotheses.
-- Optional monitoring now keeps immutable bounded checkpoints, separate development
-  selection and isolated evaluation. CPU/CUDA monitored/unmonitored/resumed tiny
-  runs agree exactly on model/Adam/shuffle state. Missing log history is reported
-  as unknown sample count; same-runtime/device guarantees do not imply cross-device
-  or cross-version identity.
-- Repeated synchronized timing supports reduced CUDA PPO cost after consolidating
-  scalar reads and redundant input validation. CPU end-to-end changes are mixed;
-  CPU remains faster for this workload. A faster batched forward-pass probe has
-  small numerical differences and is not an adopted batched collector or speedup
-  guarantee. Full timings and counts are in the results report.
-- Six fresh runs completed 76,800 self-play games (559,693 decisions, 37,456 Adam
-  steps), seeds 42/43/44, 200 updates/run. Only entropy .01 versus .05 changed.
-  Development-selected checkpoints were frozen before 12,288 fresh final games.
-  Mean paired balanced-score effect +.0044, training-seed 95% interval
-  [-.4834,+.4922]: no established improvement, with seat/opponent regressions.
-- More entropy sometimes increased diagnostic coverage without consistent strength.
-  The bounded comparison does not establish PPO incapacity, search superiority,
-  robust/optimal play or generalization to harder/hidden games. Final seed 20261029
-  is consumed; subsequent tuning requires new reserved final seeds.
-- Training remains exclusively latest-policy self-play with game rewards. No
-  external training opponents, teachers, tactical bonuses or opponent pool.
-  Search design is complete; search, replay learner and learned dynamics are not
-  implemented. Preserve the failed and regressing results alongside improvements.
+- PPO self-play, per-seat rewards/GAE, checkpoints, CPU/CUDA resume and isolated
+  monitoring are implemented and tested. Signal/update checks found no demonstrated
+  learning-signal defect. The original policy beats random under its declared
+  criterion but is not robust; self-play dominance is not evidence of strength.
+- The six-run entropy comparison did not establish improvement: paired mean
+  balanced-score effect +.0044, training-seed 95% interval [-.4834,+.4922].
+  Profiling supports limited same-device optimization claims; batched collection
+  was not adopted. Detailed counts and timings remain in Phase 4.5 results.
+- Saved seed-45 sampled-policy reports confirm heuristic X 0/997/3 and O 0/0/1000
+  wins/draws/losses. The selected update-1000 checkpoint matches latest.pt.
+  Frozen greedy raw/16/32 evaluation gives random-X losses 19/9/9 and random-O
+  losses 96/50/41 out of 256 each; heuristic-X draws every game and heuristic-O
+  loses every game throughout. Census tactics improve, with more calls/latency.
+  This supports limited measured gains, not robust strength or heuristic gains.
+- Public heuristic-O traces reproduce X4/O3/X0/O2/X8. The required O8 block gets
+  one visit; X's immediate winning reply after O2 gets none. Concentrated priors
+  and clipped leaf guidance interact. Blocking is not proven to save the game.
+  Node/depth caps are not hit; independent visit/reward/vector backups agree.
+- Search receives observation-reconstructed public rules only. Hidden/chance
+  simulation and same-player game simulation remain unsupported. New Phase 5
+  mechanics must not be routed through this Tic-Tac-Toe-only adapter.
+- Training remains latest-policy self-play with rule rewards. Baseline evaluation
+  and tactical labels never enter learning. Existing checkpoints/configurations/
+  logs remain preserved. Final seeds 20261029 and 20261112 are consumed; reserve
+  fresh final seeds if evaluation informs later tuning.
 
 ## Validation
 
-Final local development checks: **643 tests passed**, including CUDA checks;
-Ruff lint/format, strict mypy, dependency checks and diff whitespace checks passed.
-Tests cover monitoring isolation/resume, retention/best ties, interrupted snapshot
-publication/retry, both-seat signals and experiment uncertainty calculations.
-The measured PPO reference comparisons matched final same-device model/Adam/
-shuffle state exactly. Local checks do not assert hosted CI status.
+Latest full local suite: **706 tests passed**, including CUDA checks. Ruff
+lint/format, strict mypy, dependency and whitespace checks passed. Public simulator
+comparison covers 5,478 boards and 16,167 legal transitions per starting seat.
+Tests cover search budgets/visits, backup perspective, terminal zero bootstrap,
+private exploration, RNG preservation and trace equivalence/corruption detection.
+Evaluation replay reproduced match/tactical results. Latency measurements are
+single-run observations, not an isolated benchmark. Hosted CI is not asserted.
