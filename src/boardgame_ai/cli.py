@@ -63,6 +63,16 @@ def main(argv: Sequence[str] | None = None) -> None:
     train.add_argument("--entropy-coefficient", type=float, default=0.01)
     train.add_argument("--max-grad-norm", type=float, default=0.5)
     train.add_argument("--no-normalize-advantages", action="store_true")
+    train.add_argument(
+        "--monitor-interval",
+        type=int,
+        default=0,
+        help="Enable isolated development monitoring every N updates; 0 disables",
+    )
+    train.add_argument("--monitor-retain", type=int, default=3)
+    train.add_argument("--monitor-games-per-seat", type=int, default=128)
+    train.add_argument("--monitor-self-play-games", type=int, default=64)
+    train.add_argument("--monitor-seed", type=int, default=20261022)
     evaluate = commands.add_parser(
         "evaluate", help="Evaluate a checkpoint against fixed opponents on CPU"
     )

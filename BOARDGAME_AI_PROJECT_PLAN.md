@@ -1,7 +1,9 @@
 # Board Game AI — Roadmap
 
-**Status:** Phases 1–4 complete under the original minimal criterion.
-**Active phase:** 4.5, planned. **Next:** Task 1, read-only learning diagnosis.
+**Status:** Phases 1–4 complete under the original minimal criterion; Phase 4.5
+complete at the declared bounded investigation scope.
+**Next:** Phase 7 public simulator adapter and bounded search evaluation,
+prioritized before Phase 5. PPO remains the comparison baseline.
 
 ## Goal and principles
 
@@ -76,28 +78,33 @@ random by +0.3160 (approximate 95% interval [+0.2644, +0.3676]). It loses nearly
 every heuristic matchup. This is one training seed, not robust or optimal play.
 Evidence: [Phase 4 results](PHASE4_RESULTS.md).
 
-## Remaining work
+## Milestone review and remaining work
 
-### Phase 4.5 — Self-play diagnosis and learning reliability (planned)
+### Phase 4.5 — Self-play diagnosis and learning reliability (complete)
 
 **Deliverable:** a diagnosed, measurable self-play learning process before
 expanding to harder games. Phase 4 retains its original completion status;
-this phase addresses its unresolved policy weakness. All tasks below are pending.
+this phase investigated its unresolved policy weakness. All six tasks are complete
+at the stated bounded scope. [Results and decision](PHASE45_RESULTS.md): no robust
+entropy-setting improvement was established; prioritize public-observation search
+evaluation. [Design](SEARCH_LEARNING_DESIGN.md); [protocol](PHASE45_PROTOCOL.md).
 
-1. [ ] **Diagnose the frozen policy.** Add a read-only public-observation audit of
+1. [x] **Diagnose the frozen policy.** Add a read-only public-observation audit of
    immediate wins and required blocks, with action probabilities, sample counts,
    and separate X/O results. Trace representative winning/losing trajectories
    through per-seat rewards, GAE, value targets, and PPO updates. Distinguish
    incorrect learning signals from exploration/optimization hypotheses. No solver
-   teacher, perfect-play opponent, training labels, or weight changes.
-2. [ ] **Add checkpoint monitoring.** Retain periodic immutable checkpoints with
+   teacher, perfect-play opponent, training labels, or source weight changes.
+   Disposable-copy update checks found no demonstrated signal defect; census
+   tactics remain weak outside narrow self-play paths.
+2. [x] **Add checkpoint monitoring.** Retain periodic immutable checkpoints with
    hashes/counters and bounded retention. Run reproducible, isolated development
    evaluations at configured intervals, preserving model/optimizer/global and
    training-sampling RNG state. Report both seats, tactics, entropy, coverage,
    outcomes, and optimizer/sample counts. Keep the resume checkpoint separate
    from the checkpoint chosen by a declared development metric. Preserve exact
    update-boundary resume; reserve fresh final-test seeds for final assessment.
-3. [ ] **Profile and optimize training throughput.** Add a reproducible bounded
+3. [x] **Profile and optimize training throughput.** Add a reproducible bounded
    CPU/CUDA benchmark with warm-up, repeated measurements, explicit CPU thread
    count, and CUDA synchronization at timing boundaries. Separate collection,
    inference, GAE/batch preparation, optimization, and checkpoint costs; report
@@ -111,14 +118,14 @@ this phase addresses its unresolved policy weakness. All tasks below are pending
    order as learning-protocol experiments, not transparent speed optimizations.
    Test semantic equivalence and deterministic resume where promised; document
    numerical differences. No speedup claim without repeated end-to-end evidence.
-4. [ ] **Test self-play improvements.** After diagnosis, compare one change at a
+4. [x] **Test self-play improvements.** After diagnosis, compare one change at a
    time to the unchanged PPO baseline: exploration/entropy settings, collection
    size, or optimizer settings as evidence warrants. Record distinct positions
    and action diversity; keep latest-policy self-play, game rewards, and both-seat
    training. Predeclare game and optimizer budgets, development criteria, and at
    least three training seeds; report every run and both-seat uncertainty. Fix
    proven defects before tuning. More randomness or more games alone is not a fix.
-5. [ ] **Define the search-learning bridge.** Specify bounded policy/value-guided
+5. [x] **Define the search-learning bridge.** Specify bounded policy/value-guided
    MCTS using simulation constructed only from the permitted public observation,
    player-relative backups, terminal handling, and seeded exploration. Then
    specify a separate search-target learner: self-play search visit distributions,
@@ -126,10 +133,13 @@ this phase addresses its unresolved policy weakness. All tasks below are pending
    as a comparison; do not insert search-chosen actions into PPO with incorrect
    behavior probabilities. This task is a design, not implementation of MCTS or
    MuZero. Learned representation/dynamics/prediction follow in the search track.
-6. [ ] **Review the evidence and next milestone.** Publish the diagnosis, all
+6. [x] **Review the evidence and next milestone.** Publish the diagnosis, all
    bounded experiment results, and an explicit decision to retain PPO or prioritize
    search-guided self-play. Do not require PPO to solve Tic-Tac-Toe indefinitely
    before progressing, and do not treat X dominance or low loss as agent strength.
+   Decision: retain default PPO as reference; implement public simulation and
+   bounded search evaluation next. The six-run entropy comparison did not establish
+   improvement; no search-strength claim is made.
 
 **Acceptance criteria:** traced learning signals are correct (or defects fixed
 and tested); monitoring is reproducible and isolated; repeated CPU/CUDA timing
@@ -206,8 +216,9 @@ Phase 7 track, which can be brought forward after this review before Phase 5.
 
 ## Search direction
 
-After Phase 4.5 review, choose whether to bring Phase 7 search work forward before
-Phase 5 game mechanics. The sequence is:
+The Phase 4.5 review prioritizes Phase 7 search evaluation before Phase 5 game
+mechanics, retaining PPO as reference. The next small task is the public simulator
+adapter followed by bounded search evaluation. The sequence is:
 
 1. Validate bounded policy/value-guided search with permitted rule-based simulation.
 2. Train from self-play search policies and outcomes using budgeted replay sampling.

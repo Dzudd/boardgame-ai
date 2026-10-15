@@ -17,8 +17,42 @@ contain self-generated player sequences and reward-derived targets in trusted
 learning storage; it must never make another player's secrets model features.
 It needs explicit visibility, sampling, and sequence contracts before implementation.
 An authoritative hidden-state clone remains forbidden as an agent/search input.
-Pending checkpoint/evaluation monitoring must preserve training RNG, model and
-optimizer state, and resume behavior; evaluation reports remain trusted outputs.
+Checkpoint/evaluation monitoring preserves training RNG, model and optimizer
+state, and resume behavior; evaluation reports remain trusted outputs.
+
+## Frozen policy diagnostic boundary
+
+The Task 1 tactical audit accepts only a public acting-seat observation and its
+supplied legal actions. Public X-first board enumeration and one-ply checks are
+measurement only; no solver labels, tactical rewards or teacher actions enter PPO.
+Seeded trajectories come exclusively from the unchanged latest shared policy.
+Trusted orchestration replays public actions, checks each seat's own interval
+rewards/GAE, and may export public boards/probabilities plus trusted learning
+signals and reconstructive seeds. This Tic-Tac-Toe report format does not authorize
+exporting another game's private views or rewards.
+
+Any diagnostic optimizer call operates on disposable model/Adam/shuffle copies;
+source checkpoint, training configuration and logs remain byte-identical. Only
+unselected self-play samples enter that update, with reward-derived targets and
+existing visible features. No updated model is persisted. These diagnostics
+introduce no privileged critic or change to training opponents or observations.
+
+## Development monitoring and planned search
+
+Monitoring evaluates independent CPU checkpoint copies. It restores Python/NumPy
+and CPU/initialized-CUDA global RNG even on failure, and never changes the acting
+policy, optimizer, shuffle state or training sampling schedule. Random/heuristic
+matches, census tactical categories and diagnostic self-play coverage remain
+measurement only. Development reports are trusted reconstructive metadata; best
+checkpoint selection cannot inject opponent samples into PPO. Final-test seeds
+are separate and must be replaced when their results guide later tuning.
+
+The search-learning design permits a future Tic-Tac-Toe simulator built only from
+public observations and supplied root actions. No live engine or authoritative
+clone reaches a search agent. Search visit distributions/outcomes need a separate
+learner; they cannot masquerade as raw-policy PPO samples. Self-generated replay
+is distinct from an opponent pool. Hidden/chance simulations, privileged critics
+and private-world reconstruction remain unsupported. See SEARCH_LEARNING_DESIGN.md.
 
 ## Ownership and player inputs
 

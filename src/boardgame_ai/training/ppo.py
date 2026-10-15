@@ -101,6 +101,7 @@ def validate_ppo_batch(batch: PPOBatch) -> None:
     device = batch.observations.device
     if device.type not in ("cpu", "cuda"):
         raise ValueError("PPO batches require CPU or CUDA")
+    finite_checks = []
     for name, shape in shapes.items():
         tensor = getattr(batch, name)
         dtype = (
@@ -112,8 +113,10 @@ def validate_ppo_batch(batch: PPOBatch) -> None:
         )
         if tensor.shape != shape or tensor.dtype != dtype or tensor.device != device:
             raise ValueError("PPO batch shapes/dtypes/devices must match")
-        if tensor.is_floating_point() and not torch.isfinite(tensor).all().item():
-            raise ValueError("PPO samples must be finite")
+        if tensor.is_floating_point():
+            finite_checks.append(torch.isfinite(tensor).all())
+    if not torch.stack(finite_checks).all().item():
+        raise ValueError("PPO samples must be finite")
     if not ((batch.actions >= 0) & (batch.actions < 9)).all().item():
         raise ValueError("PPO action indices must be in range")
     if not batch.legal_masks.gather(1, batch.actions[:, None]).all().item():
@@ -199,6 +202,14 @@ def ppo_loss(
     the full batch using population standard deviation with a 1e-8 floor.
     """
     validate_ppo_batch(batch)
+    return _validated_ppo_loss(logits, values, batch, config)
+
+
+def _validated_ppo_loss(
+    logits: torch.Tensor, values: torch.Tensor, batch: PPOBatch, config: PPOConfig
+) -> PPOLoss:
+    # Internal slices of the trainer-owned validated batch need no repeated input
+    # validation. Output checks remain on every minibatch; public ppo_loss checks all.
     if (
         logits.shape != batch.legal_masks.shape
         or values.shape != batch.actions.shape
@@ -230,9 +241,12 @@ def ppo_loss(
         + config.value_coefficient * value_loss
         - config.entropy_coefficient * entropy
     )
-    if not all(
-        torch.isfinite(t).item()
-        for t in (total, policy, value_loss, entropy, approximate_kl)
+    if (
+        not torch.isfinite(
+            torch.stack((total, policy, value_loss, entropy, approximate_kl))
+        )
+        .all()
+        .item()
     ):
         raise ValueError("PPO loss must remain finite")
     return PPOLoss(
@@ -308,7 +322,9 @@ class PPOTrainer:
                 returns=batch.returns,
             )
         batch = batch.to(self.device)
-        totals = [0.0] * 6
+        # Accumulate in float64 as the former Python float totals did; one host
+        # transfer per update instead of six synchronizations per minibatch.
+        totals = torch.zeros(6, dtype=torch.float64, device=self.device)
         n = len(batch.actions)
         steps = 0
         for _ in range(self.config.epochs):
@@ -317,7 +333,7 @@ class PPOTrainer:
                 indices = order[start : start + self.config.minibatch_size]
                 part = batch.subset(indices.to(self.device))
                 logits, values = self.model.forward(part.observations)
-                loss = ppo_loss(logits, values, part, self.config)
+                loss = _validated_ppo_loss(logits, values, part, self.config)
                 self.optimizer.zero_grad(set_to_none=True)
                 loss.total.backward()  # type: ignore[no-untyped-call]
                 torch.nn.utils.clip_grad_norm_(
@@ -328,7 +344,7 @@ class PPOTrainer:
                 self.optimizer.step()
                 self.optimizer_steps += 1
                 steps += 1
-                for i, term in enumerate(
+                totals += torch.stack(
                     (
                         loss.total,
                         loss.policy,
@@ -337,10 +353,9 @@ class PPOTrainer:
                         loss.approximate_kl,
                         loss.clip_fraction,
                     )
-                ):
-                    totals[i] += float(term.detach().item()) * len(indices)
+                ).detach().to(torch.float64) * len(indices)
         self.update_count += 1
-        means = [v / (n * self.config.epochs) for v in totals]
+        means = (totals / (n * self.config.epochs)).tolist()
         return PPOUpdate(
             num_samples=n,
             optimizer_steps=steps,

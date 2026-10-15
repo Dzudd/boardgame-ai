@@ -245,8 +245,8 @@ log rows; resume restarts unsaved work and derives future game seeds from absolu
 indices. Total requested updates cannot precede the saved count. Seed, collection
 size, and PPO config must match; device changes are allowed without numerical
 identity promises. Same-runtime/device uninterrupted-versus-resumed state is tested.
-No partial-minibatch/episode resume, historical checkpoint archive, or automatic
-training-time evaluation exists. CUDA is CLI default and fails if unavailable;
+No partial-minibatch/episode resume exists. Optional checkpoint monitoring adds
+immutable bounded snapshots and isolated development evaluation at update boundaries. CUDA is CLI default and fails if unavailable;
 there is no silent CPU fallback. CPU execution must be requested explicitly.
 
 ## Evaluation and analysis
@@ -280,16 +280,70 @@ Aggregate figures/results live in docs/phase4 and dedicated result documents;
 checkpoints/logs/raw reports remain ignored under runs. Once evaluation guides
 tuning or checkpoint selection, reserve fresh final-test seeds.
 
+## Development monitoring and performance
+
+`MonitoringConfig` is an optional `run_self_play_training(..., monitoring=...)`
+argument, disabled by default. A separate immutable monitoring manifest preserves
+legacy training manifests and requires identical settings on resume. At configured
+boundaries, complete checkpoint bytes are published exclusively using a temporary
+file and a same-directory hard link. Existing mismatched snapshots reject.
+`latest.pt` remains the authoritative resume marker. New development reports are
+atomic and reused by checkpoint hash on retry; the newest configured number of
+snapshots plus a separately pinned best are retained. Reports are retained even
+when their non-selected checkpoints age out. `best.json` selects equal-weighted
+random/heuristic × X/O mean score, earliest tie, without affecting collection.
+Evaluation failures preserve completed updates and can retry at the current
+boundary. Training is single-writer; no concurrent run-directory writers supported.
+
+Evaluation loads only copies on CPU and isolates/restores Python, NumPy and global
+CPU/initialized-CUDA RNG, including failure paths. Training shuffle/model/Adam and
+per-game/seat sampling schedules are untouched. Reports include seat-specific
+outcomes and approximate game-level intervals, census/visited tactics, entropy,
+position/action diversity and game/sample/optimizer counters. Missing historical
+log rows make cumulative sample counts unknown. New isolated experiments never
+modify the original completed run. Reserve fresh final seeds after tuning.
+
+PPO validates/clones its incoming batch once; internal minibatches inherit checked
+inputs. Public loss calls still validate independently, and every minibatch checks
+model outputs, losses and clipped gradients for nonfinite values. Finite flags and
+loss diagnostics are consolidated; float64 device accumulators retain the previous
+Python-float weighted summation arithmetic with one host transfer per update.
+Repeated reference comparisons found exact same-device model/Adam/shuffle equality.
+The collector remains sequential: the fixed-corpus batched inference probe has
+small numerical differences and does not prove identical sampling or end-to-end
+speed. Protocol/results: [Phase 4.5](PHASE45_RESULTS.md).
+
+## Frozen policy diagnosis
+
+`python -m boardgame_ai.policy_audit` is a separate bounded CPU diagnostic, using
+existing observation/action encoders, collector, per-seat GAE, checkpoint loader
+and PPO interfaces. No training runner behavior changes. Public one-ply tactical
+checks use acting-seat observations and supplied actions; all immediate wins count,
+win takes precedence, blocks must remove every immediate threat, and unavoidable
+threats are separate. A census counts each reachable live X-first board once;
+seeded frozen-policy self-play separately reports visit and distinct-board counts.
+No symmetry reduction or solver. Undefined metrics are null.
+
+Trusted public-action replay independently verifies observations, masks, behavior
+probabilities/values, both-seat interval rewards and scalar GAE/targets. The first
+observed outcome traces retain seat perspective; absent outcome classes are explicit.
+The first configured number of unselected self-play games supplies every decision
+to a disposable update check. Two checkpoint copies retain Adam/shuffle state;
+independent loss/backward/clipping/Adam arithmetic is compared with production PPO,
+including parameters, moments, RNG, counters and weighted loss reports. Reports map
+batch indices back to game/seat/step. No updated checkpoint is saved. Tactical
+labels never enter batches. Source checkpoint/config/log bytes are checked unchanged;
+new report output must be outside the source directory. Requires stopped training,
+not concurrent-writer locking. Protocol and limitations: [diagnosis](POLICY_DIAGNOSIS.md).
+
 ## Planned extensions and constraints
 
-The roadmap owns the six Phase 4.5 tasks. Diagnosis, monitoring, and throughput
-optimization precede controlled learning experiments and the search design.
-Profile repeated warmed-up CPU/CUDA stages and end-to-end time at equal budgets;
-consolidate scalar reads/redundant checks without removing failure detection, then
-assess batched inference with frozen weights and private per-game/seat streams.
-Preserve targets and documented resume guarantees. Larger minibatches or changed
-sampling schedules require learning-quality comparisons. CPU is valid if faster;
-one timing probe is not a speed guarantee (measurements are in PROGRESS.md).
+The roadmap owns Phase 4.5 completion and the result-based next milestone.
+[Search-learning design](SEARCH_LEARNING_DESIGN.md) specifies bounded public-only
+simulation, parent-seat vector backups and a separate self-generated visit/outcome
+learner. Search and replay learning remain unimplemented. Future batched collection
+needs per-game/seat RNG and numerical/sampling comparisons; changes in minibatch,
+collection size or sampling schedule require learning-quality experiments.
 
 Long-term: permitted rule-based MCTS → search-guided self-play targets/replay →
 learned representation/dynamics/prediction. Planning selects branches; evaluators
