@@ -1,480 +1,327 @@
-# Architecture decisions
+# Architecture
 
-Current status: Phases 1–3 are complete, including baselines, seeded simulation,
-outcome metrics, human play, and public Tic-Tac-Toe replays. Next is Phase 4.
-The private repository is [Dzudd/boardgame-ai](https://github.com/Dzudd/boardgame-ai),
-with `master` tracking `origin/master` and Windows/Linux checks in GitHub Actions.
-Earlier references to a local-only repository describe the state at that task.
-TicTacToeEngine supports the full engine contract. The entries below record decisions as each task
-was implemented; intermediate limitations are superseded by later entries.
+Current implemented contracts and design decisions. Task status belongs in the
+[roadmap](BOARDGAME_AI_PROJECT_PLAN.md); evidence and concerns belong in
+[progress](PROGRESS.md). [Information boundaries](INFORMATION_BOUNDARIES.md)
+are normative for every engine, agent, model, and future planner.
 
-## 2026-10-14: Python project foundation
+## Package and dependencies
 
-- Python 3.12 is the development baseline; package metadata permits newer versions.
-- Use a `src/boardgame_ai` package rather than top-level importable `core`, `games`,
-  and `agents` directories. Future modules will live inside this namespace.
-  This prevents accidental imports from the checkout and avoids generic module names.
-- Use setuptools and standard `venv`/pip, configured in `pyproject.toml`.
-  No additional environment manager is required.
-- Use pytest for tests, Ruff for linting/formatting, and strict mypy for typing.
-  Ship `py.typed` so downstream tools recognize package annotations.
-- Keep runtime dependencies empty for Task 1. Add PyTorch/NumPy in Task 2;
-  engine code must remain independent of the learning framework.
-- Defer game contracts and module scaffolding until their respective tasks.
-  The plan's filtered observations and atomic decisions remain design constraints.
+Python 3.12 is the development baseline; package metadata permits newer versions.
+Use the src/boardgame_ai namespace, setuptools, venv/pip, NumPy 2.x and PyTorch 2.x
+(minimum 2.6). Dependency ranges are not a lockfile or cross-version determinism
+guarantee. Ship py.typed and use strict mypy, Ruff, pytest, and Windows/Linux CI.
+The core engine layer uses the standard library and stays independent of PyTorch.
+Numerical imports are deferred where possible so package imports/CLI help stay light.
+Hardware-specific Torch wheel selection is an environment choice.
 
-The canonical roadmap remains `BOARDGAME_AI_PROJECT_PLAN.md`; do not maintain a
-second copy under `PROJECT_PLAN.md`.
+## Engine, records, and lifecycle
 
-## 2026-10-14: Numerical dependencies and CLI
+GameEngine and Agent are generic abstract interfaces. Core records are frozen,
+keyword-only dataclasses with game-specific typed payloads; freezing is shallow.
+Engines own copying/filtering. No full-state accessor is part of the interface.
 
-- Add NumPy 2.x and PyTorch 2.x (minimum 2.6) as runtime dependencies, with
-  compatible major-version ranges consistent with the initial dependency policy.
-- Use a CPU PyTorch wheel for initial local verification. Hardware-specific
-  accelerator installation remains an environment choice, not package metadata.
-- Use standard-library `argparse`, with a console script and module entry point.
-  The initial `info` command reports the installed numerical environment.
-- Import numerical libraries only when executing `info`; package imports and CLI
-  help remain lightweight. Future engine modules must not depend on PyTorch.
+| Contract | Meaning |
+|---|---|
+| GameSpec | Stable game ID/name and supported player counts, including solo games |
+| GameState | Authoritative state; never an agent input |
+| Observation | Observer seat, actor, phase, and independently constructed filtered data |
+| Action | Kind and named scalar parameters; no unresolved chance outcome |
+| StepResult | Next actor, termination, incremental seat-indexed rewards, and events |
+| GameEvent | Public recipients=None; private tuple of seats; empty tuple internal |
+| Agent | select_action(observation, legal_actions), optional reset(seed) |
 
-## 2026-10-14: Core game records
+Action parameters reject duplicate names and nonfinite floats. StepResult enforces
+finite rewards and consistent terminal/actor metadata. These schema checks cannot
+certify game rules, reachability, or correct filtering.
 
-- Shared contracts live in `boardgame_ai.core`, implemented with standard-library
-  dataclasses and no NumPy/PyTorch imports. All records use keyword-only fields.
-- `GameState[StateData]` is authoritative engine data; `Observation[ObservationData]`
-  is a separate player view. Generic payloads allow each game to define precise
-  types without a shared untyped dictionary or fixed board representation.
-- Records are frozen, but payloads are not recursively frozen or copied. Engines
-  must independently construct safe observations and own state copying. These
-  records do not themselves enforce hidden-information isolation.
-- Player IDs are zero-based integer seats. `current_player`/`next_player` is None
-  at termination. Automatic chance resolution happens inside the engine before
-  control returns to a player. Nonterminal steps require a next actor, which may
-  be the same actor as before; no alternating-player assumption is built in.
-- `Action` uses a game-defined kind and named scalar parameters represented as
-  tuples. `dataclasses.asdict` produces JSON-serializable data; deserialization
-  and game-specific parameter validation remain future engine/replay work.
-  Parameters exclude unresolved chance outcomes and reject duplicate names and
-  nonfinite floats. This initial format is intentionally limited to scalars.
-- `StepResult.rewards` contains finite, incremental rewards for every seat in
-  order. Rewards can be general-sum, cooperative, or zero-sum. Final cumulative
-  game scores and the future engine's reward query are separate API decisions.
-- `GameEvent` carries a kind, scalar parameters, and explicit recipients: None
-  means public; a tuple restricts visibility (an empty tuple is internal-only).
-  Full `StepResult` objects are engine-facing. `events_for(player_id)` filters
-  events, but engines must also avoid private content in public event payloads.
-- `GameSpec` defines a stable ID, display name, and supported player count range,
-  including solo games. Encoder configuration is deferred until encoding work.
-- Engine/agent interfaces, illegal-action policy, seed handling, and integrated
-  information-boundary tests remain their own tasks.
+- Reset before gameplay queries, steps, or cloning; otherwise GameNotReadyError.
+  Metadata is available before reset. Validate configuration before resetting state.
+- Player seats are zero-based integers; booleans/invalid IDs raise InvalidPlayerError.
+- step executes one atomic decision and resolves required chance before returning.
+  The next actor may be the same player. At termination the actor is None.
+- Every live actor has legal choices; inactive/terminal seats have an empty tuple.
+  Any valid seat can observe/render after termination. Queries do not consume RNG.
+- get_rewards returns the most recent step's incremental rewards, zero at reset.
+  Rewards are neither cumulative scores nor generic winner/draw classifications.
+- Reject malformed Action construction with ValueError; well-formed illegal moves
+  raise IllegalActionError, post-terminal steps GameOverError. Rejection preserves
+  state, phase, rewards, history/events, and RNG; no silent replacement or penalty.
+- decision_for deep-copies observation/actions before agent delivery. Copying
+  prevents mutable aliasing, not secrets incorrectly included by an engine.
+- clone preserves concrete type and copies mutable/RNG state independently without
+  drawing or reseeding. Tic-Tac-Toe implements this with deepcopy.
 
-## 2026-10-14: Engine and agent interfaces
+Use create_rng(seed) for a private random.Random. Integers restart its sequence;
+None uses system entropy. Engine and agent RNG are separate from global Python,
+NumPy, and Torch randomness. Reproducibility also requires fixed runtime, code,
+action ordering, configuration, reset behavior, and call sequence.
 
-- Use abstract base classes (`ABC`) to require explicit engine and agent
-  implementations. Both are generic over observation payloads; engine state
-  representation remains private to each engine.
-- Export `GameEngine` from `boardgame_ai.core` and `Agent` from
-  `boardgame_ai.agents`. Neither interface imports numerical frameworks.
-- Engines expose read-only `spec` and `num_players` properties, and methods
-  `reset`, `observe`, `legal_actions`, `current_player`, `step`, `is_terminal`,
-  `get_rewards`, and `clone`. Call reset before gameplay. No full-state accessor
-  is included in the shared interface.
-- `reset(seed)` returns None. It initializes the game and clears rewards; callers
-  then query the next actor and that actor's observation. Chance is resolved
-  internally before the engine returns control to a player.
-- `get_rewards()` returns the most recent step's incremental rewards (zeros after
-  reset), matching `StepResult.rewards`. Reading rewards is not consumption;
-  runners collect rewards once per executed step. Cumulative scores are separate.
-- `legal_actions` returns an immutable tuple, empty for inactive players or after
-  termination. A nonterminal actor must have an available choice. Observations
-  remain available to any valid seat after termination. Queries do not advance RNG
-  or game state. Invalid-seat and illegal-action exception policies are deferred.
-- `clone() -> Self` requires an independent copy of mutable and RNG state,
-  preserving the concrete engine type. Each engine supplies its own copy logic.
-- Agents implement `select_action(observation, legal_actions) -> Action` and may
-  override the default no-op `reset(seed)`. Use an agent instance per seat and
-  reset it per game so future recurrent memory does not cross player boundaries.
-  An agent gets no engine reference; engines must still validate its selection.
-- Test-only implementations exercise a full three-decision game with actors
-  `[0, 0, 1]`, terminal queries, reward consistency, reset, and independent cloning.
-  These establish interface usability, not hidden-information or RNG guarantees
-  for future engines. Detailed policies and reusable conformance tests follow.
+## Tic-Tac-Toe and baseline agents
 
-## 2026-10-14: Phase 1 visibility, failures, randomness, and CI
+The board is a nine-cell row-major tuple of None or seat IDs. Seat 0 is X and
+starts by default; starting_player=1 permits O-first and persists through reset
+and clone. Placements have kind place and one integer cell parameter in 0–8.
+Terminal wins reward winner +1 and loser -1; draws and live steps reward zero.
+Both seats see the public board; returned observations remain stable after moves.
+Rendering uses the same public views and has no print side effect.
 
-- `INFORMATION_BOUNDARIES.md` is the normative player visibility and lifecycle
-  policy. `decision_for` deep-copies already-filtered observations and actions;
-  it does not attempt to infer which game-specific fields are secret.
-- Shared errors distinguish an uninitialized game, invalid seat, illegal action,
-  and terminal step. Engines validate before mutation or chance consumption;
-  rejection is atomic and diagnostics do not disclose private state.
-- `create_rng` provides engine-owned standard-library randomness. Explicit integer
-  seeds restart setup and chance, None uses system entropy, and clones preserve
-  independent RNG state. No global numerical or Python RNG is touched.
-- Reusable bounded test helpers check interface consistency, deterministic
-  trajectories, cloning, and rejection invariants. A separate hidden-card fixture
-  tests private observations, event visibility, mutable payload isolation, and
-  unseen-state equivalence. It is test infrastructure, not Phase 5 implementation.
-- GitHub Actions checks Python 3.12 on Linux and Windows with CPU PyTorch.
-  At this task's completion, hosted CI awaited publication; the repository is now
-  published with checks at https://github.com/Dzudd/boardgame-ai/actions.
-  Dependency ranges remain in place; cross-version bitwise reproducibility and
-  exhaustive game correctness are not promised by these checks.
+RandomAgent samples uniformly over supplied tuple entries with a private seeded
+RNG, ignores observation data, and rejects empty choices without advancing RNG.
+Invalid reset seeds preserve the existing generator. Use a separate agent per seat.
+TicTacToeHeuristicAgent deterministically prioritizes win, block, center, corners,
+then edges; ties use row-major/lowest indices. It has no memory or RNG and does
+not guarantee optimal play or fork defense. Both return supplied legal actions;
+the engine still validates execution.
 
-## 2026-10-14: Tic-Tac-Toe initial state and reset
+## Simulation, metrics, human play, and replays
 
-- Game modules live in `boardgame_ai.games.tic_tac_toe`, without numerical
-  framework dependencies. `TicTacToeState` is a frozen, slotted payload with a
-  nine-cell immutable tuple in row-major order. None means empty; seats 0 and 1
-  represent X and O. Actor and phase live only in the enclosing `GameState`.
-- `TicTacToeEngine` owns private state, rewards, and RNG. Metadata is available
-  before reset; implemented state/reward queries require reset. No public
-  authoritative-state accessor is added.
-- Reset always produces an empty board, actor 0, phase `play`, and zero rewards
-  for both seats. Setup is deterministic regardless of seed. The shared
-  `create_rng` validates the seed before live state changes and keeps randomness
-  separate from global generators; reset replaces the private RNG.
-- The engine remains an abstract generic subclass of `GameEngine` until later
-  tasks implement legal actions, steps, terminal detection, observations, and
-  cloning. Its observation payload type is deliberately unresolved. A test-only
-  subclass enables reset tests without production gameplay stubs.
-- Full engine conformance tests require complete gameplay and are deferred to
-  the remaining Phase 2 tasks. Current tests inspect trusted private state only;
-  that data is never an agent input.
+run_match resets the engine and distinct per-seat agents with separate lifecycle
+seeds; play_game continues initialized state. Both follow engine actors and pass
+only decision_for inputs. max_steps is a required nonnegative atomic-decision
+budget: zero executes nothing, live cutoff is truncation, and termination on the
+last allowed step takes precedence. MatchResult stores steps, summed executed
+rewards, and termination/truncation, without observations/events. Exceptions
+propagate without retry; configuration is checked before resets, but custom
+reset failures and executed steps are not transactional across a whole match.
 
-## 2026-10-14: Tic-Tac-Toe legal actions and validation
+run_batch resets fixed seats each match, returns immutable SeededMatchResult
+records, and fails at the first exception without returning a partial tuple.
+Zero matches leaves instances untouched; a subrange reproduces matching absolute
+indices. evaluate_batch instead records ordinary failures and resets the next
+match; interrupts propagate. An explicit game outcome adapter maps terminal games
+to finite seat scores, winners, and draw status, supporting ties/cooperative games.
+Tic-Tac-Toe classification uses the terminal public board and +1/-1/0 scores.
 
-- A placement is `Action(kind="place", parameters=(("cell", index),))`, with
-  integer indices 0–8 in row-major order. The actor comes from engine state;
-  actions do not carry a player ID or a mark.
-- `legal_actions` checks initialization and seat validity, then returns an
-  immutable tuple of empty-cell placements in ascending index order. Inactive
-  seats and terminal states receive no actions. Terminal state is currently
-  identified by `current_player=None`; detecting wins/draws remains Task 4.
-- `_validate_action` returns the chosen cell for the future `step` implementation.
-  It requires the exact kind and one named `cell` parameter, with a real integer
-  index in range and an empty destination. Booleans and floats are rejected
-  explicitly despite Python equality with integers. Rejections use shared
-  `IllegalActionError` or, after termination, `GameOverError`.
-- Queries and validation change neither state, rewards, nor RNG. Task 3 must
-  call this validator before applying a move. `step` remains abstract; no move
-  execution or player switching is included in Task 2.
-- Tests use trusted state setup for occupied boards, the second actor, and
-  finished games until transitions and terminal detection are implemented.
+Evaluation records use fixed illegal_action/match_failed/outcome_failed categories,
+never exception text/types/tracebacks. Reset/play failure leaves length/rewards
+unknown; outcome failure retains the runner result. Only completed/classified
+matches contribute to outcome/length means; undefined means/extrema are None.
+Errors/truncations are not draws. Explicit version-1 JSON exports require existing
+parents and overwrite chosen files; labels and reconstructive seeds are trusted data.
 
-## 2026-10-14: Tic-Tac-Toe placements and player switching
+CLI play chooses human or AI starter; starter is X. It displays the board beside
+available cell numbers, retries invalid human input without a step, and cancels
+cleanly on quit/EOF/Ctrl+C. Baseline opponents are random/heuristic. Trained-policy
+human play is not implemented. Final presentation uses the human's public view.
 
-- `step` calls `_validate_action` before constructing or committing the next
-  state. The selected empty cell receives the current seat's mark, all other
-  cells retain their values, and the next actor switches between seats 0 and 1.
-  The engine replaces immutable state rather than modifying prior snapshots.
-- A local board tuple is cast to the fixed nine-cell `Board` type: enumeration
-  replaces one value without changing the existing board's length. No mutable
-  board alias escapes the engine.
-- The new state and `StepResult` are built before committing state and rewards.
-  Successful nonterminal placements return zero incremental rewards, no events,
-  and the next actor; the reward query matches that result. No RNG is consumed.
-- This is an intermediate nonterminal transition implementation. Task 4 must
-  detect wins/draws on the resulting board and set terminal actor, phase, and
-  rewards before the engine supports complete games. It remains abstract for
-  terminal detection, observations, and cloning. Tests stop before game-ending
-  positions and verify stored terminal states reject steps atomically.
+Opt-in version-1 Tic-Tac-Toe replay logs contain starting seat, successful public
+actor/cell placements, and completed/cancelled/truncated status. Cancelled prefixes
+are valid. Validation reconstructs through an engine before displaying anything;
+unknown schemas/games, illegal actors/cells, post-terminal moves, and inconsistent
+status reject. No seeds, snapshots, rewards, or private events are exported.
+The optional on_step callback is trusted orchestration, not proof that other
+games' actions are public. A recorder belongs to one game. Replays do not resume
+saved games or simulate hidden chance; other games need their own adapter.
 
-## 2026-10-14: Tic-Tac-Toe terminal detection and rewards
+## Observation, actions, and network
 
-- After each validated placement, `step` checks the resulting board's eight
-  winning lines for the actor's mark, then treats a full board without a win as
-  a draw. A win on the ninth placement takes precedence over a draw. Checking
-  the actor is sufficient because reachable games stop at their first outcome.
-- Terminal states use phase `finished` and `current_player=None`.
-  `is_terminal` queries this stored outcome without recomputing or mutating it.
-  The state and StepResult are constructed before committing, with consistent
-  actor, termination, and reward fields. Both seats have no legal actions after
-  termination, and further steps raise `GameOverError` without changing anything.
-- Rewards are sparse and zero-sum: +1 for the winner, -1 for the loser, and
-  zero for draws and nonterminal steps. `get_rewards` retains the latest step's
-  reward tuple on repeated reads; reset clears it. No reward events or cumulative
-  score API are introduced.
-- Rule tests play all eight winning lines for both seats, a full-board draw,
-  and a ninth-move win. They also check intermediate results, terminal query
-  purity, rejected terminal steps, RNG preservation, and reset after a real win.
-  Observations and cloning remain abstract, so full interface conformance remains
-  deferred until those tasks are complete.
+| Tensor | Shape | dtype / placement |
+|---|---|---|
+| Observation | (6, 3, 3) | Fresh contiguous CPU float32, no autograd history |
+| Legal mask | (9,) | Fresh CPU bool |
+| Policy/value input | (..., 6, 3, 3) | Nonempty floating tensor matching model dtype/device |
+| Raw policy output | (..., 9) | Same model dtype/device |
+| Raw value output | (...) | Unbounded observer-relative estimate |
 
-## 2026-10-14: Tic-Tac-Toe observations and text rendering
+Observation channels: own marks, opponent marks, empty cells, own turn, opponent
+turn, terminal. All binary; last three are constant planes. The observing seat
+sets perspective, even if inactive. Coordinates never rotate: cell i maps to
+(i // 3, i % 3). Live phase play requires actor 0/1; finished requires None.
+Terminal views retain the board, clear both turn planes, and fill terminal with
+ones. No reward/result channel. Encoding consumes only the observation, never
+engine/state/actions/rewards/seeds/RNG, and shares no mutable output storage.
+Schema/phase/seat/cell failures reject with sanitized ValueError; schema checking
+is not reachability checking. Stack/transfer explicitly for batching/device changes.
 
-- `TicTacToeEngine` now fixes its observation type to `TicTacToeObservation`,
-  a separate frozen, slotted public payload containing only the board. The
-  shared Observation wrapper supplies observer ID, current actor, and phase.
-  Both seats see the same absolute seat-based marks; no perspective encoding
-  is introduced. Rewards, seed, RNG, and authoritative records stay out of views.
-- `observe` requires initialization and a valid seat, including when finished,
-  and builds fresh wrapper/payload objects. Sharing the board tuple is safe:
-  it contains immutable scalar cells and steps replace rather than mutate it.
-  Old observations remain stable across later moves and resets.
-- `render_board` is a pure formatter accepting a public Observation, exported
-  from the game package. It uses X/O/dots and horizontal separators with no
-  trailing newline. `engine.render(player_id)` delegates through `observe`,
-  preserving seat/lifecycle validation. Rendering returns text without printing.
-- Tests cover view schema, invalid seats, immutable and stable snapshots,
-  terminal views, decision_for integration, exact rendered board orientation,
-  seed-independent public inputs, and unchanged state/rewards/RNG on queries.
-  The engine remains abstract only for cloning, which is deferred to Task 7.
+Action encoding maps placements to indices 0–8; decoding returns the supplied
+matching Action. Duplicate indices, invalid parameters/indices, and unavailable
+choices reject. The legal encoder consumes supplied actions without querying rules.
+Empty terminal/inactive tuples encode all-false, including boards with empty cells.
 
-## 2026-10-14: Tic-Tac-Toe rule regression audit
+mask_action_logits requires finite floating logits and bool masks of identical
+nonempty shape/device, with at least one legal entry per row. No broadcasting or
+automatic transfer. Illegal entries become -inf, with zero softmax probability
+and zero logit gradient; legal gradients remain connected. Inputs are unchanged.
+Filter terminal/inactive rows before selecting actions; no fallback move.
 
-- Production behavior is unchanged. Added a bounded traversal that replays legal
-  prefixes from reset and checks every distinct reachable board against a
-  coordinate-based outcome oracle independent of the engine's winning-line table.
-  It verifies mark counts, outcomes, actor/phase, legal choices, observations,
-  rewards, StepResult consistency, and terminal step rejection.
-- The traversal deduplicates boards, not symmetries or move sequences. It visits
-  5,478 distinct positions, including 626 X wins, 316 O wins, and 16 draws.
-  Stopping expansion on independently checked terminal outcomes bounds depth
-  to nine decisions. This audits reachable states, not arbitrary injected states
-  or every ordering of moves leading to an identical board.
-- Full-game replay regressions exercise X wins, O wins, and draws across None,
-  zero, positive, and negative seeds, before and after reset. Illegal-action
-  attempts are inserted before moves; public inputs and latest rewards must
-  remain unchanged, and subsequent outcomes match an untouched reference.
-- Tests continue to use the existing harness only because production cloning is
-  abstract. Shared clone-dependent conformance helpers remain deferred to Task 7.
+TicTacToeActorCritic flattens 54 features into shared 64→64 tanh layers and separate
+linear nine-logit/scalar-value heads. Both heads use the same permitted features.
+There is no recurrence, dropout, running statistics, convolution, or privileged
+critic. Arbitrary leading batch dimensions and noncontiguous inputs are supported.
+Initialization uses caller-controlled Torch randomness and explicit CPU float32;
+forward consumes no RNG and validates shape/finiteness/dtype/device. Use explicit
+.to and no_grad/inference_mode for inference. Terminal predictions stay raw;
+collectors independently impose zero terminal bootstrap. Masking/sampling are separate.
 
-## 2026-10-14: Tic-Tac-Toe cloning and Phase 2 completion
+## Collection, credit assignment, and PPO
 
-- `clone() -> Self` requires initialized state and returns `deepcopy(self)`.
-  This preserves the concrete engine type, state, latest rewards, and current
-  private RNG sequence without drawing randomness. Mutable subclass attributes
-  and RNG instances are independently copied; immutable scalar tuples may be
-  safely shared. No full-state API or serialization format is introduced.
-- `TicTacToeEngine` is now concrete and implements every shared engine method.
-  The trusted state-setup harness inherits all production gameplay methods.
-- Production-engine tests run the shared engine and rejection helpers with a
-  nine-step bound. Additional tests cover divergent moves, resets on either
-  branch, identical continuations ending in both players' wins and a draw,
-  terminal clones, concrete subclass preservation, and progressed RNG isolation.
-- Phase 2 is complete. The distinct reachable-state audit, targeted rule tests,
-  public-view tests, and clone conformance establish local correctness coverage.
-  Simulation runners and baseline agents remained Phase 3 work at this stage;
-  hosted CI then awaited publication. See the current status above.
+Training experience comes only from latest-policy self-play, without external
+teachers, expert/solver labels, baseline training opponents, or a historical
+opponent pool. Historical self-generated replay is a different, future mechanism.
+Fixed baselines measure strength outside training; their samples never enter PPO.
+No perfect solver is required. Public tactical audits are diagnostics, not labels.
 
-## 2026-10-14: RandomAgent baseline
+Defaults: collect 64 complete empty-board X-first games using one frozen CPU
+snapshot for both seats. No weights change during collection. Each player's
+categorical legal-action sampling has a private CPU generator seeded with
+create_rng(sampling_seed).getrandbits(64). No epsilon-random exploration exists.
+Per-game model inference preserves weights, modes, and existing gradients.
 
-- Export `RandomAgent[ObservationData]` from `boardgame_ai.agents`, implementing
-  the existing Agent contract without game-specific logic or numerical imports.
-- Select uniformly over supplied tuple entries with private `random.Random.choice`.
-  Return the selected supplied Action; do not inspect observations or mutate inputs.
-  The engine still validates selections, and callers supply the actor's choices.
-- Reuse `create_rng` for separate agent-owned randomness. Construction accepts an
-  optional seed; `reset(seed)` replaces the generator, with None using system
-  entropy. Invalid seeds reject before replacing the current sequence.
-- Empty legal choices raise ValueError before consuming randomness. This is a
-  caller contract failure, distinct from engine illegal-action errors.
-- Replay requires identical agent seeds, ordered legal tuples, selection calls,
-  and runtime versions. Use one agent per seat and reset each before a game.
-- Tests exercise seeded choice sequences, reset, input preservation, private RNG
-  isolation, hidden-world equivalence, and bounded complete Tic-Tac-Toe replays.
-  Production runners, heuristic policies, metrics, and CLI play remain later tasks.
+PlayerTrajectory stores detached observations (T,6,3,3), bool masks (T,9), int64
+actions/global step indices (T,), float32 old log probabilities/values/rewards (T,),
+and scalar bootstrap. Empty segments retain these shapes. Interval rewards sum
+own incremental rewards after a player's action until their next action/end,
+including opponent steps; both seats receive terminal rewards. Rewards before
+the first decision enter rollout totals only. Records own mutable tensors and
+remain trusted learning data, not public exports.
 
-## 2026-10-14: Tic-Tac-Toe heuristic baseline
+Discount advances per player's decision, not per global atomic step. Intervening
+rewards sum without internal discounting. GAE uses delta=r+gamma*next_value-value,
+A=delta+gamma*lambda*A_next, returns=A+value. Never interleave seats or cross episode
+boundaries. Matching finite 1-D floating inputs produce detached same-dtype/device
+outputs; empty segments work and invalid coefficients/overflow reject.
+True termination bootstraps zero without a model call; live cutoffs bootstrap
+from that player's filtered observation, including inactive views. Empty segments
+bootstrap zero. Collection resets every call; it does not resume a partial rollout.
+Time-duration discounting needs an explicit future contract.
 
-- Export `TicTacToeHeuristicAgent` from `boardgame_ai.agents`, implementing
-  `Agent[TicTacToeObservation]`. Its explicit name prevents implying that a
-  game-specific heuristic works for every observation schema.
-- Read only the supplied public board, observing actor, and legal placements.
-  Check public winning lines locally, without importing engine internals or
-  accepting an engine, state snapshot, rewards, or simulation API.
-- Take an immediate win, otherwise block an immediate opponent win, otherwise
-  prefer center, corners, then edges. Tactical ties use ascending cell indices;
-  positional ties use row-major order within each category, independent of the
-  legal tuple ordering. Always return a supplied Action object.
-- The policy is deterministic and stateless, so it inherits Agent's no-op reset
-  and uses no RNG. Seeds do not affect choices. RandomAgent retains its private
-  seeded RNG; engine and global RNGs remain separate from both policies.
-- Reject empty choices, incompatible placement parameters, occupied cells, and
-  observations not belonging to a valid acting seat with ValueError. These are
-  caller contract errors; engines still enforce authoritative move legality.
-- This is a tactical baseline, without fork handling, minimax, or an optimal-play
-  guarantee. Tests cover both seats and every winning line, precedence, positional
-  preferences, deterministic ties, input purity, and complete replay/self-play.
-  A production game loop and match runner remain Phase 3, Task 3.
+Prepare per-seat GAE before combining all on-policy decisions. Clone/detach
+inputs/targets; reject empty batches, nonfinite data, positive old log probabilities,
+or actions outside their saved legal masks. CPU storage transfers explicitly to
+colocated CPU/CUDA float32 parameters for optimization. Old targets stay frozen.
+Train on every decision in shuffled minibatches each epoch; batching is not
+subsampling one or two moves per game. Longer games contribute more decisions.
 
-## 2026-10-14: Reusable game loop and single-match runner
+| PPO setting | Default |
+|---|---:|
+| Adam learning rate | 0.0003 |
+| Gamma / GAE lambda | 0.99 / 0.95 |
+| Policy clip | 0.2 |
+| Value / entropy coefficient | 0.5 / 0.01 |
+| Epochs / minibatch decisions | 4 / 64 |
+| Gradient norm limit | 0.5 |
+| Advantage normalization | Full-batch population std, floor 1e-8 |
 
-- Export `play_game`, `run_match`, and frozen `MatchResult` from
-  `boardgame_ai.simulation`. Orchestration depends on generic engine/agent
-  contracts and contains no game rules or numerical framework dependencies.
-- `play_game` advances an initialized position without resets. `run_match` resets
-  the supplied engine and one distinct agent per seat, then calls that loop.
-  Supplying instances allows configured games and policies without a registry.
-- Require an explicit nonnegative integer `max_steps`. Each successful atomic
-  step counts once. Termination on the last allowed step is completion; otherwise
-  hitting the limit is truncation, leaving the live position available to resume.
-  Terminal initial positions execute no steps; zero is a valid decision budget.
-- Follow engine-reported actors and StepResult next actors, including consecutive
-  decisions by the same seat. Use `decision_for` for detached filtered inputs;
-  never pass engine objects, rewards, or full results to agents.
-- Check actor/termination consistency, actor views, nonempty live legal choices,
-  and StepResult actor, termination, and reward-count agreement. Configuration
-  errors raise ValueError; detected engine contract failures raise RuntimeError.
-  Agent/engine exceptions propagate immediately, without retries or substitution.
-  Executed steps are not rolled back on a later error.
-- Keep `engine_seed` and optional per-seat `agent_seeds` explicit and separate.
-  Omitted seeds use None; no derived seed schedule or runner RNG exists. Validate
-  counts, distinct agent instances, budgets, and all seed values before resets.
-  Custom reset failures are not transactional across engine and agents.
-- MatchResult contains num_steps, summed incremental total_rewards, terminated,
-  and truncated. For resumed games it summarizes only this call's executed steps.
-  It retains no private events or observations and is trusted orchestration data,
-  not a player-facing result. Reward totals are not scores or inferred winners;
-  truncation is not a draw. Batch runs, aggregate metrics, and logs remain deferred.
+Policy loss is -mean(min(r*A, clamp(r,1-epsilon,1+epsilon)*A)), with
+r=exp(new_log_prob-old_log_prob). Value loss is half-MSE to detached returns, with
+no value clipping. Total combines policy + weighted value - legal entropy bonus;
+illegal log terms are zeroed before entropy multiplication to avoid 0 * -inf.
+Singleton/constant advantages normalize to zero. Private CPU randperm shuffles
+minibatches, including partial final batches. Gradient clipping rejects nonfinite
+norms; failed later minibatches do not roll back successful earlier updates.
+Diagnostics are sample-weighted means of pre-step losses, legal entropy,
+approximate KL mean((r-1)-log(r)), clip fraction, and sample/optimizer counts.
+There is no KL early stop or learning-rate schedule. These are not strength metrics.
 
-## 2026-10-14: Reproducible match batches
+## Seeds, checkpoints, and resume
 
-- Export generic `run_batch` and frozen `SeededMatchResult` from simulation.
-  Reuse supplied configured engine/agent instances with fixed seat assignments;
-  call run_match for each match so lifecycle resets and input boundaries apply.
-- Require an integer batch seed. Derive each seed as the big-endian integer of
-  SHA-256 over UTF-8 text `boardgame-ai/batch/v1:{seed}:{index}:{stream}`,
-  using decimal integers, stream `engine`, and streams `agent:{seat}`.
-  This schedule uses no RNG, Python hash(), chance outcomes, or game inputs.
-  Domain separation avoids intentionally sharing engine and agent seed streams.
-- `start_index` and `num_matches` select a nonnegative absolute index range.
-  Seeds depend only on batch seed, index, and stream; running a subrange reproduces
-  the matching full-batch portion regardless of earlier match lengths. Explicit
-  recorded seeds also allow rerunning a match directly with run_match.
-- Validate configuration before any reset, including empty batches. Return an
-  immutable tuple of per-match indices, engine/agent seeds, and MatchResult.
-  A zero count leaves engine and agents untouched. Positive batches leave them
-  at the final executed match; truncated matches are followed by the next reset.
-- Execute sequentially and propagate the first exception. No partial tuple is
-  returned and executed games are not rolled back. Do not log exception content,
-  private events, or observations. Error aggregation belongs to Task 5.
-- Reproducibility requires identical configured engine/agents, code, runtime,
-  action ordering, and full resets honoring seeds. Schedule version v1 is explicit;
-  this is not a cross-version guarantee for game or agent RNG sequences.
-- Add a repeatable verification script for three 1,000-match Tic-Tac-Toe batches
-  and reruns. Metrics, CLI play, seat rotation, and replay persistence are deferred.
+All schedules hash UTF-8 decimal fields using SHA-256 and decode big-endian integers.
+They avoid Python hash() and do not consume gameplay RNG.
 
-## 2026-10-14: Match records, outcome metrics, and explicit summary export
+| Schedule | Hashed text | Bytes used |
+|---|---|---|
+| Batch | boardgame-ai/batch/v1:{seed}:{index}:{stream} | All 32 |
+| Training | boardgame-ai/training/v1:{seed}:{index}:{stream} | First 8 |
+| Evaluation case | boardgame-ai/evaluation/v1:{root}:{opponent}:{learner_seat} | All 32 |
 
-- Add evaluate_batch alongside run_batch; preserve run_batch's fail-fast contract.
-  Share batch configuration validation and the versioned seed schedule. Evaluation
-  continues after ordinary reset/play exceptions by resetting the next match.
-  KeyboardInterrupt/SystemExit propagate; no action is substituted or retried.
-- A trusted callable maps the completed GameEngine to GameOutcome with per-seat
-  finite scores, distinct winner seats, and an explicit draw flag. This supports
-  multiplayer ties and winnerless cooperative outcomes. No generic winner/draw
-  classification is inferred from rewards. The adapter runs only on termination.
-- Implement the Tic-Tac-Toe adapter in its game evaluation module, reading the
-  terminal public board. Its result-score convention is +1 winner/-1 loser/zero
-  draw. GameEngine and Agent interfaces remain unchanged; adapters are trusted
-  orchestration helpers, never agent inputs or privileged critics.
-- Frozen MatchRecord stores seeds, optional MatchResult, optional GameOutcome,
-  and a fixed error category: illegal_action, match_failed, or outcome_failed.
-  No exception message, class name, traceback, private input, or event is retained.
-  Reset/play failure has unknown length and rewards (no MatchResult), even if
-  partial play occurred. Outcome failure retains the successful runner result.
-- EvaluationSummary partitions attempts into completed/classified, truncated,
-  and errors. Wins, draws, total/mean scores, and min/mean/max lengths use only
-  completed/classified matches. Undefined means and length extrema are None,
-  not zero. Per-match successful/truncated lengths remain in records. Errors and
-  truncations never become draws; multiple winners may produce several wins.
-- EvaluationReport records game ID, caller-supplied seat labels, batch seed,
-  start index, limit, records, and summary. Caller labels are trusted metadata.
-  save_evaluation explicitly writes schema-version-1 JSON to a chosen path,
-  overwriting it; parent directories must exist. Seeds remain trusted metadata.
-  This summary export has no action histories or replay logging (Task 7).
-- Benchmark script reruns three 1,000-match baseline matchups, compares complete
-  reports, and writes ignored runs/baseline_metrics JSON. Document measurements
-  and scoring in BASELINE_BENCHMARKS.md. CLI play remains Task 6.
+Batch streams are engine and agent:{seat}. Training initialization/shuffle use
+index zero; game index is update_index*games_per_update+i, with engine and
+seat:0/seat:1 sampling streams. Evaluation derives case seeds before the batch
+schedule. Initialization uses fork_rng to preserve global CPU/CUDA state.
 
-## 2026-10-14: CLI human-versus-agent play
+Version-1 PPO checkpoints fix game/model/encoding identity and store CPU model
+weights, Adam state/configuration, model mode, update/step counters, and private
+shuffle RNG. No engine, rollout, gradients, global RNG, or engine/sampling seeds.
+Save validates then atomically replaces a temporary sibling in an existing
+parent. Load uses restricted weights_only loading/strict schema validation on
+CPU and restores a fresh trainer on explicit CPU/CUDA hardware, preserving global
+RNG. Adam moments follow parameters; scalar step bookkeeping may stay CPU.
 
-- Add `play` to the existing argparse CLI, defaulting to human X against the
-  heuristic. Select X/O and random/heuristic opponent with explicit options;
-  engine setup and opponent RNG seeds remain separate optional integers.
-- Keep terminal I/O in cli_play rather than reusable baseline or engine code.
-  HumanTicTacToeAgent implements Agent[TicTacToeObservation] and renders only
-  its detached public board/legal inputs. It has no engine reference or RNG.
-- A reporting agent wraps the opponent, forwards reset seeds, and prints its
-  public placement choice. Both players use the unchanged run_match and step
-  validation path, with distinct agent instances and a nine-decision bound.
-- Input parsing retries nonintegers and unavailable cells without returning an
-  action or executing a step. A valid choice returns the supplied Action object.
-  The UI uses the engine's existing row-major 0–8 numbering and shows a cell map.
-- Handle q/quit/exit, EOF, and KeyboardInterrupt at the presentation boundary.
-  Cancellation submits no new action and prints no terminal outcome. Genuine
-  engine/agent errors continue to propagate. No persistence or logging is added.
-- Render the final human public view and classify wins/losses/draws using the
-  existing terminal board adapter. Results are public for this game; no generic
-  private score or trusted seed report is printed to the player.
-- Import gameplay only when executing play; info/help retain lightweight parsing
-  without loading numerical frameworks until info execution. Test scripted play
-  from both seats, outcomes, retries, cancellation, seeds, and CLI validation.
+A new run requires absent/empty output. training.json fixes seed, collection size,
+and PPO configuration; latest.pt is authoritative resume state. Save each complete
+update before appending updates.jsonl/progress callback. Crashes can leave missing
+log rows; resume restarts unsaved work and derives future game seeds from absolute
+indices. Total requested updates cannot precede the saved count. Seed, collection
+size, and PPO config must match; device changes are allowed without numerical
+identity promises. Same-runtime/device uninterrupted-versus-resumed state is tested.
+No partial-minibatch/episode resume, historical checkpoint archive, or automatic
+training-time evaluation exists. CUDA is CLI default and fails if unavailable;
+there is no silent CPU fallback. CPU execution must be requested explicitly.
 
-## 2026-10-14: Human-play starter selection and adjacent choice board
+## Evaluation and analysis
 
-- Add CLI `--starts human|ai|X|O`, independent of human mark; retain X-first as
-  the default. The CLI maps this choice to TicTacToeEngine(starting_player=...).
-- The engine validates a constructor starting seat (0/1, excluding booleans),
-  stores it as configuration, and uses it during reset. Cloning preserves the
-  setting. Mark/seat meanings, rewards, Agent, and GameEngine interfaces stay fixed.
-  O-first is an explicit configuration; existing audits/benchmarks use default X.
-- Render a game board beside a choice board using only observation and supplied
-  legal placements. Available cells show their indices; all others show dashes.
-  Render on every human prompt/retry and the final board; terminal legal choices
-  are empty. No private engine data or extra RNG is used for presentation.
-- Keep the deterministic tactical policy unchanged. Repeated draws do not imply
-  optimal play; identical human choices reproduce games, and fork weaknesses remain.
+TicTacToePolicyAgent snapshots a frozen CPU float32 model and owns sampling RNG.
+Sampled mode matches training; greedy mode picks lowest-cell maximum-logit ties.
+Fixed evaluation uses random-v1/heuristic-v1, equal X/O counts, X-first rules,
+nine-step bounds, root seed 20261015 by default, and shardable absolute indices.
+Greedy versus deterministic heuristic repeats one path per seat, not independent trials.
 
-## 2026-10-14: CLI simplification and public replay logs (Phase 3 completion)
+Checkpoint evaluation hashes/loads one byte snapshot without modifying source
+weights, logs, or configuration. Reports identify hash/counters/mode/protocol,
+seeds, outcomes, lengths, and fixed errors; source and known training artifact
+overwrite paths are guarded. Parents must exist; explicit JSON reports overwrite.
+Errors/truncations remain visible and yield nonzero CLI status. No optimizer/search.
+Held-out RNG namespaces do not imply unseen board positions.
 
-- Replace CLI mark choices with --starts human/ai (default human); map the starter
-  to X, other player to O. Remove --human and --starts X/O. Keep optional engine
-  O-first configuration for programmatic games and replay reconstruction.
-- Add --game tic-tac-toe, currently the default/only supported game. Additional
-  games will require explicit CLI dispatch and game-specific presentation/replay
-  adapters; no new engine or generic registry is introduced prematurely.
-- Add an optional trusted on_step(actor, action) callback to play_game/run_match,
-  after a successful step and contract checks. No observations or full StepResults
-  are supplied. Exceptions propagate after execution, without rollback. Other
-  simulation APIs retain their existing behavior; no default logging is added.
-- TicTacToeRecorder records successful public placements. Frozen TicTacToeReplay
-  stores starting_player, actor/cell moves, and completed/cancelled/truncated status.
-  JSON includes schema_version=1 and game_id=tic_tac_toe. No seeds, private events,
-  rewards, engine snapshots, or observations are exported.
-- Save validates before overwriting the explicit path; parent directory must
-  exist. Load accepts only the supported fields/schema/game, at most nine moves,
-  and replays through a fresh configured engine. Actor, legal placement, no moves
-  after termination, and ending status must agree with the engine. Public
-  reconstructed observations are returned only after the entire log validates.
-- CLI --save-replay saves completed play or cancellation's executed prefix.
-  `replay PATH` validates before showing initial/step boards and final status.
-  This is inspection, not resumption or policy re-execution. Unexpected play
-  failures propagate without an exported completion record.
-- Replay privacy is game-specific. These logs are safe public Tic-Tac-Toe data;
-  hidden-game actions cannot be assumed public merely because on_step sees them.
-  Future games need explicit player-filtered formats and chance reconstruction.
-- Phase 3 acceptance is met by tested baselines/runners, reproduced benchmark
-  batches/metrics, human play, and validated replay inspection. Begin Phase 4
-  only with observation encoding; learning has not been implemented.
+Analysis replaces only the learner with random/heuristic controls under matching
+engine/opponent/index schedules. Reject incomplete records or mismatched protocols.
+The primary effect is paired policy-minus-random score against random, equal
+seat weighting; SE=0.5*sqrt(SE_X^2+SE_O^2), approximate 95% interval ±1.96 SE.
+Positive lower bound and at least 30 games per seat meet the original Phase 4
+criterion for a checkpoint, not training-seed generalization or optimal play.
 
-## 2026-10-14: Plan v0.2 — position evaluation and forward planning
+Validate strictly increasing finite log rows; missing updates break plotted lines
+and restart the labeled 25-update trailing average. Self-play curves are not
+held-out strength over time. Optional Matplotlib renders headless PNG/SVG loss,
+entropy/KL/clipping/outcome/length curves and mean-score comparisons. Analysis
+requires separate absent/empty output; preserve input hashes/raw trusted reports.
+Aggregate figures/results live in docs/phase4 and dedicated result documents;
+checkpoints/logs/raw reports remain ignored under runs. Once evaluation guides
+tuning or checkpoint selection, reserve fresh final-test seeds.
 
-- Integrated the new planning material while preserving completed Phases 1–3
-  and Phase 4 observation encoding as the next task. The suggested search-first
-  sequence is an optional experiment track, not a reordered implementation roadmap.
-- Distinguish authoritative engine transitions, position-value evaluation, and
-  branch selection/search. The current heuristic agent selects actions; terminal
-  GameOutcome adapters classify results. Neither implements a general position
-  evaluator. Proposed evaluator interfaces remain future design sketches.
-- Prefer actual engine rules for future search before experimenting with learned
-  latent dynamics. Evaluate heuristic, rollout, neural, and hybrid estimators with
-  explicit perspective/return semantics and bounded computation. Keep true terminal
-  rewards separate from heuristic estimates used for search.
-- Keep clone RNG semantics unchanged: independently owned copied RNG state.
-  Future planning contexts must respect the existing observation-only Agent
-  boundary. Do not pass an authoritative hidden-state clone to a planner; hidden
-  simulations need information-compatible worlds and information-set-aware action
-  selection to avoid leakage and strategy fusion. No code/API changes were made.
+## Planned extensions and constraints
+
+The roadmap owns the six Phase 4.5 tasks. Diagnosis, monitoring, and throughput
+optimization precede controlled learning experiments and the search design.
+Profile repeated warmed-up CPU/CUDA stages and end-to-end time at equal budgets;
+consolidate scalar reads/redundant checks without removing failure detection, then
+assess batched inference with frozen weights and private per-game/seat streams.
+Preserve targets and documented resume guarantees. Larger minibatches or changed
+sampling schedules require learning-quality comparisons. CPU is valid if faster;
+one timing probe is not a speed guarantee (measurements are in PROGRESS.md).
+
+Long-term: permitted rule-based MCTS → search-guided self-play targets/replay →
+learned representation/dynamics/prediction. Planning selects branches; evaluators
+estimate player-relative outcomes. A future observation evaluator may consume
+history; a simulation evaluator may consume an authorized simulation context
+and budget. A heuristic policy or terminal outcome adapter is not a general
+position evaluator. Keep PPO as a comparison, and do not treat search-selected
+moves as raw-policy PPO samples with incorrect behavior probabilities.
+
+Simulation must be reconstructed from permitted views/history, never supplied as
+an authoritative hidden-state clone. sample_hidden_state is only a future design;
+it must sample compatible worlds rather than expose actual secrets. Independent
+simulation RNG alternatives require an explicit contract. Naive sampled-world
+search risks strategy fusion. Chance, hidden information, recurrent context,
+same-player backups, and multiplayer/vector returns require explicit designs.
+Self-play replay must specify visibility, sequence length/context, sampling/reuse,
+game-length weighting, and compute budgets. Stale trajectories are not ordinary
+on-policy PPO. Shared backbones/candidate-action scoring and transfer experiments
+remain future multi-game work; negative transfer must be measured.
+
+## Verification
+
+Engine/rejection conformance helpers are in tests/contracts.py. New games must
+also test unseen-world input equivalence, observation mutation, event filtering,
+seeded chance, independent clones, and rejected-action RNG preservation.
+The test-only hidden-card engine is a fixture, not a production Phase 5 game.
+
+Tic-Tac-Toe rules are audited against a coordinate-based oracle over 5,478 boards
+(626 X wins, 316 O wins, 16 draws). The encoding audit checks both perspectives,
+seat relabeling, terminal behavior, and lossless board recovery without state access.
+Learning tests cover hand-computed GAE/returns/PPO, illegal gradients, storage/RNG
+isolation, optimizer changes, corruption rejection, exact checkpoint continuation,
+and CPU/CUDA resume. CUDA tests check real inputs/parameters/gradients/Adam device
+placement; portable files serialize tensors on CPU. Current validation results
+belong in PROGRESS.md rather than historical per-task test counts here.

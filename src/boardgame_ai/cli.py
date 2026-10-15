@@ -30,6 +30,61 @@ def main(argv: Sequence[str] | None = None) -> None:
     play.add_argument("--save-replay", metavar="PATH", help="Save the public game log")
     replay = commands.add_parser("replay", help="Validate and inspect a saved game log")
     replay.add_argument("path")
+    train = commands.add_parser("train", help="Run Tic-Tac-Toe PPO self-play training")
+    train.add_argument(
+        "--device", default="cuda", help="cuda (default), cuda:N, or cpu"
+    )
+    train.add_argument(
+        "--output", default="runs/tic-tac-toe", help="Training output folder"
+    )
+    train.add_argument(
+        "--updates",
+        type=int,
+        default=1000,
+        help="Total update budget, including resumed updates",
+    )
+    train.add_argument("--games-per-update", type=int, default=64)
+    train.add_argument("--seed", type=int, default=42)
+    train.add_argument(
+        "--resume", action="store_true", help="Resume latest.pt in output folder"
+    )
+    train.add_argument(
+        "--check-device",
+        action="store_true",
+        help="Check device and exit without creating files or training",
+    )
+    train.add_argument("--epochs", type=int, default=4)
+    train.add_argument("--minibatch-size", type=int, default=64)
+    train.add_argument("--learning-rate", type=float, default=3e-4)
+    train.add_argument("--gamma", type=float, default=0.99)
+    train.add_argument("--gae-lambda", type=float, default=0.95)
+    train.add_argument("--clip-ratio", type=float, default=0.2)
+    train.add_argument("--value-coefficient", type=float, default=0.5)
+    train.add_argument("--entropy-coefficient", type=float, default=0.01)
+    train.add_argument("--max-grad-norm", type=float, default=0.5)
+    train.add_argument("--no-normalize-advantages", action="store_true")
+    evaluate = commands.add_parser(
+        "evaluate", help="Evaluate a checkpoint against fixed opponents on CPU"
+    )
+    evaluate.add_argument("checkpoint", help="Completed training checkpoint")
+    evaluate.add_argument("--output", default="runs/tic-tac-toe-evaluation.json")
+    evaluate.add_argument("--games-per-seat", type=int, default=1000)
+    evaluate.add_argument(
+        "--seed", type=int, default=20261015, help="Held-out evaluation root seed"
+    )
+    evaluate.add_argument("--start-index", type=int, default=0)
+    evaluate.add_argument("--mode", choices=("sampled", "greedy"), default="sampled")
+    analyze = commands.add_parser(
+        "analyze", help="Plot training curves and compare baseline controls"
+    )
+    analyze.add_argument("checkpoint")
+    analyze.add_argument(
+        "--training-log", help="Defaults to updates.jsonl beside checkpoint"
+    )
+    analyze.add_argument("--output", default="runs/phase4-analysis")
+    analyze.add_argument("--games-per-seat", type=int, default=1000)
+    analyze.add_argument("--seed", type=int, default=20261015)
+    analyze.add_argument("--start-index", type=int, default=0)
     args = parser.parse_args(argv)
 
     if args.command == "info":
@@ -58,3 +113,30 @@ def main(argv: Sequence[str] | None = None) -> None:
             inspect_replay(args.path)
         except (OSError, ValueError):
             parser.error("Cannot read or validate replay")
+    elif args.command == "train":
+        from boardgame_ai.cli_train import train_from_args
+
+        try:
+            train_from_args(args)
+        except (OSError, ValueError) as error:
+            parser.error(str(error))
+        except KeyboardInterrupt:
+            print("Training interrupted; latest.pt retains the last saved update.")
+    elif args.command == "evaluate":
+        from pickle import UnpicklingError
+
+        from boardgame_ai.cli_evaluate import evaluate_from_args
+
+        try:
+            evaluate_from_args(args)
+        except (OSError, ValueError, RuntimeError, UnpicklingError) as error:
+            parser.error(str(error))
+    elif args.command == "analyze":
+        from pickle import UnpicklingError
+
+        from boardgame_ai.cli_analyze import analyze_from_args
+
+        try:
+            analyze_from_args(args)
+        except (OSError, ValueError, RuntimeError, UnpicklingError) as error:
+            parser.error(str(error))

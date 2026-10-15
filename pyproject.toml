@@ -17,6 +17,7 @@ dependencies = [
 boardgame-ai = "boardgame_ai.cli:main"
 
 [project.optional-dependencies]
+analysis = ["matplotlib>=3.9,<4"]
 dev = [
     "pytest>=8.3,<10",
     "ruff>=0.11,<1",
