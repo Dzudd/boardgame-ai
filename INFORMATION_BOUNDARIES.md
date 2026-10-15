@@ -1,5 +1,25 @@
 # Player visibility and engine boundaries
 
+## Self-play learning and evaluation separation
+
+Training experience is generated only by self-play, currently one latest shared
+policy frozen for both seats. Baseline and perfect-play opponents, expert move
+labels, and historical training opponent pools are outside the current plan.
+Existing random/heuristic evaluation matches remain measurement only: their
+trajectories, rewards, and tactical labels must not enter optimizer batches.
+Public-board diagnostic checks of immediate wins/blocks are reports, not teacher
+targets. No exact solver is required. Evaluation-guided tuning/checkpoint
+selection must be declared and followed by a fresh reserved final-test protocol.
+
+Future search targets may come from the learner's own bounded search, using only
+simulation reconstructed from permitted observations/history. Future replay may
+contain self-generated player sequences and reward-derived targets in trusted
+learning storage; it must never make another player's secrets model features.
+It needs explicit visibility, sampling, and sequence contracts before implementation.
+An authoritative hidden-state clone remains forbidden as an agent/search input.
+Pending checkpoint/evaluation monitoring must preserve training RNG, model and
+optimizer state, and resume behavior; evaluation reports remain trusted outputs.
+
 ## Ownership and player inputs
 
 The engine owns full state, hidden hands, deck order, randomness, rewards, and
@@ -35,6 +55,10 @@ visibility restrictions; no reward or privileged terminal data is added.
 Fresh tensors share no mutable storage with observations or other calls.
 Schema validation cannot detect secret data incorrectly included in a future
 game's observation; each game still owns filtering and visibility tests.
+The reachable-board encoding audit constructs only public observation records
+and uses an independent rules oracle; it never reads authoritative state.
+Seat relabeling preserves observer-relative tensors. Tic-Tac-Toe's fully public
+board audit does not establish hidden-world equivalence for future games.
 
 Full `StepResult` records stay in trusted simulation/training orchestration.
 Call `result.events_for(player_id)` before delivering events. A public event has

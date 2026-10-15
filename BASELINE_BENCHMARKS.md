@@ -1,5 +1,9 @@
 # Tic-Tac-Toe baseline metrics
 
+These are evaluation controls, not training opponents or expert demonstrations.
+Learning uses self-play only; the methodology and planned Phase 4.5 follow-up
+are documented in BOARDGAME_AI_PROJECT_PLAN.md.
+
 Recorded on 2026-10-14 for Phase 3, Task 5. Each fixed-seat matchup has 1,000
 matches, batch seed 20261014, indices 0–999, and a nine-decision limit. Seat 0
 is X and starts. Python 3.12.14 was used. Every complete report reproduced on

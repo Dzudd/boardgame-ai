@@ -1,10 +1,13 @@
 # Progress
 
 Current status: Phases 1–4 are complete under the minimal random-baseline
-criterion. All 616 tests and development checks pass. The unchanged checkpoint
+criterion. All 617 tests and development checks pass. The unchanged checkpoint
 improves balanced score over a random control by +0.3160 (approximate 95% interval
 [+0.2644,+0.3676]), but heuristic robustness remains poor. Next roadmap task is
-Phase 5, Task 1; no Phase 5 work was started. Work stops after Phase 4 today.
+Phase 4.5, Task 1: read-only tactical and learning-signal diagnosis. Phase 4.5
+is planned, not implemented; Phase 5 has not started. Training remains latest
+shared-policy self-play only, with MuZero-style search learning as the long-term
+direction. The latest change updates documentation after the encoding audit.
 Published privately at [Dzudd/boardgame-ai](https://github.com/Dzudd/boardgame-ai),
 with `master` tracking `origin/master`. Hosted Windows/Linux CI is enabled; current
 results are available in [GitHub Actions](https://github.com/Dzudd/boardgame-ai/actions).
@@ -12,6 +15,43 @@ Entries below are historical
 task records; earlier references to incomplete behavior describe that task's stage.
 Earlier statements about an absent remote or unexecuted hosted CI also describe
 the state at that task's completion; see the publication record below.
+
+## 2026-10-15: Self-play learning direction and Phase 4.5 planning
+
+Documentation-only update after discussion of the weak trained policy:
+
+- Kept Phase 4's original minimal acceptance and recorded results intact. Added
+  planned Phase 4.5 to diagnose tactical/credit-assignment failures, add periodic
+  checkpoint monitoring and isolated evaluations, compare justified self-play
+  improvements across bounded multi-seed runs, and specify the search-learning
+  bridge before choosing the next milestone. No claim that the weakness is fixed.
+- Established self-play as the sole training source: latest frozen shared policy
+  in both seats, no external/perfect/heuristic training opponents, expert labels,
+  or historical opponent pool. Existing baseline evaluations stay measurement only.
+  No perfect solver is required. The earlier opponent-mixture recommendation is
+  superseded; historical records below retain their original task context.
+- Clarified actual PPO behavior against run.py, rollout.py, ppo.py and the saved
+  training manifest: 64 complete games per collection, both-seat GAE, all collected
+  decisions shuffled into minibatches of 64 for four epochs, no updates during
+  gameplay. This is batching, not subsampling one or two moves per game. Categorical
+  sampling and fixed .01 entropy are present; epsilon exploration/replay are absent.
+- Recorded future position/sequence replay as a separately designed search learner,
+  with self-generated search policies/outcomes and explicit sample/compute budgets.
+  It must preserve credit/sequence context; stale trajectories are not ordinary PPO.
+- Promoted MuZero-style learning to the long-term direction, via permitted
+  rule-based search validation and search-guided self-play. Search, replay learning,
+  learned dynamics, checkpoint archives, and automatic evaluation remain unimplemented.
+- Updated roadmap, architecture, README, information boundaries, and result-report
+  follow-ups. Historical benchmark values and checkpoint identity are unchanged.
+
+Validation: reviewed documentation against current source and training manifest;
+checked Markdown links, current-task references, and git diff whitespace. No code
+or tests changed in this documentation task, and the suite was not rerun. The
+previous encoding-audit validation remains 617 passing tests plus development
+checks. No training, checkpoint edits, commit/push, or hosted CI execution occurred.
+
+Next: Phase 4.5, Task 1 only — diagnose the frozen policy's public-board tactics
+and trace representative per-seat learning signals before changing training.
 
 ## Phase 1, Task 1 — Python project and development environment
 
@@ -32,6 +72,32 @@ Local environment: `.venv` uses bundled Python 3.12.14 because the shell's
 bootstrapped using the bundled interpreter's `pip --python .venv` command.
 On a fresh machine, install Python 3.12+ and follow README setup instructions.
 Git is already initialized; its executable is also absent from shell PATH.
+
+## 2026-10-15: Phase 4 status review and observation encoding audit
+
+- Reviewed the roadmap, architecture, information boundaries, progress, README,
+  existing encoder/tests, and Phase 4 results. All eight Phase 4 tasks already
+  exist; the random-baseline acceptance criterion is met for the recorded run,
+  while near-universal heuristic losses remain unresolved.
+- Kept the documented encoding design and production implementation unchanged.
+  Added an exhaustive public-observation test over 5,478 reachable boards,
+  both observer seats, and simultaneous mark/actor/observer relabeling (O-first).
+  It verifies CPU float32 `(6, 3, 3)` layout, binary/partition properties,
+  lossless visible-board recovery, turn planes, and all 958 terminal boards.
+- Enumeration uses an independent coordinate-based outcome oracle without
+  engine state access. Existing isolation/schema tests remain in place; this
+  public-game audit makes no hidden-information or policy-strength claim.
+- Updated roadmap, architecture, visibility documentation, README, and progress.
+
+Validation: 27 targeted encoding tests pass; full suite 617 passed, no skips.
+Ruff lint/format, strict mypy (78 files), and pip check pass. Full pytest used
+approved execution outside the sandbox after the initial targeted invocation
+was slow; that initial invocation also finished successfully. No training,
+checkpoint changes, or hosted CI run occurred.
+
+Next roadmap task: Phase 5, Task 1 — multiple atomic decisions within a turn.
+If continuing strength work first, the next small task is a public-observation
+tactical failure audit of the frozen policy; diagnose before changing training.
 
 ## Phase 1, Task 2 — Numerical dependencies and minimal CLI
 

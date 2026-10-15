@@ -1,10 +1,75 @@
 # Architecture decisions
 
+## 2026-10-15: Self-play methodology and Phase 4.5 (design only)
+
+This decision supersedes earlier suggestions of baseline training opponents,
+optional-only MuZero development, and proceeding directly to Phase 5.
+Phase 4 remains complete under its original criterion; Phase 4.5 is planned,
+starting with read-only tactical and learning-signal diagnosis. Its task list
+and acceptance criteria live in BOARDGAME_AI_PROJECT_PLAN.md. No training code,
+configuration, checkpoint, or experiment is changed by this documentation update.
+
+- Training experience comes exclusively from self-play. The current and planned
+  default is one latest policy frozen for both seats during collection. External
+  engines, perfect-play teachers, baseline training opponents, expert labels,
+  and historical opponent pools are excluded from the current plan. Historical
+  self-generated replay is a separate future mechanism, not an opponent pool.
+- Existing random/heuristic evaluations remain isolated measurements, never
+  optimizer input or target generators. A perfect-play solver is not required.
+  Tactical tests may inspect public immediate wins/blocks without turning those
+  checks into supervised labels. Development evaluations may guide checkpoint
+  selection; reserve fresh final tests and do not claim evaluation is uninvolved
+  in tuning once it guides a design decision.
+- Current protocol: collect 64 complete empty-board X-first games per update,
+  with the same frozen model for both seats and private per-seat sampled actions.
+  Compute GAE per seat/episode, combine all learner decisions, normalize advantages,
+  and shuffle all samples into minibatches of 64 for four epochs by default.
+  One Adam step occurs per minibatch, including the final partial batch. This
+  already separates acting from optimization; it does not subsample games down
+  to one or two decisions. Sample weighting is per decision, so longer trajectories
+  can contribute more samples. Terminal rewards are +1/-1/0, intermediate zero;
+  both seats receive their own targets. Do not directly punish random moves solely
+  because a game was lost or add heuristic reward shaping to hide a failure.
+- Current exploration is categorical sampling of masked policy probabilities
+  plus a fixed .01 entropy coefficient. No guaranteed uniform exploration,
+  opponent curriculum, replay, MCTS, or learned dynamics exists. Low entropy,
+  low loss, and X-dominated self-play do not establish strength or a root cause.
+- Pending Phase 4.5 work: diagnose credit/targets and tactics, retain periodic
+  checkpoints and isolated evaluations without disturbing training RNG/resume,
+  run bounded multi-seed comparisons of justified changes, and specify the
+  search-learning bridge. Report both seats, coverage, sample/optimizer budgets,
+  and failures. Checkpoint monitoring is not a historical training opponent pool.
+- MuZero-style learning is the long-term direction. Validate bounded search
+  with a simulation reconstructed from permitted public views first; agents
+  must never receive the authoritative engine. Then design a separate learner
+  for self-play search visit policies, outcomes, and sampled replay sequences,
+  followed by learned representation/dynamics/prediction. Search-selected actions
+  cannot be inserted into existing PPO as though sampled from its raw policy.
+- For long games, define collection limits, replay sampling/reuse, sequence
+  context, game-length weighting, and optimization budgets explicitly. Preserve
+  GAE/recurrent context and player perspective; stale replay is not ordinary
+  on-policy PPO. No fixed one-or-two-position quota is mandated. Hidden state,
+  chance, and same-player actions retain their separate modeling requirements.
+
+## 2026-10-15: Phase 4 observation encoding audit
+
+The existing pure observation encoder remains unchanged: fresh contiguous CPU
+float32 `(6, 3, 3)` tensors, observer-relative mark/turn planes, row-major
+coordinates, and board-preserving terminal views with zero turn planes.
+An independent coordinate-based rules oracle enumerates 5,478 reachable boards
+without authoritative engine state or engine move generation. Tests recover
+each visible board from its encoding for both observers and check invariance
+when all seat labels (observer, actor, marks) are exchanged. This also covers
+O-first views. All 958 terminal boards retain the terminal contract.
+This verifies representation semantics, not learned tactical competence or
+hidden-information filtering for future games. Existing interfaces remain intact.
+
 Current status: Phases 1–3 are complete, including baselines, seeded simulation,
 outcome metrics, human play, and public Tic-Tac-Toe replays. Phase 4, Tasks 1–7
 are complete: the user finished CUDA self-play and fixed-opponent evaluation is
 implemented. Task 8 curves/baseline controls are complete; the minimal random-baseline
-criterion is met, with heuristic robustness explicitly unresolved.
+criterion is met, with heuristic robustness explicitly unresolved. The active
+next task is Phase 4.5, Task 1; Phase 5 remains pending.
 The private repository is [Dzudd/boardgame-ai](https://github.com/Dzudd/boardgame-ai),
 with `master` tracking `origin/master` and Windows/Linux checks in GitHub Actions.
 Earlier references to a local-only repository describe the state at that task.

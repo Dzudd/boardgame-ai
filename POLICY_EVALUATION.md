@@ -2,6 +2,11 @@
 
 Measured on 2026-10-15 after the user completed CUDA self-play training.
 
+These baseline opponents are evaluation only. Their actions/rewards do not
+enter training; the project's methodology uses latest-policy self-play without
+external teachers or a historical opponent pool. The unchanged results below
+motivate the planned Phase 4.5 diagnostics in BOARDGAME_AI_PROJECT_PLAN.md.
+
 The checkpoint at `runs/tic-tac-toe-cuda/latest.pt` contains 1,000 completed PPO
 updates and 29,020 optimizer steps. The training configuration used 64 games per
 update and seed 42, for 64,000 self-play games. No additional training was run

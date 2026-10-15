@@ -1,7 +1,43 @@
 # General-Purpose Board Game AI
 
-A Python platform for board game engines and, later, PyTorch agents. Games will
-support hidden information and multiple atomic decisions per turn.
+A Python platform with a tested Tic-Tac-Toe engine and PyTorch PPO self-play
+learner. The long-term direction is MuZero-style search learning, with future
+hidden-information games and multiple atomic decisions per turn.
+
+## Current direction and learning protocol
+
+Phases 1–4 meet the original minimal criterion, but the trained policy loses
+nearly every heuristic matchup. [Phase 4.5](BOARDGAME_AI_PROJECT_PLAN.md#phase-45--self-play-diagnosis-and-learning-reliability-planned)
+is planned before harder games: diagnose learning signals and tactical failures,
+add checkpoint monitoring, test controlled self-play improvements, and design
+the search-learning bridge. None of these new tasks is implemented yet.
+
+Training uses **self-play only**: one latest-policy snapshot plays both seats.
+No random/heuristic/perfect-play training opponents, expert move targets, or
+historical opponent pool are planned. Existing random/heuristic matches measure
+strength separately; their decisions and rewards do not enter training batches.
+
+By default, collect 64 complete games with frozen weights, calculate GAE within
+each player's trajectory, then train on **all** collected decisions in shuffled
+minibatches of 64 for four epochs. There is no update after each played move.
+Shuffling is not subsampling one or two moves per game, and game results do not
+automatically identify which moves were good or bad. Both seats contribute their
+own reward/value-based targets, including a loser's terminal reward.
+
+Exploration currently uses legal-action probability sampling and a fixed .01
+entropy coefficient. No epsilon-random moves, replay buffer, MCTS, learned
+dynamics, periodic checkpoint archive, or automatic evaluation during training
+exists. X starts every training game from an empty board. The recorded final
+25-update X win rate of 99.81% describes an imbalance between the shared model's
+seats, not proof of strength; its cause is still undiagnosed.
+
+The planned path is current-policy self-play → bounded search-guided self-play
+→ learning from search policies/outcomes → learned dynamics. Future replay may
+sample positions and short sequences from self-generated games, with explicit
+budgets and credit assignment. It requires its own learner design; old PPO
+trajectories cannot simply become ordinary on-policy training batches. A perfect
+solver is not required for this methodology. See the roadmap and architecture
+for the current constraints and pending tasks.
 
 ## Development setup
 
@@ -45,8 +81,8 @@ For other hardware, select a compatible build using the
 
 `info` reports Python, NumPy, and PyTorch versions and whether CUDA is available.
 CUDA availability is diagnostic; it does not select a training device.
-The CLI uses standard-library `argparse`. Game and training commands will be
-added in their respective phases.
+The CLI uses standard-library `argparse` and supports play, replay, train,
+evaluate, and analyze commands in addition to info.
 
 Source code lives in `src/boardgame_ai/`, with tests in `tests/`. The installed
 package must be used to run tests; no test-only import path overrides are needed.
@@ -151,7 +187,10 @@ is consumed, with no engine reference, rewards, or RNG access.
 There is no batch dimension or autograd history. Use `torch.stack` for batches and
 `.to(device)` for later device transfers. Incompatible payloads, seat/cell values,
 and phase/actor combinations raise ValueError; validation checks the schema,
-not game reachability. Search remains pending.
+not game reachability. An exhaustive test audits all 5,478 reachable boards for
+both observers, including 958 terminal boards, and checks seat-label symmetry
+and lossless recovery of the visible board. This is representation validation;
+the trained policy's heuristic weakness remains unresolved. Search remains pending.
 
 ## Action encoding and masking
 
@@ -225,8 +264,8 @@ Use eval() with no_grad()/inference_mode() for inference.
 Terminal/inactive tensors can be evaluated, but predictions remain raw estimates.
 Never select actions with their all-false masks. Future trajectories must use
 zero bootstrap at true termination rather than relying on the terminal prediction.
-Trajectory collection and GAE are described below. There is no neural Agent
-wrapper or search yet.
+Trajectory collection and GAE are described below. A frozen neural Agent
+wrapper is available for evaluation; search remains pending.
 
 ## Trajectory collection and GAE
 
@@ -275,7 +314,8 @@ first decision appear only in rollout.total_rewards, not policy credit.
 
 These records belong to trusted learning code, not public replays or other
 players' inputs. Errors propagate without retry. PPO updates are described below;
-self-play scheduling is available below; baseline scheduling remains future work.
+self-play scheduling is available below; external baseline training is excluded
+by the self-play-only methodology.
 
 ## PPO updates and checkpoints
 
@@ -323,8 +363,9 @@ No engine/rollout data, sampling seeds, gradients, or global RNG state is saved.
 Restoring reproduces the next update with the same batch and runtime. It does not
 resume an interrupted minibatch, episode, or future training experiment.
 
-Task 5 implements update machinery. The self-play runner below is ready for a
-user-run experiment; held-out evaluation and claims of strength remain pending.
+The self-play runner and independent evaluation are implemented. The completed
+run and its limited strength results are documented below; Phase 4.5 follow-ups
+remain planned.
 
 ## Run training on CUDA (Task 6 implementation ready)
 
@@ -394,8 +435,10 @@ authoritative progress marker. No mid-minibatch/episode resume is attempted.
 
 The user completed the 1,000-update CUDA experiment on 2026-10-15. The agent ran
 only tiny training verification workloads; the full experiment was user-launched.
-Fixed-opponent evaluation is described below. Phase 4 results are documented below. Baseline training opponents are optional
-future work; this Task 6 implementation uses shared-policy self-play.
+Fixed-opponent evaluation and Phase 4 results are documented below. Training
+continues to use latest shared-policy self-play; baseline opponents remain
+evaluation tools. The current runner retains latest.pt rather than historical
+snapshots and does not evaluate automatically during training.
 
 ## Fixed-opponent evaluation (Task 7)
 

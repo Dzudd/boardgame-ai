@@ -5,6 +5,13 @@ The user ran 1,000 CUDA PPO updates (64,000 self-play games, seed 42); analysis
 performed no further training and did not change the checkpoint or training log.
 Checkpoint identity and the original 4,000-game protocol are in POLICY_EVALUATION.md.
 
+**Current follow-up:** [Phase 4.5](BOARDGAME_AI_PROJECT_PLAN.md#phase-45--self-play-diagnosis-and-learning-reliability-planned)
+is planned to diagnose this weakness, monitor checkpoints, and assess self-play
+learning changes before harder games. The measurements below remain the original
+Phase 4 results. Training stays latest-policy self-play only; fixed opponents
+here are evaluation tools, not teachers or training experience. No causal
+diagnosis, repair, new experiment, or perfect-play requirement is implied.
+
 ## Matched baseline comparison
 
 The sampled frozen policy and random/heuristic controls each played the same four
@@ -78,6 +85,6 @@ training-summary.json, and PNG/SVG versions of both figures. The training log
 hash and checkpoint hash bind the inputs. Charts were visually inspected.
 Tracked figure copies live in docs/phase4; generated JSON, logs, and model weights
 stay ignored under runs. Python 3.12.14, PyTorch 2.14.1+cu130, Matplotlib 3.11.2
-were used; evaluation/plots run on CPU. Next roadmap task: Phase 5, Task 1,
-multiple atomic decisions within a turn. Policy robustness is an identified
-follow-up, not work already completed.
+were used; evaluation/plots run on CPU. The next task was originally Phase 5,
+Task 1. The updated roadmap now prioritizes Phase 4.5, Task 1: read-only tactical
+and learning-signal diagnosis. Policy robustness remains unresolved.

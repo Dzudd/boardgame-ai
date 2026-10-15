@@ -8,6 +8,7 @@ import torch
 
 from boardgame_ai.core import Action, Observation
 from boardgame_ai.games.tic_tac_toe import TicTacToeEngine, TicTacToeObservation
+from boardgame_ai.games.tic_tac_toe.state import Board
 from boardgame_ai.models.encoders import encode_tic_tac_toe_observation as encode
 
 
@@ -133,3 +134,66 @@ def test_authoritative_records_are_not_encoder_inputs() -> None:
     state = GameState(current_player=0, phase="play", data=TicTacToeState())
     with pytest.raises(ValueError, match="observation"):
         encode(cast(Any, state))
+
+
+def test_all_reachable_boards_preserve_visible_information_and_seat_symmetry() -> None:
+    """Audit public views independently of engine state and move generation."""
+    from tests.test_tic_tac_toe_regressions import outcome
+
+    visited: set[tuple[int | None, ...]] = set()
+    terminal_count = 0
+
+    def visit(board: tuple[int | None, ...], actor: int) -> None:
+        nonlocal terminal_count
+        if board in visited:
+            return
+        visited.add(board)
+        terminal = outcome(board) is not None
+        terminal_count += int(terminal)
+        for seat in (0, 1):
+            view = Observation(
+                player_id=seat,
+                current_player=None if terminal else actor,
+                phase="finished" if terminal else "play",
+                data=TicTacToeObservation(board=cast(Board, board)),
+            )
+            tensor = encode(view)
+            assert tensor.shape == (6, 3, 3)
+            assert tensor.dtype == torch.float32 and tensor.device.type == "cpu"
+            assert tensor.is_contiguous() and not tensor.requires_grad
+            assert torch.all((tensor == 0) | (tensor == 1)).item()
+            assert torch.all(tensor[:3].sum(dim=0) == 1).item()
+            # Recover the complete visible board, preserving spatial coordinates.
+            recovered = tuple(
+                None
+                if tensor[2, row, col]
+                else seat
+                if tensor[0, row, col]
+                else 1 - seat
+                for row in range(3)
+                for col in range(3)
+            )
+            assert recovered == board
+            assert torch.all(tensor[3] == int(not terminal and actor == seat)).item()
+            assert torch.all(tensor[4] == int(not terminal and actor != seat)).item()
+            assert torch.all(tensor[5] == int(terminal)).item()
+            relabeled = replace(
+                view,
+                player_id=1 - seat,
+                current_player=None if terminal else 1 - actor,
+                data=TicTacToeObservation(
+                    board=cast(
+                        Board,
+                        tuple(None if mark is None else 1 - mark for mark in board),
+                    )
+                ),
+            )
+            assert torch.equal(tensor, encode(relabeled))
+        if not terminal:
+            for cell, mark in enumerate(board):
+                if mark is None:
+                    visit((*board[:cell], actor, *board[cell + 1 :]), 1 - actor)
+
+    visit((None,) * 9, 0)
+    assert len(visited) == 5478
+    assert terminal_count == 958

@@ -1,7 +1,7 @@
 # General-Purpose Board Game AI — Project Plan
 
-**Version:** 0.2<br>
-**Status:** Phases 1–4 complete (minimal random-baseline criterion); heuristic weakness remains — next: Phase 5, Task 1<br>
+**Version:** 0.3<br>
+**Status:** Phases 1–4 complete under the original minimal criterion; Phase 4.5 planned — next: Task 1, self-play diagnostics<br>
 **Primary language:** Python<br>
 **Initial ML framework:** PyTorch
 
@@ -28,12 +28,39 @@ Long-term research goal: test whether training across many games helps a shared 
 | Legal moves | Query on demand | Do not enumerate entire future action sequences. |
 | Randomness | Resolved by engine | Agent learns a draw outcome only after drawing. |
 | Initial learning | PPO with legal-action masking | Start feed-forward; add recurrence for partial observability. |
-| Opponents | Random, heuristic, self-play and historical snapshots | Use fixed baselines for evaluation. |
+| Training opponents | Latest shared policy in both seats: self-play only | No external teachers, baseline opponents, or historical opponent pool in the current plan. |
+| Evaluation opponents | Frozen random/heuristic baselines | Measurement only; their moves and rewards never enter optimizer batches. |
+| Learning schedule | Frozen collection, then batched optimization | PPO uses all collected decisions in shuffled minibatches; future replay sampling is a separate design. |
 | Multiple games | Start with separate models | Compare against a shared-backbone approach later. |
 | Long-term model | Shared backbone + game-specific components | Candidate-action scoring can handle variable legal-action counts. |
-| Planning | Optional later extension | Explore information-set search and MuZero-inspired models. |
+| Planning | MuZero-style self-play learning is the long-term direction | Validate bounded search with permitted simulations before learned dynamics; preserve information boundaries. |
 
 These are working hypotheses, not irrevocable design commitments.
+
+### Self-play learning policy (2026-10-15)
+
+Training experience must come from self-play, without perfect-play teachers,
+handcrafted training opponents, solver move labels, or expert demonstrations.
+Both seats currently use the latest shared policy frozen for each collection
+batch. Historical self-generated experience may support a future replay learner;
+that is distinct from playing against historical model opponents, which is not
+planned. Evaluation baselines remain separate measurement tools. No perfect-play
+opponent or exact solver is required for progress or phase acceptance.
+
+Playing a move and updating weights are separate operations. Current PPO collects
+64 complete games per update by default, computes per-player GAE, then trains on
+all collected decisions in shuffled minibatches of 64 for four epochs. There is
+no weight update during collection and no selection of only one or two moves per
+game. Winning or losing alone does not establish the quality of every move:
+credit uses per-player rewards, value estimates, and advantages. Retain game-defined
+rewards; do not add heuristic tactical bonuses as a substitute for diagnosis.
+
+For long games, design collection budgets and training-sample budgets separately.
+Future search-based learning may sample positions and short sequences from
+self-generated replay, using searched policy targets and outcome/value/reward
+targets. Do not reuse stale PPO trajectories as ordinary on-policy batches or
+drop sequence context before calculating GAE/recurrent targets. Sample counts,
+reuse, game-length weighting, and compute budgets must be explicit and measured.
 
 ## 3. Important conceptual distinctions
 
@@ -91,7 +118,7 @@ Agent
 Training and evaluation
     ├── rollout collection / self-play
     ├── PPO updates
-    ├── opponent pool
+    ├── isolated evaluation baselines
     └── metrics and checkpoints
 ```
 
@@ -166,11 +193,14 @@ The same player may act repeatedly. Human actions go through exactly the same va
 | PPO | Simple model-free training; handles atomic decisions | Sample efficiency; long-horizon credit assignment | Initial learner |
 | Recurrent PPO (LSTM/GRU) | Uses history in partially observed games | Sequence training, memory management | First hidden-information learner |
 | AlphaZero-style MCTS | Powerful planning with a simulator | Must adapt to chance, hidden information, same-player actions | Future baseline |
-| MuZero | Learns latent dynamics for planning | High complexity; imperfect information/chance not solved automatically | Research extension |
+| MuZero | Learns latent dynamics for planning | High complexity; imperfect information/chance not solved automatically | Long-term self-play direction |
 | ISMCTS / information-set search | Explicit imperfect-information planning | Sampling quality, strategy fusion and opponent modeling | Advanced search |
 | CFR / ReBeL-style methods | Strong conceptual match for some imperfect-information games | Complex, often game-structure dependent | Research option |
 
-**Initial recommendation:** build a simple PPO agent and compare it with random/heuristic baselines; add recurrent PPO for hidden information; only then invest in search or learned dynamics.
+**Current sequence:** retain PPO as the implemented baseline, complete Phase 4.5
+self-play diagnosis and monitoring, then validate search-guided self-play on the
+simple game before learned dynamics. Phase 5 mechanics remain the next game
+milestone; search and partial-observability extensions require separate designs.
 
 ## 8. Development phases and actionable tasks
 
@@ -278,7 +308,7 @@ CI runs on pushes; see [Actions](https://github.com/Dzudd/boardgame-ai/actions).
 - [x] Implement policy and value networks.
 - [x] Implement trajectory collection and advantage estimation (GAE).
 - [x] Implement PPO losses, optimization and checkpointing.
-- [x] Train with self-play and/or baseline opponents.
+- [x] Train with latest-policy self-play (both seats share frozen weights).
 - [x] Add fixed evaluation opponents and held-out random seeds.
 - [x] Plot training curves and compare against baselines.
 
@@ -342,6 +372,60 @@ and tracked PNG/SVG figures. The minimal Phase 4 acceptance criterion is met for
 this checkpoint/protocol; near-universal heuristic losses remain a documented
 robustness failure. No further training or Phase 5 implementation was performed.
 
+**Encoding audit (2026-10-15):** all 5,478 reachable boards, both observer
+perspectives, and seat-relabeled O-first views preserve the visible board and
+turn/terminal semantics. No production encoding change was needed. Phase 4's
+minimal criterion remains met; heuristic weakness remains unresolved. Next
+roadmap task is now Phase 4.5, Task 1: diagnose tactical failures before choosing
+another training experiment.
+
+### Phase 4.5 — Self-play diagnosis and learning reliability (planned)
+
+**Deliverable:** a diagnosed, measurable self-play learning process before
+expanding to harder games. Phase 4 retains its original completion status;
+this phase addresses its unresolved policy weakness. All tasks below are pending.
+
+1. [ ] **Diagnose the frozen policy.** Add a read-only public-observation audit of
+   immediate wins and required blocks, with action probabilities, sample counts,
+   and separate X/O results. Trace representative winning/losing trajectories
+   through per-seat rewards, GAE, value targets, and PPO updates. Distinguish
+   incorrect learning signals from exploration/optimization hypotheses. No solver
+   teacher, perfect-play opponent, training labels, or weight changes.
+2. [ ] **Add checkpoint monitoring.** Retain periodic immutable checkpoints with
+   hashes/counters and bounded retention. Run reproducible, isolated development
+   evaluations at configured intervals, preserving model/optimizer/global and
+   training-sampling RNG state. Report both seats, tactics, entropy, coverage,
+   outcomes, and optimizer/sample counts. Keep the resume checkpoint separate
+   from the checkpoint chosen by a declared development metric. Preserve exact
+   update-boundary resume; reserve fresh final-test seeds for final assessment.
+3. [ ] **Test self-play improvements.** After diagnosis, compare one change at a
+   time to the unchanged PPO baseline: exploration/entropy settings, collection
+   size, or optimizer settings as evidence warrants. Record distinct positions
+   and action diversity; keep latest-policy self-play, game rewards, and both-seat
+   training. Predeclare game and optimizer budgets, development criteria, and at
+   least three training seeds; report every run and both-seat uncertainty. Fix
+   proven defects before tuning. More randomness or more games alone is not a fix.
+4. [ ] **Define the search-learning bridge.** Specify bounded policy/value-guided
+   MCTS using simulation constructed only from the permitted public observation,
+   player-relative backups, terminal handling, and seeded exploration. Then
+   specify a separate search-target learner: self-play search visit distributions,
+   game outcomes, and configurable replay position/sequence sampling. Keep PPO
+   as a comparison; do not insert search-chosen actions into PPO with incorrect
+   behavior probabilities. This task is a design, not implementation of MCTS or
+   MuZero. Learned representation/dynamics/prediction follow in the search track.
+5. [ ] **Review the evidence and next milestone.** Publish the diagnosis, all
+   bounded experiment results, and an explicit decision to retain PPO or prioritize
+   search-guided self-play. Do not require PPO to solve Tic-Tac-Toe indefinitely
+   before progressing, and do not treat X dominance or low loss as agent strength.
+
+**Acceptance criteria:** traced learning signals are correct (or defects fixed
+and tested); monitoring is reproducible and isolated; controlled multi-seed
+self-play comparisons and seat-specific diagnostics are reported; and a documented
+decision identifies the next implementation task. No external training opponents
+or teacher targets enter any run. Report failure to improve honestly; this phase
+does not promise perfect play. Search implementation belongs to the prioritized
+Phase 7 track, which can be brought forward after this review before Phase 5.
+
 ### Phase 5 — Complex mechanics and partial observability
 
 **Deliverable:** a small custom card/worker-placement test game.
@@ -384,7 +468,8 @@ robustness failure. No further training or Phase 5 implementation was performed.
 - [ ] Add bounded rollout evaluation and engine-based MCTS on a perfect-information game.
 - [ ] Compare heuristic, rollout, neural, and hybrid evaluation against fixed baselines.
 - [ ] Integrate policy/value guidance into search.
-- [ ] Explore MuZero-style learned latent dynamics as a separate experiment.
+- [ ] Implement search-guided self-play with policy/value targets and sampled self-generated replay as a separate learner.
+- [ ] Implement MuZero-style learned representation, dynamics, and prediction as the long-term search-learning extension.
 - [ ] Test chance-event modeling and same-player search backups.
 - [ ] Benchmark planning strength versus computation and latency.
 
@@ -488,7 +573,11 @@ Evaluate multiple seeds and report uncertainty where practical.
 | Hidden information | Needs beliefs and information-set-aware planning | Needs extra machinery beyond original MuZero |
 | Chance outcomes | Simulator samples actual game randomness | Needs chance-aware/stochastic model or another approximation |
 
-For future search work, **start with engine-based forward simulation** because we already need a complete rules engine. Keep MuZero as an optional research experiment, not a prerequisite. A learned evaluator can be added before any learned dynamics model. This preference applies to search implementation; it does not replace the current PPO-first Phase 4 roadmap.
+For future search work, **start with permitted rule-based simulation** to validate
+search separately from model errors. MuZero-style learned dynamics is the
+long-term direction. Training remains self-play only throughout: the rules
+simulator supplies transitions, not expert opponent moves or optimal labels.
+Search-generated policy targets come from the learner's own bounded planning.
 
 ### Forward-simulation example
 
@@ -564,32 +653,32 @@ In a game with unknown cards, an engine clone of the **actual** full state would
 
 ### Recommended implementation order
 
-The following is an optional evaluator/search experiment track imported with
-v0.2, not a renumbering of the development phases. Foundation and the simple-game
+The following evaluator/search track was introduced in v0.2 and updated in v0.3
+to reflect the self-play-only MuZero direction. Foundation and the simple-game
 engine are complete; position evaluators, rollout search, and MCTS are not yet
 implemented. The existing Tic-Tac-Toe heuristic is an action-selection policy,
 and GameOutcome evaluation classifies terminal results; neither is a general
 position-value evaluator. Phase 4 is complete under the minimal random-baseline criterion; heuristic robustness remains unresolved.
 
 1. **Foundation:** implement the engine interface, independent cloning, deterministic tests, and legal-action generation at each decision point.
-2. **Simple game:** test forward simulations and a heuristic evaluator on Tic-Tac-Toe or another fully observable deterministic game.
-3. **Baseline search:** add bounded rollout evaluation, then MCTS; compare to random and heuristic agents.
-4. **Neural baseline:** implement PPO with a policy/value network, compare playing with and without optional search.
+2. **Learning reliability:** complete Phase 4.5 diagnostics, monitoring, and controlled self-play experiments; PPO already exists.
+3. **Baseline search:** implement bounded policy/value-guided MCTS on permitted perfect-information simulations; random/heuristic agents are evaluation only.
+4. **Search learning:** train from self-play search policies and outcomes with explicitly budgeted replay sampling; compare against PPO and search without learning.
 5. **Complex game:** add a tiny hidden-card game with multi-step turns and chance events; verify no hidden information leaks.
 6. **Advanced search:** introduce belief-state sampling and information-set-aware planning; benchmark strength and latency.
-7. **MuZero research:** optionally implement learned latent dynamics and compare them against real-engine simulations on controlled games.
+7. **MuZero development:** implement learned representation/dynamics/prediction and compare against permitted rule-based search on controlled games; hidden-information/chance support is separate work.
 8. **Multi-game scale:** evaluate independent agents versus shared-backbone models and whether search helps transfer to new games.
 
 **Success criteria:** simulations never alter live state; action legality is respected; no player receives inaccessible hidden information; repeated seeded tests reproduce results; evaluator values use consistent player perspectives; search strength and latency are measured against fixed baselines.
 
 ## 13. Immediate next steps
 
-Phases 1–3 are complete: the package, shared contracts, tested Tic-Tac-Toe
-engine, simulation/baselines, benchmarks, human play, and replays are implemented.
+Phases 1–4 are complete under the original minimal criterion. The remaining
+policy weakness motivates Phase 4.5 before expansion to harder games.
 
-1. Phase 5, Task 1: multiple atomic decisions within one turn, one small task at a time.
-2. Retain the documented heuristic weakness when choosing policy-robustness follow-up work.
-3. Continue hidden-information mechanics only with explicit information-boundary tests.
+1. Phase 4.5, Task 1: read-only tactical and learning-signal diagnosis, one small task at a time.
+2. Add checkpoint monitoring, then bounded self-play experiments and a search-learning design.
+3. Review whether to bring the Phase 7 search track forward; Phase 5 remains the next game-mechanics milestone.
 
 **First milestone:** one fully working deterministic game, one reproducible training pipeline, and an agent that reliably improves over a random baseline.
 
