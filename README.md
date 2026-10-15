@@ -4,48 +4,24 @@ A Python platform with a tested Tic-Tac-Toe engine and PyTorch PPO self-play
 learner. The long-term direction is MuZero-style search learning, with future
 hidden-information games and multiple atomic decisions per turn.
 
-## Current direction and learning protocol
+## Project documents
 
-Phases 1–4 meet the original minimal criterion, but the trained policy loses
-nearly every heuristic matchup. [Phase 4.5](BOARDGAME_AI_PROJECT_PLAN.md#phase-45--self-play-diagnosis-and-learning-reliability-planned)
-is planned before harder games: diagnose learning signals and tactical failures,
-add checkpoint monitoring, profile/optimize throughput, test controlled self-play improvements, and design
-the search-learning bridge. None of these new tasks is implemented yet.
+| Document | Use it for |
+|---|---|
+| [Roadmap](BOARDGAME_AI_PROJECT_PLAN.md) | Completed phases, pending checklists, acceptance criteria |
+| [Progress](PROGRESS.md) | Current evidence, concerns, validation, and the next task |
+| [Architecture](ARCHITECTURE.md) | Implemented interfaces, tensor contracts, learning protocol, seeds, and resume |
+| [Information boundaries](INFORMATION_BOUNDARIES.md) | Required player visibility and isolation rules |
+| [Phase 4 results](PHASE4_RESULTS.md) | Training curves, matched controls, measurements, and limitations |
+| [Policy evaluation](POLICY_EVALUATION.md) | Checkpoint identity and fixed-opponent results |
+| [Baseline benchmarks](BASELINE_BENCHMARKS.md) | Random/heuristic control measurements |
 
-Training uses **self-play only**: one latest-policy snapshot plays both seats.
-No random/heuristic/perfect-play training opponents, expert move targets, or
-historical opponent pool are planned. Existing random/heuristic matches measure
-strength separately; their decisions and rewards do not enter training batches.
-
-By default, collect 64 complete games with frozen weights, calculate GAE within
-each player's trajectory, then train on **all** collected decisions in shuffled
-minibatches of 64 for four epochs. There is no update after each played move.
-Shuffling is not subsampling one or two moves per game, and game results do not
-automatically identify which moves were good or bad. Both seats contribute their
-own reward/value-based targets, including a loser's terminal reward.
-
-Exploration currently uses legal-action probability sampling and a fixed .01
-entropy coefficient. No epsilon-random moves, replay buffer, MCTS, learned
-dynamics, periodic checkpoint archive, or automatic evaluation during training
-exists. X starts every training game from an empty board. The recorded final
-25-update X win rate of 99.81% describes an imbalance between the shared model's
-seats, not proof of strength; its cause is still undiagnosed.
-
-The planned path is current-policy self-play → bounded search-guided self-play
-→ learning from search policies/outcomes → learned dynamics. Future replay may
-sample positions and short sequences from self-generated games, with explicit
-budgets and credit assignment. It requires its own learner design; old PPO
-trajectories cannot simply become ordinary on-policy training batches. A perfect
-solver is not required for this methodology. See the roadmap and architecture
-for the current constraints and pending tasks.
-
-CUDA placement is verified on the RTX 4070 Ti, but small-model training need not
-be faster on GPU. A short temporary timing probe measured one post-warm-up
-64-game update at 0.413 s on CUDA versus 0.325 s on CPU. These are preliminary
-samples, not a general speed claim. Phase 4.5 will benchmark repeated stage and
-end-to-end timings, reduce unnecessary CPU/GPU synchronization, and assess
-batched game inference while preserving learning semantics. Minibatch-size
-changes remain separate learning experiments. See PROGRESS.md for probe details.
+Phases 1–4 meet the original minimal criterion; policy robustness remains poor.
+[Phase 4.5](BOARDGAME_AI_PROJECT_PLAN.md#phase-45--self-play-diagnosis-and-learning-reliability-planned)
+is planned. Start with the read-only tactical/learning-signal diagnosis.
+Training uses latest-policy self-play only; baseline opponents are evaluation
+instruments. The current protocol and future MuZero direction are described in
+the architecture and roadmap. This README covers setup and supported usage.
 
 ## Development setup
 
@@ -139,7 +115,7 @@ above.
 
 ## Tic-Tac-Toe
 
-Phases 1 and 2 are complete. `TicTacToeEngine` provides the full engine contract,
+`TicTacToeEngine` provides the full engine contract,
 public observations, and text rendering. Seat 0 is X and starts by default; seat 1
 is O. `TicTacToeEngine(starting_player=1)` configures O to start, preserved across
 reset and cloning. Place actions use row-major cell indices 0–8. Wins award +1 to the winner
@@ -270,7 +246,7 @@ before construction for repeatable parameters. Forward consumes no randomness.
 Use eval() with no_grad()/inference_mode() for inference.
 
 Terminal/inactive tensors can be evaluated, but predictions remain raw estimates.
-Never select actions with their all-false masks. Future trajectories must use
+Never select actions with their all-false masks. The collector uses
 zero bootstrap at true termination rather than relying on the terminal prediction.
 Trajectory collection and GAE are described below. A frozen neural Agent
 wrapper is available for evaluation; search remains pending.
@@ -371,11 +347,7 @@ No engine/rollout data, sampling seeds, gradients, or global RNG state is saved.
 Restoring reproduces the next update with the same batch and runtime. It does not
 resume an interrupted minibatch, episode, or future training experiment.
 
-The self-play runner and independent evaluation are implemented. The completed
-run and its limited strength results are documented below; Phase 4.5 follow-ups
-remain planned.
-
-## Run training on CUDA (Task 6 implementation ready)
+## Training and resume
 
 The `train` command defaults to CUDA and never silently falls back to CPU.
 Verified on 2026-10-14: Windows, Python 3.12.14, RTX 4070 Ti (12 GB), NVIDIA
@@ -441,14 +413,14 @@ allowed but numerical identity across devices/versions is not promised. A crash
 after saving but before logging can leave a missing log row; `latest.pt` is the
 authoritative progress marker. No mid-minibatch/episode resume is attempted.
 
-The user completed the 1,000-update CUDA experiment on 2026-10-15. The agent ran
-only tiny training verification workloads; the full experiment was user-launched.
-Fixed-opponent evaluation and Phase 4 results are documented below. Training
-continues to use latest shared-policy self-play; baseline opponents remain
-evaluation tools. The current runner retains latest.pt rather than historical
-snapshots and does not evaluate automatically during training.
+The completed 1,000-update run is documented in [Phase 4 results](PHASE4_RESULTS.md).
+The current runner retains latest.pt rather than historical snapshots and does
+not evaluate automatically during training. CUDA placement is verified, but a
+small timing probe found CPU faster for this workload; see [progress](PROGRESS.md)
+for measurements and limitations. Repeated profiling and optimization are planned
+in Phase 4.5, separately from learning-protocol experiments.
 
-## Fixed-opponent evaluation (Task 7)
+## Fixed-opponent evaluation
 
 After training finishes, evaluate its frozen checkpoint on CPU:
 
@@ -482,9 +454,9 @@ RNG. Baseline engine/Agent interfaces and training logic remain unchanged.
 The completed checkpoint's measured [results](POLICY_EVALUATION.md) show 77.0%
 X and 48.4% O wins against random, but essentially all losses against the heuristic.
 There were no errors/truncations in 4,000 games. This exposes weakness hidden by
-self-play outcomes; no claim of robust or optimal play is made. Task 8 results and matched controls are available below.
+self-play outcomes; no claim of robust or optimal play is made. Matched controls are described below.
 
-## Training curves and baseline controls (Task 8)
+## Training curves and baseline controls
 
 ```powershell
 .\.venv\Scripts\python.exe -m pip install -e ".[analysis]"
@@ -598,7 +570,7 @@ Termination on the last allowed step is a completed game; zero permits no steps.
 `terminated`, and `truncated`. Totals include only steps executed by that call,
 not earlier moves or rewards at reset. They are not game scores or winner labels;
 truncation is not a draw. Results belong to trusted orchestration and contain no
-observations or events. Outcome evaluation is described below; replays remain Task 7.
+observations or events. Outcome evaluation and opt-in replays are described below.
 
 ## Reproducible match batches
 
@@ -683,7 +655,7 @@ Run the benchmark and save three reproducible metric reports:
 ```
 
 See [baseline measurements](BASELINE_BENCHMARKS.md) for 1,000 games per fixed-seat
-matchup, scoring, lengths, and limitations. Phase 3 is complete.
+matchup, scoring, lengths, and limitations.
 
 ## Human-versus-agent play
 

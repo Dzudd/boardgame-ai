@@ -164,9 +164,9 @@ submits no further action. Replay saving is opt-in and game-specific.
 The CLI choice board is derived from supplied legal actions and printed beside
 the public game board on every prompt and final display. Occupied/unavailable
 cells show dashes. Starter selection is explicit engine configuration, independent
-of player mark and randomness; it does not expose hidden information. X remains
-the default starter, and optional O-first configuration persists across resets
-and clones.
+of player mark and randomness; it does not expose hidden information. The CLI
+assigns its selected human/AI starter X. The programmatic engine also supports
+O-first configuration, preserved across resets and clones.
 
 ## Public Tic-Tac-Toe replays
 
@@ -240,7 +240,7 @@ Model initialization uses caller-controlled PyTorch randomness. Forward neither
 reads nor advances engine/agent RNG and does not sample actions. Apply legal
 masking separately using that player's supplied choices. Terminal views keep
 visibility restrictions; their predictions do not authorize action selection,
-and future trajectory code must use zero bootstrap at true termination.
+and the collector uses zero bootstrap at true termination.
 Tensor validation cannot repair information leaked by an incorrect observation.
 
 ## Trajectory collection and learning targets
