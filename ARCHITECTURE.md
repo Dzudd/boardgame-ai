@@ -8,9 +8,10 @@ are normative for every engine, agent, model, and future planner.
 ## Package and dependencies
 
 Python 3.12 is the development baseline; package metadata permits newer versions.
-Use the src/boardgame_ai namespace, setuptools, venv/pip, NumPy 2.x and PyTorch 2.x
-(minimum 2.6). Dependency ranges are not a lockfile or cross-version determinism
-guarantee. Ship py.typed and use strict mypy, Ruff, pytest, and Windows/Linux CI.
+The package uses the src/boardgame_ai namespace, setuptools, venv/pip, NumPy 2.x
+and PyTorch 2.x (minimum 2.6). Dependency ranges are not a lockfile or cross-version
+determinism guarantee. It ships py.typed and uses strict mypy, Ruff, pytest, and
+Windows/Linux CI.
 The core engine layer uses the standard library and stays independent of PyTorch.
 Numerical imports are deferred where possible so package imports/CLI help stay light.
 Hardware-specific Torch wheel selection is an environment choice.
@@ -56,6 +57,134 @@ Use create_rng(seed) for a private random.Random. Integers restart its sequence;
 None uses system entropy. Engine and agent RNG are separate from global Python,
 NumPy, and Torch randomness. Reproducibility also requires fixed runtime, code,
 action ordering, configuration, reset behavior, and call sequence.
+
+## Connect Four
+
+`games.connect_four` implements a deterministic 7×6 gravity board through the
+shared GameEngine contract. Each atomic `drop(column)` fills the lowest free
+cell; turns alternate from configurable starting_player (default 0). Four in
+any straight direction wins immediately, including on the last cell; otherwise
+42 filled cells draw. Win rewards are +1/−1, all other steps zero. No chance,
+pass or pop-out mechanics exist. Reset validates the seed before mutation.
+
+Immutable public observations expose the top-to-bottom row-major board and
+executed column history for active, inactive and terminal seats. Supplied legal
+columns are 0–6 left to right, empty for inactive/terminal seats. Human CLI labels
+and input are 1–7; its renderer draws the board above the labels. The random
+opponent receives the same structured contract. Outcome adaptation reads only
+the terminal public board; cloning is independent. No training/search/replay
+adapter is introduced. Rule and CLI tests include shared engine conformance.
+
+## Guildworks rules and transitions
+
+`games.guildworks.GuildworksEngine` is a standard-library, two-seat engine.
+Four rounds each contain four turns (two workers per seat); round r starts with
+seat (r-1)%2 and turns alternate. Each turn is `place` then `craft`, with the
+same actor for both decisions. After crafting/passing, advance to the opponent,
+or clear placements/refill workers at the next round. The fourth round ends
+after its fourth craft/pass: exactly 32 decisions, phase `finished`, actor None.
+
+Setup shuffles twelve cards (four each of values 1, 2, 3) with a private seeded
+Random, then deals two to seat 0 and two to seat 1. Both start with two ink and
+zero points. Cards have no identity beyond value; hands are unordered multisets.
+Each public space accepts one worker per round:
+
+| Space | Immediate engine-resolved effect |
+|---|---|
+| inkwell | Gain two ink |
+| archive | Draw up to two remaining cards privately |
+| festival | Gain one point |
+| lottery | Uniformly gain one, two or three ink |
+
+Craft one owned card: pay ink equal to its value, gain value+1 points, and reveal
+it in the ordered public discard. Passing is always available in `craft`, even
+with affordable cards. No hand limit, reshuffle, income, interrupts or extra turns.
+Empty draws take zero cards and still proceed to craft; a partial draw takes the
+remaining cards. No placement is offered on an occupied space. Worker counts
+guarantee a free space at every live placement decision.
+
+Actions are `place(space: str)`, `craft(card: int)`, or parameterless `pass`.
+Placement ordering follows the table; crafting lists distinct affordable own
+values ascending, then pass. No action identifies a future chance outcome.
+Incremental rewards are each seat's points gained on that decision, zero for
+other effects; there is no terminal reward bonus or loser penalty. Summed episode
+rewards equal final public scores. Higher score wins; equal scores draw with no
+tie-breaker. `guildworks_outcome` returns actual scores and this classification.
+`render_guildworks` consumes only a filtered observation; engine rendering delegates
+to it. Existing runner/batch/evaluation interfaces need no changes.
+
+`cli_guildworks` adds human-versus-random terminal play via the existing runner.
+Human agents select numbered supplied actions; AI reporting exposes only public
+chosen actions. Round starts still follow the engine; `--starts` assigns the human
+to seat 0 or 1. Default opponents are game-specific (Tic-Tac-Toe heuristic,
+Guildworks random). Guildworks rejects heuristic opponents and replay saving.
+
+## Guildworks recurrent learning
+
+`models.guildworks` defines `guildworks-visible-sequence-v1`: each seat starts
+from zero memory, consumes newly visible history events in order, then one current
+snapshot on each own decision. No events are consumed twice; there is no history
+truncation. Two seats have independent cursors and GRU state, including consecutive
+decisions and repeated actors across round boundaries. Reset clears both memory
+and history; changing seat or replacing a consumed history prefix rejects.
+
+Every float32 token has 52 fields: two token-kind flags, 34 snapshot fields and
+16 event fields, with the unused block zero. Snapshot fields, in order, are round
+(/4), place/craft/finished one-hot, actor free/self/other one-hot, four placements
+in space order (each free/self/other), own/other workers (/2), ink (/32), scores
+(/36), own counts of values 1/2/3 (/4), own/other hand counts (/12), deck count
+(/12), and discard value counts (/4). Discard order is retained by craft history.
+Event fields are draw/card/place/points/ink/craft/pass/round one-hot, owner
+free/self/other one-hot, numeric value (/4, zero for a string), and space one-hot.
+Private card receipts imply the observer as owner. All scales are fixed, with
+no clipping or normalization using hidden state. Inactive/terminal snapshots
+encode normally, but are never selected for action or terminal value bootstrap.
+
+Indices 0–3 place at inkwell/archive/festival/lottery, 4–6 craft values 1/2/3,
+and 7 passes. Masks encode only supplied legal actions; decoding returns the
+supplied object. Empty choices produce an all-false mask; sampling them rejects.
+This small fixed mapping is game-specific, not Phase 6 candidate-action scoring.
+
+`GuildworksRecurrentPolicy` is GRU(52,32), a linear eight-logit policy head and
+an unbounded own-points value head. No dropout or privileged critic. The frozen
+CPU `RecurrentGuildworksAgent` implements the existing Agent contract with a
+private sampling generator. Forward inference carries detached hidden state;
+models receive only visible tokens and that state. `initial_model` seeds CPU
+initialization inside fork_rng and preserves global RNG. Rule modules remain
+independent of Torch; the observation record has its own framework-free module.
+
+`training.guildworks` collects complete 32-decision games, 16 decisions per seat,
+with one latest frozen policy shared by both seats. Own incremental rewards
+accumulate until the next own decision, even if actors repeat. GAE uses a player
+decision clock (default gamma=1, lambda=.95) and terminal bootstrap=0. Rewards
+target own public point return; they are neither zero-sum nor win-probability
+targets. Episode records contain only that seat's tokens, decision positions,
+supplied masks, sampled indices, behavior log probabilities/values and own rewards.
+
+Recurrent PPO uses whole seat episodes as minibatch units (default eight, two
+epochs). Every episode is recomputed from zero with current weights on every
+epoch; gradients flow through the full visible stream and losses apply only at
+own decision positions. There are no stored hidden-state shortcuts, episode
+concatenation, padding, truncated BPTT, replay or burn-in. Full-batch advantage
+normalization and clipped PPO/value/entropy losses match the existing conventions.
+Behavior checks use a current CPU copy matching collection; CPU/CUDA arithmetic
+can differ during optimization. Exact CPU update-boundary continuation is tested;
+cross-device numerical identity and speed are not promised.
+
+`training.guildworks_run` provides a separate bounded CPU/CUDA command, preserving
+the Tic-Tac-Toe train command and checkpoint schema. Its SHA-256 seed text is
+`boardgame-ai/guildworks/v1:{root}:{index}:{stream}` (first eight bytes). Streams
+are initialization/shuffle at index zero, engine/seat:0/seat:1 at absolute game
+index, and evaluation at seat index; evaluation has a separate declared root.
+Portable atomic checkpoints identify game/model/encoding and validate CPU model,
+Adam, configuration, counters, mode and private shuffle RNG. They exclude episodes,
+hidden states, history, engines and global RNG. New output must be absent/empty;
+resume requires identical seed, games/update and PPO config. Latest checkpoint
+is authoritative; interrupted work restarts from its update boundary. Metrics are
+saved after the checkpoint, so a crash may leave a missing metrics row. There is
+no mid-episode/update resume. Frozen initial/final random evaluations are separate
+from PPO; manifests and metrics are trusted outputs. See
+[Phase 5 results](PHASE5_RESULTS.md).
 
 ## Tic-Tac-Toe and baseline agents
 
@@ -181,6 +310,7 @@ rewards sum without internal discounting. GAE uses delta=r+gamma*next_value-valu
 A=delta+gamma*lambda*A_next, returns=A+value. Never interleave seats or cross episode
 boundaries. Matching finite 1-D floating inputs produce detached same-dtype/device
 outputs; empty segments work and invalid coefficients/overflow reject.
+Gamma and GAE lambda must each be in [0, 1].
 True termination bootstraps zero without a model call; live cutoffs bootstrap
 from that player's filtered observation, including inactive views. Empty segments
 bootstrap zero. Collection resets every call; it does not resume a partial rollout.
@@ -261,7 +391,7 @@ Checkpoint evaluation hashes/loads one byte snapshot without modifying source
 weights, logs, or configuration. Reports identify hash/counters/mode/protocol,
 seeds, outcomes, lengths, and fixed errors; source and known training artifact
 overwrite paths are guarded. Parents must exist; explicit JSON reports overwrite.
-Errors/truncations remain visible and yield nonzero CLI status. No optimizer/search.
+Errors/truncations remain visible and yield nonzero CLI status. No optimizer in policy evaluation. Separate bounded search evaluation is described below.
 Held-out RNG namespaces do not imply unseen board positions.
 
 Analysis replaces only the learner with random/heuristic controls under matching
@@ -336,13 +466,16 @@ labels never enter batches. Source checkpoint/config/log bytes are checked uncha
 new report output must be outside the source directory. Requires stopped training,
 not concurrent-writer locking. Protocol and limitations: [diagnosis](POLICY_DIAGNOSIS.md).
 
-## Planned extensions and constraints
+## Extension boundaries
 
-The roadmap owns Phase 4.5 completion and the result-based next milestone.
-[Search-learning design](SEARCH_LEARNING_DESIGN.md) specifies bounded public-only
-simulation, parent-seat vector backups and a separate self-generated visit/outcome
-learner. Search and replay learning remain unimplemented. Future batched collection
-needs per-game/seat RNG and numerical/sampling comparisons; changes in minibatch,
+The [roadmap](BOARDGAME_AI_PROJECT_PLAN.md) owns phase tasks and acceptance criteria;
+[progress](PROGRESS.md) identifies the current next milestone.
+[Public search evaluation](#public-search-evaluation) implements bounded
+Tic-Tac-Toe simulation and parent-seat vector backups. The separate self-generated
+visit/outcome learner and replay learning in the
+[search-learning design](SEARCH_LEARNING_DESIGN.md) remain unimplemented.
+Future batched collection needs per-game/seat RNG and numerical/sampling
+comparisons; changes in minibatch,
 collection size or sampling schedule require learning-quality experiments.
 
 Long-term: permitted rule-based MCTS → search-guided self-play targets/replay →
@@ -378,4 +511,34 @@ Learning tests cover hand-computed GAE/returns/PPO, illegal gradients, storage/R
 isolation, optimizer changes, corruption rejection, exact checkpoint continuation,
 and CPU/CUDA resume. CUDA tests check real inputs/parameters/gradients/Adam device
 placement; portable files serialize tensors on CPU. Current validation results
-belong in PROGRESS.md rather than historical per-task test counts here.
+belong in [progress](PROGRESS.md) rather than historical per-task test counts here.
+
+
+## Public search evaluation
+
+`boardgame_ai.search` implements the public Tic-Tac-Toe adapter, observation-only
+frozen neural evaluator and bounded PUCT Agent. It does not wrap or clone an
+engine. Constructor reachability/root-choice validation and independent exhaustive
+engine comparison cover both starters. Public branch states are immutable.
+
+Backups carry two seat returns; for leaf actor s, G[s]=v and G[1-s]=-v,
+then each edge adds its incremental rule rewards with gamma=1. Terminal continuation
+is zero. Selection reads Q for the parent actor, without turn-based sign flips.
+Limits, tie-breaking, private exploration namespaces and node accounting are in
+[the search-learning design](SEARCH_LEARNING_DESIGN.md). PPO values are clipped
+heuristic estimates.
+
+`python -m boardgame_ai.search.evaluation CHECKPOINT NEW_OUTPUT_DIRECTORY`
+executes the [Phase 7 protocol](PHASE7_PROTOCOL.md) on frozen CPU copies with
+global RNG isolation.
+It reports fixed-opponent matches, full tactical census, evaluator counts and
+latency; hashes verify source artifacts. No optimizer, replay or training targets.
+
+
+SearchAgent's optional `on_simulation` observer receives immutable public paths,
+rewards, leaf continuation, stop reason and per-edge vector returns after backup.
+It is diagnostic only and does not change selection; callback exceptions propagate.
+`boardgame_ai.search.diagnosis` replays prior heuristic-O match-zero records,
+independently reconstructs N/W/rewards, and exports public trees and leaf predictions.
+Post-decision one-step probes are separate from search calls; no diagnostic labels
+or baseline trajectories enter training. The destination must not exist.

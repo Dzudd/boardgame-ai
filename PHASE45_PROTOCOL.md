@@ -1,5 +1,8 @@
 # Phase 4.5 bounded investigation protocol
 
+This document preserves the predeclared experiment budgets and decision criteria.
+Outcomes and limitations are recorded in [Phase 4.5 results](PHASE45_RESULTS.md).
+
 Declared before the new benchmarks and training runs. Original update-1000
 checkpoint, training manifest and logs are read-only. All new runs use separate
 directories under `runs/phase45`. Both seats always use the latest shared frozen

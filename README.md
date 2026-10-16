@@ -1,51 +1,84 @@
 # General-Purpose Board Game AI
 
-A Python platform with a tested Tic-Tac-Toe engine and PyTorch PPO self-play
-learner. The long-term direction is MuZero-style search learning, with future
-hidden-information games and multiple atomic decisions per turn.
+A Python platform for board-game engines, isolated player observations, simulation,
+and self-play learning. It implements Tic-Tac-Toe PPO, recurrent Guildworks PPO,
+and a playable Connect Four engine. MuZero-style search learning and shared
+multi-game learning remain future work.
+
+## Supported capabilities
+
+| Game | Play and simulation | Learning and search | Replay |
+|---|---|---|---|
+| Tic-Tac-Toe | Engine, random/heuristic agents, human CLI | PPO self-play, frozen evaluation, bounded public-rule PUCT evaluation | Public move logs |
+| Guildworks | Hidden-card worker placement, random/scripted matches, filtered human CLI | Visible-history GRU and recurrent PPO; no hidden-information search | Not implemented |
+| Connect Four | Public engine, random/scripted matches, human CLI | No learner or search integration | Not implemented |
+
+Human CLI opponents are baselines; play against trained checkpoints is still
+planned. Training uses latest-policy self-play only; baseline opponents and
+public tactical labels are evaluation instruments, never optimizer samples.
+The implemented learners and bounded search have measured limitations; none is
+claimed to provide robust or optimal play. See [current evidence](PROGRESS.md).
 
 ## Project documents
 
-| Document | Use it for |
+| Document | Responsibility |
 |---|---|
-| [Roadmap](BOARDGAME_AI_PROJECT_PLAN.md) | Completed phases, pending checklists, acceptance criteria |
-| [Progress](PROGRESS.md) | Current evidence, concerns, validation, and the next task |
-| [Architecture](ARCHITECTURE.md) | Implemented interfaces, tensor contracts, learning protocol, seeds, and resume |
-| [Information boundaries](INFORMATION_BOUNDARIES.md) | Required player visibility and isolation rules |
+| [README](README.md) | Purpose, setup, supported capabilities, and command usage |
+| [Development guide](docs/DEVELOPMENT.md) | Programmatic examples for engines, tensors, PPO, simulation, and metrics |
+| [Architecture](ARCHITECTURE.md) | Implemented architecture, interfaces, tensor contracts, seeds, and resume |
+| [Information boundaries](INFORMATION_BOUNDARIES.md) | Normative visibility, ownership, and learning/evaluation separation |
+| [Roadmap](BOARDGAME_AI_PROJECT_PLAN.md) | Phase goals, complete task lists, statuses, and acceptance criteria |
+| [Progress](PROGRESS.md) | Concise current status, verified evidence, limitations, and next milestone |
+| [Baseline benchmarks](BASELINE_BENCHMARKS.md) | Reproducible random/heuristic control measurements |
 | [Phase 4 results](PHASE4_RESULTS.md) | Training curves, matched controls, measurements, and limitations |
-| [Phase 4.5 results](PHASE45_RESULTS.md) | Monitoring, throughput, controlled comparison and decision |
-| [Search-learning design](SEARCH_LEARNING_DESIGN.md) | Public simulation, search backups and separate target learner |
-| [Frozen policy diagnosis](POLICY_DIAGNOSIS.md) | Public tactics, per-seat signals, isolated PPO update evidence |
-| [Policy evaluation](POLICY_EVALUATION.md) | Checkpoint identity and fixed-opponent results |
-| [Baseline benchmarks](BASELINE_BENCHMARKS.md) | Random/heuristic control measurements |
+| [Policy evaluation](POLICY_EVALUATION.md) | Frozen checkpoint identity and fixed-opponent results |
+| [Policy diagnosis](POLICY_DIAGNOSIS.md) | Public tactics, per-seat signals, and isolated PPO update evidence |
+| [Phase 4.5 protocol](PHASE45_PROTOCOL.md) / [results](PHASE45_RESULTS.md) | Declared monitoring/performance/comparison methods and measured outcomes |
+| [Phase 5 results](PHASE5_RESULTS.md) | Guildworks recurrent learning protocol and functional validation |
+| [Phase 7 protocol](PHASE7_PROTOCOL.md) / [results](PHASE7_RESULTS.md) | Bounded public-search evaluation and heuristic-O diagnosis |
+| [Search-learning design](SEARCH_LEARNING_DESIGN.md) | Search rationale and the separate, unimplemented search-target learner |
+| [Phase 6 milestone proposal](docs/PHASE6_MILESTONE.md) | Proposed Connect Four PPO baseline; protocol still to be defined |
 
-Phases 1–4 meet the original minimal criterion; policy robustness remains poor.
-[Phase 4.5](BOARDGAME_AI_PROJECT_PLAN.md#phase-45--self-play-diagnosis-and-learning-reliability-complete)
-is complete at its declared bounded scope. Monitoring, repeated profiling and
-a three-seed entropy comparison are implemented and measured. The comparison did
-not establish improvement; next is the public simulator adapter and bounded search
-evaluation. See Phase 4.5 results for limitations and the milestone decision.
-Training uses latest-policy self-play only; baseline opponents are evaluation
-instruments. The current protocol and future MuZero direction are described in
-the architecture and roadmap. This README covers setup and supported usage.
+Shared documentation is self-contained in a clone. Optional machine-specific AI
+instructions, session handoffs, continuation prompts, and temporary notes belong
+in the ignored root `AI/` directory. To use an existing local copy, explicitly ask
+a new AI session to read `AI/INDEX.md` and `AI/AGENTS.md` before relevant shared
+docs. Arbitrary Markdown files and nested instruction files are not assumed to
+load automatically; there is no root `AGENTS.md` entry point. A fresh clone can
+use the shared document index without local context.
+
+The `/AI/` ignore rule prevents future normal additions of untracked local files;
+it does not untrack already indexed files or remove earlier Git history. The
+previously committed root handoffs remain in history even after their removal
+from the shared tree. Do not put source, tests, checkpoints, or canonical project
+evidence in `AI/`.
 
 ## Development setup
 
-Use Python 3.12 or newer. Python 3.12 is the initial development baseline.
-From the repository root in PowerShell:
+Use Python 3.12 or newer; 3.12 is the development and CI baseline. From the
+repository root in PowerShell, this installs a CPU environment:
 
 ```powershell
 python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install "torch==2.14.1" --index-url https://download.pytorch.org/whl/cu130
+.\.venv\Scripts\python.exe -m pip install "torch>=2.6,<3" --index-url https://download.pytorch.org/whl/cpu
 .\.venv\Scripts\python.exe -m pip install -e ".[dev,analysis]"
 ```
 
-Activation is optional; the explicit interpreter path avoids PowerShell execution
-policy changes. On macOS/Linux use `.venv/bin/python` instead.
+For CUDA, select a build compatible with your hardware using the
+[official PyTorch installer](https://pytorch.org/get-started/locally/) before the
+editable install. Activation is optional; explicit interpreter paths avoid
+PowerShell execution-policy changes. On macOS/Linux use `.venv/bin/python` and
+`.venv/bin/boardgame-ai` instead. Dependencies and supported version ranges live
+in `pyproject.toml`, not a lockfile. NumPy and PyTorch are runtime dependencies;
+`analysis` adds Matplotlib, and `dev` adds pytest, Ruff, and strict mypy checks.
 
-Run the development checks:
+The CUDA wheel supplies runtime libraries; this project uses no custom CUDA
+extensions or source builds requiring a separate CUDA Toolkit. `nvidia-smi`
+reports driver CUDA support, not an installed Toolkit. See
+[NVIDIA compatibility](https://docs.nvidia.com/deploy/cuda-compatibility/minor-version-compatibility.html).
 
 ```powershell
+.\.venv\Scripts\python.exe -m pip check
 .\.venv\Scripts\python.exe -m pytest
 .\.venv\Scripts\python.exe -m ruff check .
 .\.venv\Scripts\python.exe -m ruff format --check .
@@ -53,13 +86,9 @@ Run the development checks:
 ```
 
 Format code with `.\.venv\Scripts\python.exe -m ruff format .`.
-Dependencies live in `pyproject.toml`; `dev` installs testing, formatting, linting,
-and strict type checking. Package metadata uses version ranges, not a lockfile.
-NumPy and PyTorch are runtime dependencies. The command above selects the verified
-Windows CUDA build for this RTX 4070 Ti; the editable install adds the remaining
-dependencies. For CPU-only development/CI, use the `/whl/cpu` index instead.
-For other hardware, select a compatible build using the
-[official PyTorch installer](https://pytorch.org/get-started/locally/).
+Source lives in `src/boardgame_ai/` and tests in `tests/`. Generated environments,
+caches, checkpoints, datasets, and runs are ignored by Git. Tracked evidence,
+including the charts in `docs/phase4/`, remains shared.
 
 ## Command line
 
@@ -69,675 +98,17 @@ For other hardware, select a compatible build using the
 .\.venv\Scripts\python.exe -m boardgame_ai info
 ```
 
-`info` reports Python, NumPy, and PyTorch versions and whether CUDA is available.
-CUDA availability is diagnostic; it does not select a training device.
-The CLI uses standard-library `argparse` and supports play, replay, train,
-evaluate, and analyze commands in addition to info.
-
-Source code lives in `src/boardgame_ai/`, with tests in `tests/`. The installed
-package must be used to run tests; no test-only import path overrides are needed.
-Generated environments, caches, checkpoints, datasets, and runs are ignored by Git.
-
-## Core game types
-
-`boardgame_ai.core` exports `GameState`, `Observation`, `Action`, `StepResult`,
-`GameSpec`, and `GameEvent`. State and observation payloads are generic so each
-game can define its own typed data. Actions represent atomic choices, and step
-results allow consecutive decisions by the same player.
-
-State and complete step results are engine-facing. Construct player observations
-independently and filter events with `result.events_for(player_id)` before
-delivering them to a player. Frozen records do not recursively freeze payloads.
-See the architecture notes for field semantics and information-boundary limits.
-
-`GameEngine[ObservationData]` (from `boardgame_ai.core`) defines the engine
-interface. Implement its metadata properties and gameplay methods in each game.
-`Agent[ObservationData]` (from `boardgame_ai.agents`) defines action selection
-from a filtered observation and a tuple of legal actions. Agents may override
-`reset(seed)` to clear memory or seed their own randomness.
-
-Reset engines and agents before each game. At each decision, query
-`current_player()`, obtain that player's observation and legal actions, ask its
-agent to select an action, and call `step(action)`. Use the returned next player;
-one player can make several consecutive decisions. `get_rewards()` reports the
-latest step's incremental rewards, or zeros after reset, rather than cumulative
-scores. The interfaces are abstract; Tic-Tac-Toe is the first concrete game.
-Random and Tic-Tac-Toe heuristic baselines are available. A test-only implementation exercises
-the general interface in `tests/test_interfaces.py`.
-
-Use `engine.decision_for(player_id)` to obtain detached agent inputs. See
-[information boundaries](INFORMATION_BOUNDARIES.md) for visibility, event filtering,
-illegal-action errors, reset requirements, and deterministic seed rules.
+The CLI supports `info`, `play`, `replay`, `train`, `evaluate`, and `analyze`.
+`info` reports Python/NumPy/PyTorch versions and CUDA availability; it does not
+select the training device. Individual commands expose `--help`.
 
 ## Continuous integration
 
-`.github/workflows/ci.yml` runs lint, formatting, strict typing, tests, dependency
-checks, and CLI smoke checks on Python 3.12 for Windows and Linux, using CPU
-PyTorch. It triggers on pushes, pull requests, and manual dispatch. The private repository is
-[Dzudd/boardgame-ai](https://github.com/Dzudd/boardgame-ai), with `master` tracking
-`origin/master`. See [GitHub Actions](https://github.com/Dzudd/boardgame-ai/actions)
-for hosted check results. These checks can also be run locally using the commands
-above.
-
-## Tic-Tac-Toe
-
-`TicTacToeEngine` provides the full engine contract,
-public observations, and text rendering. Seat 0 is X and starts by default; seat 1
-is O. `TicTacToeEngine(starting_player=1)` configures O to start, preserved across
-reset and cloning. Place actions use row-major cell indices 0–8. Wins award +1 to the winner
-and -1 to the loser; draws and nonterminal moves award zero.
-
-```python
-from boardgame_ai.core import Action
-from boardgame_ai.games.tic_tac_toe import TicTacToeEngine
-
-game = TicTacToeEngine()
-game.reset(seed=42)
-for cell in (0, 3, 1, 4, 2):
-    game.step(Action(kind="place", parameters=(("cell", cell),)))
-
-assert game.is_terminal()
-assert game.get_rewards() == (1.0, -1.0)
-print(game.render(player_id=0))
-
-copy = game.clone()  # Preserves the terminal position and rewards.
-copy.reset(seed=42)  # The original remains finished.
-assert game.is_terminal() and not copy.is_terminal()
-```
-
-Call reset before gameplay or cloning. Both players can observe throughout play
-and after termination. `clone()` preserves the concrete type and creates an
-independent RNG; subsequent moves or resets do not affect the other instance.
-Tests cover all 5,478 distinct reachable board positions and shared conformance.
-Phases 1–4 are complete under the minimal random-baseline criterion. CUDA
-training, held-out evaluation, curves, and controls are documented in
-[Phase 4 results](PHASE4_RESULTS.md); heuristic robustness remains weak.
-
-## Observation tensor encoding
-
-```python
-from boardgame_ai.games.tic_tac_toe import TicTacToeEngine
-from boardgame_ai.models.encoders import encode_tic_tac_toe_observation
-
-game = TicTacToeEngine()
-game.reset()
-observation, _ = game.decision_for(0)
-tensor = encode_tic_tac_toe_observation(observation)
-assert tensor.shape == (6, 3, 3)
-```
-
-The pure encoder returns a fresh contiguous CPU `torch.float32` tensor with
-channels: own marks, opponent marks, empty cells, observer turn, opponent turn,
-terminal. Values are binary; the last three channels are constant planes.
-Perspective uses `observation.player_id`, even for inactive observers; coordinates
-stay row-major for both seats. Terminal views retain the board, zero both turn
-planes, and fill the terminal plane with ones. Only the player-visible observation
-is consumed, with no engine reference, rewards, or RNG access.
-
-There is no batch dimension or autograd history. Use `torch.stack` for batches and
-`.to(device)` for later device transfers. Incompatible payloads, seat/cell values,
-and phase/actor combinations raise ValueError; validation checks the schema,
-not game reachability. An exhaustive test audits all 5,478 reachable boards for
-both observers, including 958 terminal boards, and checks seat-label symmetry
-and lossless recovery of the visible board. This is representation validation;
-the trained policy's heuristic weakness remains unresolved. Search remains pending.
-
-## Action encoding and masking
-
-```python
-import torch
-from boardgame_ai.models.encoders import (
-    decode_tic_tac_toe_action,
-    encode_tic_tac_toe_action,
-    encode_tic_tac_toe_legal_actions,
-)
-from boardgame_ai.models.masking import mask_action_logits
-
-# Reuse the initialized game from the observation example.
-observation, legal = game.decision_for(0)
-mask = encode_tic_tac_toe_legal_actions(legal)
-logits = torch.zeros(9)  # Demonstration scores for the masking helper.
-masked = mask_action_logits(logits, mask)
-index = int(masked.argmax().item())
-action = decode_tic_tac_toe_action(index, legal)
-assert encode_tic_tac_toe_action(action) == index
-```
-
-Placement indices are always row-major cells 0–8, for either player's perspective.
-The legal encoder returns a fresh CPU bool mask `(9,)`, True exactly at supplied
-cells, independent of tuple ordering. Decoding returns the matching supplied
-Action; malformed actions, duplicate cells, and unavailable indices reject.
-These helpers consume supplied choices without querying a board or engine.
-
-Masking sets illegal logits to negative infinity, so softmax assigns them zero
-probability. Legal logits and gradients retain their dtype/device; inputs are
-not mutated. Logits must be finite floating-point tensors and masks bool with
-identical nonempty shapes/devices. Batches shaped `(..., action_count)` work
-without broadcasting; stack masks and move them to the logits' device explicitly.
-
-Empty legal tuples encode as all-false masks, including after termination or for
-inactive seats. Masking rejects any row without a legal action; exclude terminal
-rows before constructing policy distributions. No fallback move or action
-sampling is provided. The engine remains responsible for move validation.
-
-## Policy and value network
-
-```python
-from boardgame_ai.models import TicTacToeActorCritic
-
-# Reuse the initialized game, torch, and encoding/masking imports above.
-model = TicTacToeActorCritic()
-model.eval()
-observation, legal = game.decision_for(0)
-encoded = encode_tic_tac_toe_observation(observation)
-with torch.inference_mode():
-    logits, value = model(encoded)
-    probabilities = mask_action_logits(
-        logits, encode_tic_tac_toe_legal_actions(legal)
-    ).softmax(dim=-1)
-assert logits.shape == (9,) and value.shape == ()
-```
-
-The shared feed-forward body is 54→64→64 with tanh activations. Linear heads
-return nine raw policy logits and one unbounded scalar estimate of future return
-for the observation's player. Both heads use only the same visible features.
-An untrained model has no demonstrated playing strength.
-
-Inputs shaped `(..., 6, 3, 3)` produce logits `(..., 9)` and values `(...)`.
-Construction explicitly uses CPU float32; model and input dtype/device must match.
-Use `.to(...)` for explicit conversion and `torch.stack` for batches. Invalid or
-empty shapes, nonfinite inputs, and dtype/device mismatches raise ValueError.
-Initialization uses standard PyTorch randomness; callers may set a PyTorch seed
-before construction for repeatable parameters. Forward consumes no randomness.
-Use eval() with no_grad()/inference_mode() for inference.
-
-Terminal/inactive tensors can be evaluated, but predictions remain raw estimates.
-Never select actions with their all-false masks. The collector uses
-zero bootstrap at true termination rather than relying on the terminal prediction.
-Trajectory collection and GAE are described below. A frozen neural Agent
-wrapper is available for evaluation; search remains pending.
-
-## Trajectory collection and GAE
-
-```python
-from boardgame_ai.training import (
-    collect_tic_tac_toe_rollout,
-    generalized_advantage_estimation,
-)
-
-# Reuse the model and game above; collection resets the engine.
-rollout = collect_tic_tac_toe_rollout(
-    game, (model, model), max_steps=9,
-    engine_seed=42, sampling_seeds=(100, 101),
-)
-player = rollout.players[0]
-advantages, returns = generalized_advantage_estimation(
-    player.rewards, player.values,
-    bootstrap_value=player.bootstrap_value,
-    gamma=0.99, gae_lambda=0.95,
-)
-```
-
-Each player's trajectory holds CPU float32 observations `(T,6,3,3)`, bool legal
-masks `(T,9)`, int64 action indices/global step indices `(T,)`, and float32 old
-log probabilities, values, and rewards `(T,)`. Models may be shared between
-seats. Inference uses only filtered views and leaves weights, gradients, and
-model modes unchanged; inputs are explicitly moved to the model dtype/device.
-Sampling uses independent per-seat CPU generators, without global RNG changes.
-Fixed sampling seeds reproduce with the same weights, engine configuration,
-action ordering, code, and runtime; model initialization seeds are separate.
-
-A record's reward sums its player's incremental rewards until their next action
-or rollout end, including opponent steps. Discounting and GAE use the player's
-**decision clock**, not the global atomic-step clock. Intervening rewards are
-summed without internal discounting. Do not mix player seats or concatenate
-separate episodes when calling GAE. With delta=r+gamma*next_value-value, GAE uses
-A=delta+gamma*lambda*A_next and return=A+value. Targets are detached; coefficients
-must be in [0,1]. Empty segments are valid.
-
-True termination sets zero bootstrap for both seats without terminal inference.
-A live step-limit cutoff is truncation, not a draw, and uses each nonempty
-player segment's filtered cutoff value, even when that seat is inactive.
-Empty segments bootstrap zero. max_steps=0 is valid; every collection call
-resets, so this API does not resume an earlier segment. Rewards before a seat's
-first decision appear only in rollout.total_rewards, not policy credit.
-
-These records belong to trusted learning code, not public replays or other
-players' inputs. Errors propagate without retry. PPO updates are described below;
-self-play scheduling is available below; external baseline training is excluded
-by the self-play-only methodology.
-
-## PPO updates and checkpoints
-
-```python
-from boardgame_ai.training import (
-    PPOConfig, PPOTrainer, prepare_ppo_batch,
-    save_ppo_checkpoint, load_ppo_checkpoint,
-)
-
-# The rollout above used this same model in both seats; both segments are eligible.
-config = PPOConfig(epochs=2, minibatch_size=32)
-trainer = PPOTrainer(model, config, shuffle_seed=123)
-batch = prepare_ppo_batch(rollout.players, config)
-report = trainer.update(batch)
-save_ppo_checkpoint(trainer, "ppo.pt")  # overwrites this explicit path
-restored = load_ppo_checkpoint("ppo.pt")
-```
-
-PPO batches compute GAE within each player segment before combining decisions.
-Include only segments generated by the learner policy, not a separate opponent's
-samples. Inputs and targets are cloned/detached CPU tensors; an entirely empty
-batch rejects. The trainer supports CPU or CUDA float32 models and explicitly
-transfers batches to the model device. Collection and GAE retain CPU storage.
-
-The objective combines clipped policy loss, weighted half-MSE value loss, and a
-legal-action entropy bonus. Defaults are clip .2, value coefficient .5, entropy
-coefficient .01, Adam learning rate 3e-4, four epochs, minibatches 64, and gradient
-norm limit .5. Full-batch advantage normalization uses population standard
-deviation; singleton/constant advantages become zero. Gamma .99 and lambda .95
-keep the per-player decision clock. No value clipping is applied.
-
-A private shuffle generator makes minibatch order repeatable without global RNG
-changes. Partial minibatches are included. Reports contain losses, entropy,
-approximate KL, clip fraction, and sample/step counts; these are not playing-strength
-measurements. Invalid samples reject; errors after successful minibatches do not
-roll back those updates. Model train/eval mode stays unchanged.
-
-Version-1 checkpoints save model/config, Adam moments, update/step counters,
-model mode, and shuffle RNG state. The parent directory must exist. Saving
-validates then atomically replaces the chosen file; loading uses restricted
-weights-only loading, validates compatibility, and returns a fresh trainer on
-the requested device (CPU by default; pass device="cuda" for CUDA). Adam moments
-follow the model device; the serialized weights and optimizer tensors remain CPU.
-No engine/rollout data, sampling seeds, gradients, or global RNG state is saved.
-Restoring reproduces the next update with the same batch and runtime. It does not
-resume an interrupted minibatch, episode, or future training experiment.
-
-## Training and resume
-
-The `train` command defaults to CUDA and never silently falls back to CPU.
-Verified on 2026-10-14: Windows, Python 3.12.14, RTX 4070 Ti (12 GB), NVIDIA
-driver 610.88, and PyTorch 2.14.1+cu130. The previous 2.14.1+cpu installation
-was the cause of unavailable CUDA. To repair that installation while preserving
-the PyTorch release and other dependencies, use the project interpreter:
-
-```powershell
-.\.venv\Scripts\python.exe -m pip install --force-reinstall --no-deps "torch==2.14.1" --index-url https://download.pytorch.org/whl/cu130
-.\.venv\Scripts\python.exe -m pip check
-.\.venv\Scripts\python.exe -m boardgame_ai info
-.\.venv\Scripts\python.exe -m boardgame_ai train --device cuda --check-device
-```
-
-The CUDA wheel provides its runtime libraries; a separate CUDA Toolkit is not
-needed for this project (no custom CUDA extensions or source builds).
-`nvidia-smi` reports CUDA driver support (13.3 here), not an installed Toolkit.
-No `nvcc` or CUDA Toolkit directory was found in the checked standard locations.
-Driver 610.88 supports the CUDA 13.0 wheel; no driver change was needed. See
-[PyTorch Windows installation](https://pytorch.org/get-started/locally/) and
-[NVIDIA compatibility](https://docs.nvidia.com/deploy/cuda-compatibility/minor-version-compatibility.html).
-
-The preflight prints the selected GPU and exits without training or output files.
-If CUDA is unavailable, check that this interpreter has a CUDA PyTorch build and
-that the NVIDIA driver supports it. The installer links supported options; use
-an appropriate CUDA wheel index if your setup differs. No dependency or driver
-installation happens automatically. Development tests use a CPU wheel in CI;
-CUDA-specific tests run conditionally when a CUDA build/GPU is available.
-
-Launch the experiment yourself:
-
-```powershell
-.\.venv\Scripts\python.exe -m boardgame_ai train --device cuda --output runs/tic-tac-toe-cuda --updates 1000 --games-per-update 64 --seed 42
-```
-
-This means **1000 PPO updates**, each collecting 64 complete self-play games
-before updating. Both seats use one frozen current-policy snapshot; all recorded
-samples are on-policy. Game simulation and inference use CPU; PPO batch forward,
-backward, Adam moments, and model parameters use the selected CUDA device.
-This small game may spend substantial time in CPU collection; CUDA support does
-not imply a measured speedup. Choose `--device cuda:1` for another GPU or explicitly
-`--device cpu` for CPU runs. `train --help` lists PPO tuning flags.
-
-Each update prints progress and saves:
-
-- `training.json`: immutable seed, rollout schedule, and PPO configuration.
-- `latest.pt`: portable model/Adam/shuffle checkpoint at the last saved update.
-- `updates.jsonl`: losses/entropy/KL and **training self-play** outcomes, not
-  independent evaluation scores.
-
-New output directories must be absent or empty. Ctrl+C stops the run; resume
-from the latest saved update with the same seed, games-per-update, and PPO flags:
-
-```powershell
-.\.venv\Scripts\python.exe -m boardgame_ai train --device cuda --output runs/tic-tac-toe-cuda --updates 2000 --games-per-update 64 --seed 42 --resume
-```
-
-`--updates` is the total budget, so this continues toward 2000 total updates.
-Resume derives future game/seat seeds from absolute update/game indices. It
-repeats an interrupted unsaved update and preserves optimizer/shuffle state.
-Changing seed, rollout size, or PPO configuration rejects. Device changes are
-allowed but numerical identity across devices/versions is not promised. A crash
-after saving but before logging can leave a missing log row; `latest.pt` is the
-authoritative progress marker. No mid-minibatch/episode resume is attempted.
-
-The completed 1,000-update run is documented in [Phase 4 results](PHASE4_RESULTS.md).
-The runner always retains latest.pt for resume. Optional monitoring saves periodic
-immutable snapshots and isolated development evaluations; its selected checkpoint
-is separate from the resume marker. Repeated CPU/CUDA measurements and their
-limitations are in [Phase 4.5 results](PHASE45_RESULTS.md).
-
-## Optional checkpoint monitoring
-
-For a new run, add these flags to the training command (repeat them on resume):
-
-```powershell
-.\.venv\Scripts\python.exe -m boardgame_ai train --device cpu --output runs/monitored --updates 200 --seed 42 --monitor-interval 50 --monitor-retain 3 --monitor-games-per-seat 128 --monitor-self-play-games 64 --monitor-seed 20261022
-```
-
-Defaults leave monitoring disabled. `monitoring.json` fixes its configuration;
-resume rejects changes. Reports `development-NNNNNNNN.json` contain checkpoint
-hashes/counters, four sampled fixed-opponent cases, both-seat tactics, entropy,
-coverage and action diversity. `snapshots/` retains the newest three immutable
-checkpoints plus an older best if needed. `best.json` points to the development
-choice: equal-case mean score over random/heuristic × X/O, earliest tie wins.
-`latest.pt` remains the resume marker. Missing current-boundary evaluation retries
-on resume; failed evaluation does not undo an already-saved update. Checkpoints
-publish complete bytes atomically; corrupt existing files reject. Snapshot storage
-requires hard-link support in the run directory. Old unmonitored runs still resume
-with monitoring disabled. Missing log history yields an unknown cumulative sample
-count. Evaluation uses independent copies/RNG and never supplies training samples.
-
-## Phase 4.5 bounded benchmark and comparison
-
-The [protocol](PHASE45_PROTOCOL.md) fixes budgets before execution. The comparison
-runs six fresh CPU self-play runs: seeds 42/43/44, entropy .01 versus .05, 200
-updates × 64 games each, monitoring every 50 updates. All development choices are
-frozen before 512-game-per-case final evaluations with reserved seed 20261029.
-
-```powershell
-$env:OMP_NUM_THREADS='1'
-.\.venv\Scripts\python.exe -m boardgame_ai.training.experiments --output runs/phase45/entropy-comparison
-```
-
-Output must be absent; use `--resume` with the identical protocol for an interrupted
-comparison. Raw reports and immutable selection manifests remain in that folder.
-These final-test seeds are consumed by this investigation; reserve fresh seeds
-for subsequent tuning or final claims.
-
-The benchmark takes an explicit saved pre-change PPO source file. To reproduce
-this comparison from the repository history, create a new output directory name:
-
-```powershell
-git show fe66184e5f43269c41e1c79842ec54ee4c4ec273:src/boardgame_ai/training/ppo.py | Set-Content runs/phase45-reference-ppo.py
-.\.venv\Scripts\python.exe -m boardgame_ai.training.benchmark --reference-ppo runs/phase45-reference-ppo.py --output runs/phase45-benchmark-rerun
-```
-
-The command executes that explicitly supplied local reference source. It compares
-three repetitions per device with two warm-up and five measured updates, one CPU
-thread and synchronized CUDA stage boundaries. It checks exact same-device
-parameter/Adam/shuffle equivalence and reports each timing/count, plus a separate
-fixed-corpus batched-inference probe. The production collector stays sequential.
-A faster forward pass does not establish a collection or overall training speedup.
-
-## Fixed-opponent evaluation
-
-After training finishes, evaluate its frozen checkpoint on CPU:
-
-```powershell
-.\.venv\Scripts\python.exe -m boardgame_ai evaluate runs/tic-tac-toe-cuda/latest.pt --output runs/tic-tac-toe-evaluation-update1000-sampled.json --games-per-seat 1000 --seed 20261015 --mode sampled
-```
-
-This evaluates 4,000 games: 1,000 each against random and heuristic as X and O.
-The original checkpoint/training files are never written. One byte snapshot is
-hashed and loaded on CPU, then the existing engine/runner/outcome adapter plays
-fixed matches. No optimizer step, CUDA computation, or search occurs. The report
-identifies checkpoint hash/update count and includes scores, lengths, outcomes,
-seeds, and fixed error categories. Its parent directory must already exist; the
-explicit output JSON is overwritten. CLI guards prevent overwriting known
-training artifacts or the source checkpoint.
-
-Sampled play is the default, matching training's masked action distribution;
-`--mode greedy` selects maximum logits with lowest-cell ties and is a separate
-protocol. A deterministic greedy policy versus the deterministic heuristic
-repeats the same game per seat; seed count does not make those independent games.
-The held-out seed defaults to 20261015 with an independent evaluation namespace;
-`--start-index` supports deterministic shards. Seeds reserve RNG streams, not
-necessarily unseen board positions. Repeat comparison protocols consistently,
-and reserve fresh final-test seeds if these results guide further tuning.
-
-`TicTacToePolicyAgent` lives in `boardgame_ai.agents.policy_agent`; it implements
-existing select_action/reset interfaces using only detached player observations
-and supplied choices. It owns a frozen CPU float32 model copy and private sampling
-RNG. Baseline engine/Agent interfaces and training logic remain unchanged.
-
-The completed checkpoint's measured [results](POLICY_EVALUATION.md) show 77.0%
-X and 48.4% O wins against random, but essentially all losses against the heuristic.
-There were no errors/truncations in 4,000 games. This exposes weakness hidden by
-self-play outcomes; no claim of robust or optimal play is made. Matched controls are described below.
-
-## Frozen policy tactical and learning-signal audit
-
-With training stopped, run the bounded CPU diagnostic:
-
-```powershell
-$env:OMP_NUM_THREADS='1'
-.\.venv\Scripts\python.exe -m boardgame_ai.policy_audit runs/tic-tac-toe-cuda/latest.pt --output runs/phase45-task1.json --games 1024 --update-games 64 --seed 20261016
-```
-
-The output must be new, its parent must exist, and it must be outside the source
-checkpoint directory. The report includes all 4,520 reachable live X-first public
-boards, nine-action probabilities, X/O tactical counts, 1,024 sampled frozen-policy
-self-play games, first-observed outcome traces, and independently checked rewards,
-GAE, targets and PPO calculations. No O win occurred in the recorded sample;
-winning X and losing O trajectories are traced. Only the first 64 unselected
-self-play games enter a bounded update on disposable copies retaining saved Adam
-and shuffle state. Updated weights are never saved. Source checkpoint/config/log
-hashes are verified unchanged. No tactical labels enter PPO or model features.
-
-[Findings and protocol](POLICY_DIAGNOSIS.md): mean immediate-win mass is about 53%
-across the board census; required-block mass is 32–36%. Self-play visits only 29
-distinct acting-seat boards. No checked signal defect was demonstrated. Passing
-these diagnostics does not fix strength or establish the cause of specialization.
-
-## Training curves and baseline controls
-
-```powershell
-.\.venv\Scripts\python.exe -m pip install -e ".[analysis]"
-.\.venv\Scripts\python.exe -m boardgame_ai analyze runs/tic-tac-toe-cuda/latest.pt --output runs/phase4-analysis-rerun --games-per-seat 1000 --seed 20261015
-```
-
-The optional Matplotlib extra renders headless PNG/SVG charts. Analysis reads
-updates.jsonl beside the checkpoint (override with --training-log), freezes the
-sampled policy, then replaces the learner with random and heuristic controls
-using identical case/opponent/engine seeds. There are 12 cases total (12,000 games
-at the default count). No training or checkpoint modification occurs. Output must
-be a separate absent/empty directory; reports include input hashes, raw match data,
-normal approximate paired intervals, and a checkpoint-level assessment.
-
-Raw diagnostics and labeled 25-update trailing averages show loss, entropy, KL,
-clipping, self-play outcome rates, and game length. Missing rows are not interpolated;
-smoothing restarts after gaps. These curves are not held-out strength over time.
-Mean outcome score bars show the policy and controls by opponent/seat.
-
-The [measured result](PHASE4_RESULTS.md) supports the minimal Phase 4 criterion:
-+0.3160 balanced score improvement over a random control versus random opponents,
-approximate 95% interval [+0.2644,+0.3676]. The policy still loses nearly every
-heuristic matchup and is worse there than the random control. This is evidence
-for one checkpoint, not robustness or training-seed generalization. Tracked charts
-are in docs/phase4; generated reports/checkpoints remain ignored under runs.
-
-## Random baseline
-
-`RandomAgent` selects uniformly from the supplied legal-action tuple, ignoring
-the observation payload. Its private RNG is separate from engine and global RNGs.
-Use one agent per seat and reset each before every game:
-
-```python
-from boardgame_ai.agents import RandomAgent
-from boardgame_ai.games.tic_tac_toe import TicTacToeEngine, TicTacToeObservation
-
-game = TicTacToeEngine()
-game.reset(seed=42)
-agents = (RandomAgent[TicTacToeObservation](), RandomAgent[TicTacToeObservation]())
-for seat, agent in enumerate(agents):
-    agent.reset(seed=100 + seat)
-
-while not game.is_terminal():
-    player = game.current_player()
-    assert player is not None
-    observation, legal = game.decision_for(player)
-    game.step(agents[player].select_action(observation, legal))
-print(game.render(player_id=0))
-```
-
-An integer seed restarts the agent sequence; None uses fresh system entropy.
-Reproduction requires the same seeds, ordered legal choices, selection calls,
-and Python version. Empty choices raise ValueError; invalid seeds reject without
-replacing the current generator. The reusable runner below handles this lifecycle.
-
-## Tic-Tac-Toe heuristic baseline
-
-`TicTacToeHeuristicAgent` implements `Agent[TicTacToeObservation]` and uses only
-the public board and supplied legal placements. It takes an immediate win,
-otherwise blocks an immediate loss, then prefers center, corners, and edges.
-Tactical ties use the lowest cell index; positional ties use row-major order.
-It is a simple tactical policy without fork handling or an optimal-play guarantee.
-
-```python
-from boardgame_ai.agents import TicTacToeHeuristicAgent
-
-# In the complete-game example above, use the heuristic for X:
-agents = (TicTacToeHeuristicAgent(), RandomAgent[TicTacToeObservation]())
-```
-
-Use the same `decision_for`/`select_action`/`step` flow and reset each agent before
-play. The heuristic has no RNG or memory; its inherited reset is a no-op and
-choices do not depend on seeds. It returns a supplied action and raises ValueError
-for empty or incompatible decision inputs. The engine still validates moves.
-
-## Single-game simulation
-
-`run_match` resets the engine and each agent, then plays one bounded game:
-
-```python
-from boardgame_ai.agents import RandomAgent, TicTacToeHeuristicAgent
-from boardgame_ai.games.tic_tac_toe import TicTacToeEngine, TicTacToeObservation
-from boardgame_ai.simulation import run_match
-
-game = TicTacToeEngine()
-result = run_match(
-    game,
-    (TicTacToeHeuristicAgent(), RandomAgent[TicTacToeObservation]()),
-    engine_seed=42,
-    agent_seeds=(100, 101),
-    max_steps=9,
-)
-assert result.terminated and not result.truncated
-print(result.num_steps, result.total_rewards)
-print(game.render(player_id=0))
-```
-
-Provide a distinct agent instance for every seat. Agent seeds are per-seat and
-separate from the engine seed; omitted seeds use None. Configuration and seed
-values are validated before resets. Custom reset failures are not transactional.
-The runner follows engine actors, including repeated actors, and passes only
-detached player inputs. Agent and engine exceptions propagate without retries.
-
-`play_game(game, agents, max_steps=...)` uses the same loop without resetting;
-initialize engine and agents first, or use it to resume a truncated match.
-The required nonnegative step budget counts atomic decisions. Reaching it while
-the engine is live returns `truncated=True`, leaving the position resumable.
-Termination on the last allowed step is a completed game; zero permits no steps.
-
-`MatchResult` contains executed `num_steps`, summed incremental `total_rewards`,
-`terminated`, and `truncated`. Totals include only steps executed by that call,
-not earlier moves or rewards at reset. They are not game scores or winner labels;
-truncation is not a draw. Results belong to trusted orchestration and contain no
-observations or events. Outcome evaluation and opt-in replays are described below.
-
-## Reproducible match batches
-
-```python
-from boardgame_ai.agents import RandomAgent, TicTacToeHeuristicAgent
-from boardgame_ai.games.tic_tac_toe import TicTacToeEngine, TicTacToeObservation
-from boardgame_ai.simulation import run_batch, run_match
-
-game = TicTacToeEngine()
-agents = (TicTacToeHeuristicAgent(), RandomAgent[TicTacToeObservation]())
-batch = run_batch(game, agents, num_matches=1000, seed=20261014, max_steps=9)
-assert all(entry.result.terminated for entry in batch)
-
-entry = batch[10]
-assert run_match(
-    game, agents, max_steps=9,
-    engine_seed=entry.engine_seed, agent_seeds=entry.agent_seeds,
-) == entry.result
-
-subset = run_batch(
-    game, agents, num_matches=10, start_index=100, seed=20261014, max_steps=9,
-)
-assert subset == batch[100:110]
-```
-
-Batches run sequentially with fixed seats. An integer batch seed determines
-separate engine and per-seat agent seeds for every absolute match index using
-the versioned SHA-256 schedule documented in ARCHITECTURE.md. Game length does
-not affect later seeds. Reproduction also requires matching configuration, code,
-runtime, action ordering, and engines/agents that fully reset and honor seeds.
-
-Each immutable SeededMatchResult includes match_index, engine_seed, agent_seeds,
-and the existing MatchResult. Seeds are trusted metadata and can reconstruct
-hidden setup; keep them out of player-facing output. No observations or events
-are retained. Zero matches performs no resets. Truncated matches are returned
-as truncated, then the next match resets; exceptions stop the batch immediately
-without returning a partial tuple. Use evaluate_batch below for metrics and error records.
-
-Run the repeatable baseline batch verification (6,000 total executions):
-
-```powershell
-.\.venv\Scripts\python.exe scripts/verify_batches.py
-```
-
-## Outcome evaluation and metric records
-
-```python
-from pathlib import Path
-from boardgame_ai.games.tic_tac_toe.evaluation import tic_tac_toe_outcome
-from boardgame_ai.simulation import evaluate_batch, save_evaluation
-
-# Reuse game and agents from the batch example above.
-report = evaluate_batch(
-    game, agents, outcome_for=tic_tac_toe_outcome,
-    agent_labels=("heuristic", "random"), num_matches=1000,
-    seed=20261014, max_steps=9,
-)
-print(report.summary)
-Path("runs").mkdir(exist_ok=True)
-save_evaluation(report, "runs/evaluation.json")
-```
-
-An outcome adapter defines terminal scores, winner seats, and draws for each game;
-generic rewards are not scores or inferred outcomes. Tic-Tac-Toe uses +1/-1/0
-result scores and reads its terminal public board. Reports include per-match
-seeds, reward totals, game scores, outcomes, lengths, and fixed error categories.
-Completed/classified games alone contribute to wins, draws, scores, and length
-averages; empty denominators produce None. Truncations and errors count separately.
-
-Unlike run_batch, evaluate_batch records ordinary failures and resets for the next
-match. Reset/play errors have unknown length/rewards; outcome adapter errors retain
-the runner result but are excluded from outcome aggregates. Interrupts propagate.
-No exception text or private views/events are recorded. Agent labels and seeds
-are trusted metadata, so summary JSON belongs in a trusted evaluation destination.
-save_evaluation overwrites its chosen file and requires an existing parent folder.
-It saves metrics, not a move replay.
-
-Run the benchmark and save three reproducible metric reports:
-
-```powershell
-.\.venv\Scripts\python.exe scripts/benchmark_baselines.py
-```
-
-See [baseline measurements](BASELINE_BENCHMARKS.md) for 1,000 games per fixed-seat
-matchup, scoring, lengths, and limitations.
+[The CI workflow](.github/workflows/ci.yml) runs lint, formatting, strict typing,
+tests, dependency checks, and CLI smoke checks on Python 3.12 for Windows and
+Linux with CPU PyTorch. It runs on pushes, pull requests, and manual dispatch.
+[GitHub Actions](https://github.com/Dzudd/boardgame-ai/actions) holds hosted results;
+local validation does not imply a hosted run passed.
 
 ## Human-versus-agent play
 
@@ -748,29 +119,256 @@ matchup, scoring, lengths, and limitations.
 .\.venv\Scripts\python.exe -m boardgame_ai play --help
 ```
 
-Select the game with `--game tic-tac-toe` (the current default and only supported
-game). Choose the starter with `--starts human` (default) or `--starts ai`.
-The starter is X and the other player O; your mark is printed in the opening
-message. Separate `--human` and X/O starter options have been removed.
-`--opponent` accepts `random` or `heuristic`.
-`--agent-seed` controls the random opponent independently of `--engine-seed`;
-the heuristic is deterministic, and Tic-Tac-Toe setup does not depend on seed.
-Random play reproduces with the same seed, human actions, code, and runtime.
+Tic-Tac-Toe is the default game. `--starts human` is the default; `--starts ai`
+assigns the first seat to the opponent. Tic-Tac-Toe's starter is X. Opponents are
+`random` or `heuristic`; the heuristic is deterministic, takes immediate wins,
+blocks immediate threats, then prefers center/corners/edges. It is not unbeatable
+and does not handle every fork. `--agent-seed` controls random play independently
+of `--engine-seed`; Tic-Tac-Toe setup itself does not depend on the seed.
 
-Every prompt shows the public board beside a board of available cell numbers;
-occupied cells are replaced by dashes in the number board. The final display
-uses the same layout. Enter row-major
-indices 0–8: top-left is 0, center is 4, bottom-right is 8. Invalid text or occupied
-cells prompt again without advancing the game. AI moves use the same engine
-validation path as human moves. The final board shows a win, loss, or draw.
+Enter row-major cells 0–8. The board appears beside available cell numbers;
+occupied cells show dashes. Invalid text/occupied cells retry without advancing
+play. The final board shows win/loss/draw. Enter `q`, `quit`, or `exit`, send EOF,
+or press Ctrl+C to stop without declaring an outcome. Replay saving is opt-in.
 
-Enter `q`, `quit`, or `exit`, send EOF, or press Ctrl+C to stop cleanly without
-declaring an outcome. A game is saved only when --save-replay is supplied.
+### Tic-Tac-Toe
 
-Draws are plausible when you avoid tactical mistakes against the heuristic:
-it takes wins and blocks immediate threats. It is deterministic, so repeating
-your moves reproduces the game. It is not unbeatable and does not defend all
-forks. Try the random opponent for more varied and easier games.
+The programmatic engine also supports O-first play, independent cloning, public
+observations, and terminal rewards +1/−1/0. See the
+[development examples](docs/DEVELOPMENT.md#engine-lifecycle) and
+[implemented contract](ARCHITECTURE.md#tic-tac-toe-and-baseline-agents).
+
+## Connect Four
+
+```powershell
+.\.venv\Scripts\python.exe -m boardgame_ai play --game connect-four
+.\.venv\Scripts\python.exe -m boardgame_ai play --game connect-four --starts ai --agent-seed 42
+```
+
+The CLI shows a 7-column, 6-row board with aligned column labels 1–7. Enter a
+column to drop a disc; full columns and invalid input retry. X starts; four in a
+horizontal, vertical, or diagonal line wins; a full board without a winner draws.
+Quit, EOF, and Ctrl+C cancel. The opponent is random only.
+
+`ConnectFourEngine` and `ConnectFourObservation` support the shared `run_match`
+interface with `max_steps=42`; `connect_four_outcome` adapts results. Engine/model
+columns are zero-based 0–6; human input is 1–7. Training, learned opponents, search,
+and replay export are not implemented. See [architecture](ARCHITECTURE.md#connect-four).
+
+## Guildworks
+
+Four rounds, two workers per player per round. Place on a free public space for
+ink, cards, points, or a resolved ink roll, then craft one affordable hidden card
+or pass. Scores determine the winner after 32 decisions. Hands/deck remain private;
+resources, scores, discard, and counts are public. Full
+[rules](ARCHITECTURE.md#guildworks-rules-and-transitions) and
+[visibility requirements](INFORMATION_BOUNDARIES.md#guildworks-player-views-and-history)
+define chance, rewards, and history.
+
+```powershell
+.\.venv\Scripts\python.exe -m boardgame_ai play --game guildworks
+.\.venv\Scripts\python.exe -m boardgame_ai play --game guildworks --starts ai --engine-seed 42 --agent-seed 100
+```
+
+Select a numbered action at each placement and craft/pass prompt. The display
+shows your hand and public information; opponent messages show public actions
+only. `--starts` assigns the first seat, then the round starter alternates.
+Random is the only human CLI opponent. Invalid input retries; quit/EOF/Ctrl+C
+cancels. Final scores and win/loss/tie appear after completion. Replay saving is
+rejected; hidden-information search is future work. Keep reconstructive engine
+seeds in trusted outputs. [Programmatic examples](docs/DEVELOPMENT.md#guildworks-matches)
+cover random/scripted and recurrent-policy agent use.
+
+Recurrent training has a separate command and checkpoint format:
+
+```powershell
+.\.venv\Scripts\python.exe -m boardgame_ai.training.guildworks_run runs/new-guildworks --device cpu --threads 1 --updates 16 --games-per-update 16
+# Resume to a larger total budget with the same seed and schedule:
+.\.venv\Scripts\python.exe -m boardgame_ai.training.guildworks_run runs/new-guildworks --device cpu --threads 1 --updates 32 --games-per-update 16 --resume
+```
+
+Default seed is 20261016. Each update collects complete latest-policy self-play
+games and optimizes full recurrent seat episodes. Default PPO uses eight episodes
+per minibatch, two epochs, and gamma=1. `--device cuda` selects CUDA optimization;
+acting stays on CPU. New output must be absent/empty. The run saves `training.json`,
+`latest.pt`, and `updates.jsonl`, then initial/final random-opponent evaluation to
+`evaluation.json` (default 128 games/seat, seed 20261030). CLI flags configure
+budgets/seeds/device; programmatic `RecurrentRunConfig` also accepts `PPOConfig`.
+Resume restores model, Adam, and shuffle state at an update boundary. See
+[recurrent contracts](ARCHITECTURE.md#guildworks-recurrent-learning) and
+[functional results and limitations](PHASE5_RESULTS.md).
+
+## Training and resume
+
+The Tic-Tac-Toe `train` command defaults to CUDA and fails if unavailable; request
+`--device cpu` explicitly for CPU. Preflight selects the device and exits without
+training or output files:
+
+```powershell
+.\.venv\Scripts\python.exe -m boardgame_ai train --device cuda --check-device
+.\.venv\Scripts\python.exe -m boardgame_ai train --device cpu --output runs/tic-tac-toe-ppo --updates 1000 --games-per-update 64 --seed 42
+```
+
+For CUDA, replace `--device cpu` with `--device cuda` or `cuda:1`. If unavailable,
+check that this interpreter has a compatible CUDA PyTorch build and driver.
+No driver/dependency installation happens automatically. Tests use CPU in CI;
+CUDA tests run conditionally. Local machine troubleshooting is separate from
+portable setup; historical hardware measurements remain in results documents.
+
+Each PPO update collects 64 complete self-play games using frozen current weights
+in both seats, then optimizes all on-policy decisions. Simulation and inference
+stay on CPU; optimization uses the selected device. CUDA support does not imply
+speedup for this small model. `train --help` lists PPO settings.
+
+Each update prints progress and saves:
+
+- `training.json`: immutable seed, rollout schedule, and PPO configuration.
+- `latest.pt`: portable model/Adam/shuffle checkpoint, authoritative for resume.
+- `updates.jsonl`: losses/entropy/KL and training self-play outcomes, not independent strength scores.
+
+New output must be absent/empty. Ctrl+C stops a run. Resume with the same seed,
+games-per-update, and PPO settings:
+
+```powershell
+.\.venv\Scripts\python.exe -m boardgame_ai train --device cpu --output runs/tic-tac-toe-ppo --updates 2000 --games-per-update 64 --seed 42 --resume
+```
+
+`--updates` is the total budget; this continues toward 2000. Resume derives seeds
+from absolute indices and repeats an interrupted unsaved update. A crash between
+checkpoint saving and logging can leave a missing row. Changing seed, collection
+size, or PPO configuration rejects. Device changes are allowed without numerical
+identity across devices/versions. There is no mid-episode/minibatch resume.
+[Architecture](ARCHITECTURE.md#seeds-checkpoints-and-resume) defines the contract;
+[Phase 4 results](PHASE4_RESULTS.md) records the original CUDA experiment.
+
+## Optional checkpoint monitoring
+
+For a new run, add monitoring flags and repeat them on resume:
+
+```powershell
+.\.venv\Scripts\python.exe -m boardgame_ai train --device cpu --output runs/monitored --updates 200 --seed 42 --monitor-interval 50 --monitor-retain 3 --monitor-games-per-seat 128 --monitor-self-play-games 64 --monitor-seed 20261022
+```
+
+Monitoring is disabled by default. `monitoring.json` fixes its configuration;
+resume rejects changes. `development-NNNNNNNN.json` reports hashes/counters,
+fixed opponents, both-seat tactics, entropy, coverage, and action diversity.
+`snapshots/` retains the newest three checkpoints plus an older best if needed.
+`best.json` selects equal-case mean random/heuristic × X/O score, earliest tie
+wins; `latest.pt` remains the resume marker.
+
+Missing current-boundary evaluation retries on resume; failure does not undo a
+saved update. Corrupt files reject. Snapshot storage requires hard-link support.
+Old unmonitored runs resume with monitoring disabled. Missing log history leaves
+cumulative samples unknown. Evaluation copies/RNG are isolated from training.
+See [monitoring contracts](ARCHITECTURE.md#development-monitoring-and-performance).
+
+## Fixed-opponent evaluation
+
+After training, evaluate a frozen checkpoint on CPU:
+
+```powershell
+.\.venv\Scripts\python.exe -m boardgame_ai evaluate runs/tic-tac-toe-ppo/latest.pt --output runs/tic-tac-toe-evaluation.json --games-per-seat 1000 --seed 20261015 --mode sampled
+```
+
+This plays 1,000 games per random/heuristic × X/O case (4,000 total), hashes/loads
+one checkpoint snapshot, and reports outcomes, lengths, seeds, counters, and error
+categories. No training or search occurs; source files remain untouched. The
+output parent must exist; an explicit report is overwritten, with guards against
+known training artifacts and the checkpoint.
+
+`sampled` matches the masked training distribution; `greedy` selects maximum
+logits with lowest-cell ties. A greedy policy versus a deterministic heuristic
+repeats the same game per seat; more seeds do not make independent games.
+`--start-index` supports deterministic shards. Match protocols consistently and
+reserve fresh final seeds if results guide tuning; seeds need not imply unseen
+boards. [Policy evaluation](POLICY_EVALUATION.md) owns recorded results and limits.
+
+## Frozen policy tactical and learning-signal audit
+
+With training stopped, run the bounded CPU diagnostic:
+
+```powershell
+$env:OMP_NUM_THREADS='1'
+.\.venv\Scripts\python.exe -m boardgame_ai.policy_audit runs/tic-tac-toe-cuda/latest.pt --output runs/phase45-task1.json --games 1024 --update-games 64 --seed 20261016
+```
+
+The report must be new, its parent must exist, and it must be outside the source
+checkpoint directory. This audits public boards, per-seat self-play signals, and
+a bounded PPO update on disposable copies. Updated weights are never saved;
+source hashes are checked unchanged. No tactical labels enter learning.
+[Policy diagnosis](POLICY_DIAGNOSIS.md) defines the census, sampling/update budget,
+measured signals, and limits. The historical command uses its recorded checkpoint.
+
+## Training curves and baseline controls
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install -e ".[analysis]"
+.\.venv\Scripts\python.exe -m boardgame_ai analyze runs/tic-tac-toe-cuda/latest.pt --output runs/phase4-analysis-rerun --games-per-seat 1000 --seed 20261015
+```
+
+The optional Matplotlib extra renders headless PNG/SVG charts. Analysis reads
+`updates.jsonl` beside the checkpoint (`--training-log` overrides), then compares
+the frozen sampled policy with matched random/heuristic controls: 12 cases,
+12,000 games by default. Output must be separate and absent/empty. Reports contain
+hashes, raw data, paired intervals, and a checkpoint-level assessment. No training
+or checkpoint modification occurs. Curves describe training, not held-out strength
+over time; smoothing does not fill missing rows. See [Phase 4 results](PHASE4_RESULTS.md)
+for measurements, plotted conventions, tracked charts, and limitations.
+
+## Phase 4.5 bounded benchmark and comparison
+
+The [declared protocol](PHASE45_PROTOCOL.md) fixes budgets and selection before
+execution; [results](PHASE45_RESULTS.md) owns measurements and consumed seeds.
+
+```powershell
+$env:OMP_NUM_THREADS='1'
+.\.venv\Scripts\python.exe -m boardgame_ai.training.experiments --output runs/phase45/entropy-comparison
+```
+
+Output must be absent; use `--resume` with the identical protocol if interrupted.
+Raw reports and immutable selection manifests remain there. Reserve fresh final
+seeds for subsequent tuning claims.
+
+The benchmark executes an explicitly supplied saved reference PPO source. To
+reproduce the historical comparison, ensure `runs/` exists and use new outputs:
+
+```powershell
+New-Item -ItemType Directory -Force runs | Out-Null
+git show fe66184e5f43269c41e1c79842ec54ee4c4ec273:src/boardgame_ai/training/ppo.py | Set-Content runs/phase45-reference-ppo.py
+.\.venv\Scripts\python.exe -m boardgame_ai.training.benchmark --reference-ppo runs/phase45-reference-ppo.py --output runs/phase45-benchmark-rerun
+```
+
+It compares repeated CPU/CUDA timings, checks same-device parameter/Adam/shuffle
+equivalence, and runs a separate fixed-corpus batched-inference probe. Production
+collection stays sequential; faster forward passes alone do not show end-to-end
+speedup. The protocol and results retain warm-up, budget, and timing details.
+
+## Baseline verification and benchmarks
+
+```powershell
+.\.venv\Scripts\python.exe scripts/verify_batches.py
+.\.venv\Scripts\python.exe scripts/benchmark_baselines.py
+```
+
+The first verifies reproducible batches (6,000 executions); the second writes
+three fixed-seat metric reports. [Baseline benchmarks](BASELINE_BENCHMARKS.md)
+defines scoring, counts, lengths, and limitations. [Development examples](docs/DEVELOPMENT.md#baseline-agents-and-simulation)
+show single games, deterministic batch subsets, and outcome adapters.
+
+## Public search evaluation
+
+Frozen CPU public-search evaluation is separate from training:
+
+```powershell
+.\.venv\Scripts\python.exe -m boardgame_ai.search.evaluation runs/monitored-seed45/latest.pt runs/new-search-evaluation
+```
+
+Output must not exist. The fixed [Phase 7 protocol](PHASE7_PROTOCOL.md) evaluates
+3,072 games total and 4,520 public boards per condition. Checkpoint/configuration/log
+files are preserved; evaluation never trains. [Results](PHASE7_RESULTS.md) record
+measured gains and persistent heuristic-O failure. Only public Tic-Tac-Toe search
+is supported; hidden/chance/same-player simulation and search-target learning
+remain future work.
 
 ## Save and inspect replays
 
@@ -779,29 +377,14 @@ forks. Try the random opponent for more varied and easier games.
 .\.venv\Scripts\boardgame-ai.exe replay game.json
 ```
 
-Saving writes a version-1 public Tic-Tac-Toe JSON log to the chosen file,
-overwriting it; its parent folder must exist. It records the starting seat,
-successful placements with actor/cell, and completed/cancelled/truncated status.
-Cancellation saves the played prefix, including an empty game. Rejected input
-and unexecuted moves are not recorded. Engine/agent failures propagate and do
-not produce a misleading completed log.
+Saving overwrites the selected file; its parent must exist. Version-1 public
+Tic-Tac-Toe logs record starting seat, executed actor/cell placements, and
+completed/cancelled/truncated status. Cancelled prefixes, including empty games,
+are valid; rejected input is not saved. Engine/agent failures propagate.
 
-Inspection validates the entire log before displaying anything, then rebuilds
-the initial board and each placement through a fresh engine and prints the
-ending status/outcome. It does not run agents, resume the original game, or trust
-saved board snapshots. Unknown schemas/games, invalid actors/cells, post-terminal
-moves, and inconsistent status are rejected.
-
-For automated matches, pass `TicTacToeRecorder().record` as the optional on_step
-callback to run_match or play_game, then use recorder.finish(starting_player,
-status) and save_replay. These helpers live in
-`boardgame_ai.games.tic_tac_toe.replay`. A recorder is for one game; create a new
-one for each reset. No recording happens by default.
-
-This format contains only public Tic-Tac-Toe placements/configuration, no seeds,
-observations, private events, rewards, or authoritative snapshots. Future hidden
-games require their own filtered replay adapter; generic on_step is a trusted
-hook and does not automatically make game-specific actions public.
-
-See [the roadmap](BOARDGAME_AI_PROJECT_PLAN.md), [architecture decisions](ARCHITECTURE.md),
-and [current progress](PROGRESS.md).
+Inspection validates the complete log, rebuilds through a fresh engine, and
+prints public boards and outcome. It does not resume the original game or trust
+saved snapshots. Unknown schemas/games, invalid actors/cells, post-terminal moves,
+and inconsistent status reject. No seeds, private events, or authoritative state
+are exported. [Programmatic recording](docs/DEVELOPMENT.md#recording-automated-tic-tac-toe-matches)
+uses the same public adapter; other games require separate replay support.

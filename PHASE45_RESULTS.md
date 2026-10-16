@@ -1,8 +1,11 @@
 # Phase 4.5 investigation results
 
+This report records monitoring validation, throughput measurements, the controlled
+self-play comparison and the resulting bounded-scope decision.
+
 Protocol: [predeclared budgets and criteria](PHASE45_PROTOCOL.md).
 Diagnosis: [Task 1](POLICY_DIAGNOSIS.md). Search milestone:
-[Task 5 design](SEARCH_LEARNING_DESIGN.md). All changes remain uncommitted.
+[Task 5 design](SEARCH_LEARNING_DESIGN.md).
 
 ## Monitoring and isolation
 
@@ -187,11 +190,11 @@ These differences reinforce the need to report seats and opponents separately.
 Raw evidence: `runs/phase45/entropy-comparison/experiment.json`, all training
 manifests/logs, 24 development reports, `selections.json`, six final reports and
 `results.json`. The original update-1000 checkpoint, configuration and log retain
-exactly the three SHA-256 identities in POLICY_DIAGNOSIS.md. The original run
-was never resumed or overwritten. Final seed 20261029 is now consumed; reserve
+exactly the three SHA-256 identities in [POLICY_DIAGNOSIS.md](POLICY_DIAGNOSIS.md).
+The original run was never resumed or overwritten. Final seed 20261029 is now consumed; reserve
 new final seeds for future tuning or milestone assessment.
 
-## Decision and next milestone — Task 6
+## Recorded decision — Task 6
 
 **Retain default PPO as a reference and prioritize bounded public-observation
 search evaluation before adding harder games.** The controlled entropy change
@@ -199,12 +202,12 @@ did not establish robust improvement at its declared budget. This is a reason
 to stop extending this particular tuning loop, not evidence that PPO is incapable
 or that search already improves play. Preserve all runs, including regressions.
 
-Next small task: implement and exhaustively test the public Tic-Tac-Toe simulator
-adapter, then bounded policy/value-guided search evaluation at 16/32 simulations
-using the Task 5 design. Measure both seats, tactics, evaluator calls and latency
+The follow-on Phase 7 public simulator and bounded 16/32 search evaluation are
+now implemented and measured in [Phase 7 results](PHASE7_RESULTS.md), using the
+Task 5 design, reporting both seats, tactics, evaluator calls and latency
 against raw-policy play. Search-target replay learning and learned MuZero dynamics
-remain later steps; no search code, external training opponents, teacher labels,
-reward bonuses or opponent pool were added here.
+remain later steps; Phase 4.5 itself added no search code, external training
+opponents, teacher labels, reward bonuses or opponent pool.
 
 Phase 4.5 Tasks 1–6 are complete at the stated bounded scope. The numerical
 learning checks establish tested signal/update consistency; monitoring makes
@@ -212,3 +215,6 @@ future changes inspectable; repeated timing supports limited same-device
 optimization evidence. None of this fixes the frozen policy or establishes
 optimal/robust play. Hidden-information generalization and stronger learning
 remain unresolved research work.
+
+The current milestone and phase statuses are maintained in [PROGRESS.md](PROGRESS.md)
+and the [project plan](BOARDGAME_AI_PROJECT_PLAN.md).

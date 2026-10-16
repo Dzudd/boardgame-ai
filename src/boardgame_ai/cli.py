@@ -13,21 +13,29 @@ def main(argv: Sequence[str] | None = None) -> None:
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser("info", help="Report Python, NumPy, and PyTorch availability")
     play = commands.add_parser("play", help="Play a supported game against an agent")
-    play.add_argument("--game", choices=("tic-tac-toe",), default="tic-tac-toe")
     play.add_argument(
-        "--opponent", choices=("random", "heuristic"), default="heuristic"
+        "--game",
+        choices=("tic-tac-toe", "guildworks", "connect-four"),
+        default="tic-tac-toe",
+    )
+    play.add_argument(
+        "--opponent",
+        choices=("random", "heuristic"),
+        help="Default: heuristic for Tic-Tac-Toe, random for other games",
     )
     play.add_argument(
         "--starts",
         choices=("human", "ai"),
         default="human",
-        help="Who plays first; the starter is X (default: human)",
+        help="Who plays first; starter is seat 0 (default: human)",
     )
     play.add_argument("--engine-seed", type=int, help="Engine setup seed")
     play.add_argument(
         "--agent-seed", type=int, help="Opponent RNG seed; heuristic is deterministic"
     )
-    play.add_argument("--save-replay", metavar="PATH", help="Save the public game log")
+    play.add_argument(
+        "--save-replay", metavar="PATH", help="Save a public Tic-Tac-Toe game log"
+    )
     replay = commands.add_parser("replay", help="Validate and inspect a saved game log")
     replay.add_argument("path")
     train = commands.add_parser("train", help="Run Tic-Tac-Toe PPO self-play training")
@@ -107,11 +115,37 @@ def main(argv: Sequence[str] | None = None) -> None:
         print(f"PyTorch: {torch.__version__}")
         print(f"CUDA available: {torch.cuda.is_available()}")
     elif args.command == "play":
+        if args.game == "connect-four":
+            if args.opponent not in (None, "random"):
+                parser.error("Connect Four supports only the random opponent")
+            if args.save_replay is not None:
+                parser.error("Connect Four replay saving is not supported")
+            from boardgame_ai.cli_connect_four import play_connect_four
+
+            play_connect_four(
+                starts=args.starts,
+                engine_seed=args.engine_seed,
+                agent_seed=args.agent_seed,
+            )
+            return
+        if args.game == "guildworks":
+            if args.opponent not in (None, "random"):
+                parser.error("Guildworks supports only the random opponent")
+            if args.save_replay is not None:
+                parser.error("Guildworks replay saving is not supported")
+            from boardgame_ai.cli_guildworks import play_guildworks
+
+            play_guildworks(
+                starts=args.starts,
+                engine_seed=args.engine_seed,
+                agent_seed=args.agent_seed,
+            )
+            return
         from boardgame_ai.cli_play import play_tic_tac_toe
 
         play_tic_tac_toe(
             starts=args.starts,
-            opponent=args.opponent,
+            opponent=args.opponent or "heuristic",
             engine_seed=args.engine_seed,
             agent_seed=args.agent_seed,
             replay_path=args.save_replay,

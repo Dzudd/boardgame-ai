@@ -1,61 +1,75 @@
 # Current progress
 
-Updated: 2026-10-15. The [roadmap](BOARDGAME_AI_PROJECT_PLAN.md) owns task lists;
-[Phase 4.5 results](PHASE45_RESULTS.md) owns the measured protocols and decision.
+Updated: 2026-10-16. This document summarizes current status, verified evidence,
+limitations and the next milestone. The [roadmap](BOARDGAME_AI_PROJECT_PLAN.md)
+owns phase tasks and acceptance criteria; linked result documents own experiment
+protocols, measurements and detailed limitations.
 
 ## Status
 
 | Area | State |
 |---|---|
 | Phases 1–3 | Complete: contracts, engine, simulation, baselines, CLI and replays |
-| Phase 4 | Complete under its original random-baseline criterion |
+| Phase 4 | Complete under its original improvement-over-random criterion |
 | Phase 4.5 | Tasks 1–6 complete at the declared bounded scope |
-| Next milestone | Public Tic-Tac-Toe simulator adapter and bounded search evaluation, before Phase 5 |
+| Phase 5 | Complete at declared Guildworks scope: engine, CLI, recurrent memory/PPO and bounded functional run |
+| Phase 6 | Pending; multi-game protocol and game choices are the next milestone |
+| Phase 7 | Partial: public simulator, bounded 16/32 search evaluation and heuristic-O diagnosis complete; broader research tasks remain |
+| Phase 8 | Partial: baseline human CLI play and Tic-Tac-Toe public replays available; trained-agent human play and other product tasks remain |
 
-**Next small task:** implement and exhaustively test public-observation simulation,
-then policy/value-guided search evaluation at 16/32 simulations. Follow the
-[search-learning design](SEARCH_LEARNING_DESIGN.md). Search-target replay learning,
-MuZero dynamics and hidden-game mechanics remain later steps. PPO stays a reference.
+**Next milestone:** define Phase 6's bounded multi-game evaluation protocol and
+game choices before implementing a multi-game learner. Hidden-information search,
+MuZero and search-target replay learning need separately specified milestones.
 
-## Current evidence and concerns
+## Verified evidence
 
-- Original seed-42 update-1000 policy meets the Phase 4 random-control criterion,
-  but remains tactically weak. The [frozen audit](POLICY_DIAGNOSIS.md) found about
-  53% immediate-win mass and 32–36% block mass across 4,520 live boards. In 1,024
-  self-play games it visited only 29 distinct acting-seat boards. Its source
-  checkpoint, manifest and logs remain byte-identical.
-- Terminal rewards reach both seats; checked per-seat GAE/targets and disposable
-  PPO/Adam calculations agree. No signal implementation defect was demonstrated.
-  Exploration, optimization and specialization remain causal hypotheses.
-- Optional monitoring now keeps immutable bounded checkpoints, separate development
-  selection and isolated evaluation. CPU/CUDA monitored/unmonitored/resumed tiny
-  runs agree exactly on model/Adam/shuffle state. Missing log history is reported
-  as unknown sample count; same-runtime/device guarantees do not imply cross-device
-  or cross-version identity.
-- Repeated synchronized timing supports reduced CUDA PPO cost after consolidating
-  scalar reads and redundant input validation. CPU end-to-end changes are mixed;
-  CPU remains faster for this workload. A faster batched forward-pass probe has
-  small numerical differences and is not an adopted batched collector or speedup
-  guarantee. Full timings and counts are in the results report.
-- Six fresh runs completed 76,800 self-play games (559,693 decisions, 37,456 Adam
-  steps), seeds 42/43/44, 200 updates/run. Only entropy .01 versus .05 changed.
-  Development-selected checkpoints were frozen before 12,288 fresh final games.
-  Mean paired balanced-score effect +.0044, training-seed 95% interval
-  [-.4834,+.4922]: no established improvement, with seat/opponent regressions.
-- More entropy sometimes increased diagnostic coverage without consistent strength.
-  The bounded comparison does not establish PPO incapacity, search superiority,
-  robust/optimal play or generalization to harder/hidden games. Final seed 20261029
-  is consumed; subsequent tuning requires new reserved final seeds.
-- Training remains exclusively latest-policy self-play with game rewards. No
-  external training opponents, teachers, tactical bonuses or opponent pool.
-  Search design is complete; search, replay learner and learned dynamics are not
-  implemented. Preserve the failed and regressing results alongside improvements.
+- **Guildworks:** complete scripted/random games, filtered human CLI, hidden-world
+  equivalence, recurrent memory/PPO and exact CPU resume are implemented and tested.
+  The functional run completed 16 updates / 256 self-play games / 8,192 decisions.
+  Initial/final balanced random-opponent scores were .515625 and .56640625 across
+  256 evaluation games each, with no errors or truncations. This single small run
+  demonstrates operation, not reliable improvement or a benefit from memory.
+  [Phase 5 results](PHASE5_RESULTS.md) preserve the protocol, artifacts and limits.
+- **Tic-Tac-Toe PPO:** the original 64,000-game run met its improvement-over-random
+  criterion but remained weak against the heuristic. Signal/update checks found
+  no demonstrated learning-signal defect; the six-run entropy comparison did not
+  establish improvement. Repeated profiling supports limited same-device
+  optimization claims; batched collection was not adopted.
+  See [Phase 4 results](PHASE4_RESULTS.md) and [Phase 4.5 results](PHASE45_RESULTS.md).
+- **Public search:** frozen greedy raw/16/32 evaluation reduced random-X losses
+  from 19 to 9/9 and random-O losses from 96 to 50/41 out of 256 each, with greater
+  cost. Heuristic-X remained all draws and heuristic-O all losses. Public traces
+  reproduce branch starvation associated with concentrated priors and clipped
+  leaf guidance; blocking is not proven to save the game.
+  [Phase 7 results](PHASE7_RESULTS.md) contain the census, diagnosis and cost data.
+- **Connect Four:** the shared-interface engine, public history, gravity, all four
+  win directions, draw/reward handling, rendering, random matches and human CLI
+  are implemented, with 35 recorded rule/CLI tests. This adds a playable game;
+  it does not establish multi-game learning. Usage is in [README](README.md#connect-four).
+
+## Current limitations
+
+- Guildworks mechanics and visibility tests do not establish balance or robust
+  strength. Its human CLI opponent is random only; heuristic play and public
+  replay export remain unavailable.
+- Search supports public deterministic Tic-Tac-Toe only. Hidden/chance and
+  same-player game simulation are unsupported; generic same-actor backup
+  arithmetic tests do not establish game support. Search-target learning, MuZero
+  and multi-game learning are not implemented.
+- Connect Four training, search and replay integration remain future work.
+- Evaluation baselines and tactical labels never enter latest-policy self-play
+  training. Results identify consumed final seeds; subsequent tuning requires
+  fresh final-test seeds. Limited measured gains do not establish robust play.
 
 ## Validation
 
-Final local development checks: **643 tests passed**, including CUDA checks;
-Ruff lint/format, strict mypy, dependency checks and diff whitespace checks passed.
-Tests cover monitoring isolation/resume, retention/best ties, interrupted snapshot
-publication/retry, both-seat signals and experiment uncertainty calculations.
-The measured PPO reference comparisons matched final same-device model/Adam/
-shuffle state exactly. Local checks do not assert hosted CI status.
+Latest recorded implementation validation, before this documentation-only
+reorganization: **837 tests passed**, including Guildworks engine/CLI/recurrent
+training, 35 Connect Four rule/CLI tests and existing CPU/CUDA regressions.
+Ruff lint/format, strict mypy, dependency and whitespace checks passed.
+
+The public simulator comparison covers 5,478 boards and 16,167 legal transitions
+per starting seat; search checks cover budgets, perspective, terminal handling,
+private RNG and trace equivalence/corruption detection. Evaluation replay
+reproduced match/tactical results. Search latency measurements are single-run
+observations, not an isolated benchmark. Hosted CI is not asserted.

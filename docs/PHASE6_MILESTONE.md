@@ -1,0 +1,67 @@
+# Proposed first Phase 6 milestone
+
+This is a development proposal, not implemented capability or a frozen experiment
+protocol. The [roadmap](../BOARDGAME_AI_PROJECT_PLAN.md#phase-6--multi-game-learning)
+owns all Phase 6 tasks and acceptance criteria; [progress](../PROGRESS.md) owns
+current status. Connect Four currently has an engine, random runner support, and
+human-versus-random CLI, with no learner.
+
+## Scope and protocol prerequisites
+
+The proposed first bounded implementation is an independent Connect Four PPO
+baseline plus human play against its saved checkpoint. Checkpoint human play is
+a brought-forward subset of Phase 8, not completion of that phase. Independent
+training alone does not establish multi-game learning or complete Phase 6.
+
+Before implementation, define the game roles and explain how existing games
+count toward the roadmap's additional-game requirement. Declare separate versus
+shared baselines, per-seat outcomes/rewards, matched compute accounting, held-out
+evaluation seeds, and later transfer/forgetting measurements. Specify model,
+encoding, rewards, collection/update boundaries, checkpoint/resume contract, and
+a small functional training/evaluation budget before executing it. No budget,
+game-role decision, or seed reservation is frozen by this proposal.
+
+The initial milestone measures function; larger strength, shared-model, transfer,
+and forgetting experiments remain later work. Report every count and outcome;
+a successful functional run does not demonstrate robust playing strength.
+
+## Technical requirements
+
+- Reuse GameEngine, Agent, Observation, Action, and StepResult. Keep rules
+  independent of PyTorch and preserve existing training behavior and checkpoint
+  formats when reusing PPO infrastructure.
+- Encode only public structured observations using player-relative board features,
+  seven column outputs, and supplied legal-action masking. Decode to a supplied
+  legal Action. Specify inactive/terminal encoding and zero terminal bootstrap.
+- Begin with a small feed-forward policy/value model; recurrence is unnecessary
+  for this fully observed baseline. Agent/model inputs exclude engines,
+  authoritative clones, RNG, seeds, and debug state.
+- Collect latest-policy self-play only, with correct per-seat rewards/GAE and
+  private reproducible randomness that preserves global RNG. Evaluation games,
+  baseline opponents, and tactical labels never enter optimizer batches.
+- Provide a bounded training command, portable validated checkpoints, configuration
+  and metrics, update-boundary resume, and frozen random-opponent evaluation in
+  both seats. Reject incompatible checkpoints without damaging existing outputs.
+- Add human play against a loaded model through an explicit checkpoint option.
+  Preserve the board, separator, aligned column labels 1–7, input retries,
+  cancellation, outcomes, and current random opponent. Human columns remain 1–7;
+  engine/model actions remain zero-based 0–6.
+
+## Validation and limits
+
+Validate encoding perspective, masks/decoding, full-column exclusion, reward
+ownership, terminal handling, legal complete games, reproducibility/global RNG
+preservation, meaningful PPO updates, checkpoint rejection/resume, and human
+checkpoint play. Validate CPU and CUDA when available, without promising
+cross-device identity. Run relevant development checks and the full regression
+suite; preserve existing Tic-Tac-Toe, Guildworks, search, and training artifacts.
+
+Publish the predeclared functional run's counts/outcomes and exact train, resume,
+and checkpoint-play commands alongside the implemented subset and remaining
+Phase 6 tasks. Full phase completion requires measured evidence for every
+acceptance criterion in the roadmap.
+
+A shared backbone, multi-game sampler, additional new game, search, MuZero,
+replay learner, and additional Tic-Tac-Toe tuning are outside this first proposal.
+The [search-learning design](../SEARCH_LEARNING_DESIGN.md) retains the separate
+future search-target learner rationale.

@@ -1,5 +1,11 @@
 # Player visibility and engine boundaries
 
+Normative visibility, ownership, and isolation rules for engines, agents, models,
+training, evaluation, and search. These rules apply to new implementations as well
+as the current games. [Architecture](ARCHITECTURE.md) describes technical contracts;
+the [roadmap](BOARDGAME_AI_PROJECT_PLAN.md) owns phase acceptance criteria, and
+[progress](PROGRESS.md) records current verification and limitations.
+
 ## Self-play learning and evaluation separation
 
 Training experience is generated only by self-play, currently one latest shared
@@ -22,8 +28,8 @@ state, and resume behavior; evaluation reports remain trusted outputs.
 
 ## Frozen policy diagnostic boundary
 
-The Task 1 tactical audit accepts only a public acting-seat observation and its
-supplied legal actions. Public X-first board enumeration and one-ply checks are
+The [frozen policy audit](POLICY_DIAGNOSIS.md) accepts only a public acting-seat
+observation and its supplied legal actions. Public X-first board enumeration and one-ply checks are
 measurement only; no solver labels, tactical rewards or teacher actions enter PPO.
 Seeded trajectories come exclusively from the unchanged latest shared policy.
 Trusted orchestration replays public actions, checks each seat's own interval
@@ -37,7 +43,7 @@ unselected self-play samples enter that update, with reward-derived targets and
 existing visible features. No updated model is persisted. These diagnostics
 introduce no privileged critic or change to training opponents or observations.
 
-## Development monitoring and planned search
+## Development monitoring and public search
 
 Monitoring evaluates independent CPU checkpoint copies. It restores Python/NumPy
 and CPU/initialized-CUDA global RNG even on failure, and never changes the acting
@@ -47,12 +53,13 @@ measurement only. Development reports are trusted reconstructive metadata; best
 checkpoint selection cannot inject opponent samples into PPO. Final-test seeds
 are separate and must be replaced when their results guide later tuning.
 
-The search-learning design permits a future Tic-Tac-Toe simulator built only from
+The implemented Tic-Tac-Toe simulator is built only from
 public observations and supplied root actions. No live engine or authoritative
 clone reaches a search agent. Search visit distributions/outcomes need a separate
 learner; they cannot masquerade as raw-policy PPO samples. Self-generated replay
 is distinct from an opponent pool. Hidden/chance simulations, privileged critics
-and private-world reconstruction remain unsupported. See SEARCH_LEARNING_DESIGN.md.
+and private-world reconstruction remain unsupported. See the
+[search-learning design](SEARCH_LEARNING_DESIGN.md).
 
 ## Ownership and player inputs
 
@@ -80,19 +87,6 @@ Do not encode an unknown card in a draw choice. Return the draw outcome only
 after the engine resolves it, and only to players allowed to learn it.
 
 ## Events, rewards, and diagnostics
-
-`encode_tic_tac_toe_observation` in `boardgame_ai.models.encoders` consumes only
-the filtered Observation and its public board. It accepts no engine, GameState,
-legal actions, rewards, seed, or RNG. Observer-relative marks and public
-actor/phase metadata become six float32 planes. Finished views keep the same
-visibility restrictions; no reward or privileged terminal data is added.
-Fresh tensors share no mutable storage with observations or other calls.
-Schema validation cannot detect secret data incorrectly included in a future
-game's observation; each game still owns filtering and visibility tests.
-The reachable-board encoding audit constructs only public observation records
-and uses an independent rules oracle; it never reads authoritative state.
-Seat relabeling preserves observer-relative tensors. Tic-Tac-Toe's fully public
-board audit does not establish hidden-world equivalence for future games.
 
 Full `StepResult` records stay in trusted simulation/training orchestration.
 Call `result.events_for(player_id)` before delivering events. A public event has
@@ -185,6 +179,16 @@ events, observations, authoritative snapshots, or action histories are exported.
 
 ## Human CLI presentation
 
+The Guildworks human adapter also receives only detached observations and legal
+actions through `run_match`. Its numbered menus contain only supplied choices;
+invalid input retries reuse the same inputs and consume no step or RNG. The AI
+reporting wrapper prints only its chosen public placement, revealed craft or
+pass; it never renders the AI's own view. Chance outcomes are already resolved
+when the human next sees their hand and public state. Final rendering uses the
+human seat's filtered view, with public score-based outcome classification.
+Neither normal play nor cancellation exports history, seeds or private events.
+Guildworks replay saving and unsupported opponents reject before starting play.
+
 The Tic-Tac-Toe human adapter receives only detached observation/legal inputs
 through run_match, like any agent. It prints the public board and legal cells,
 and returns a supplied placement. Its opponent wrapper prints only the public
@@ -195,17 +199,14 @@ view. Tic-Tac-Toe outcomes are public; this does not authorize exposing private
 outcomes in future games. Input retries consume no engine step, and cancellation
 submits no further action. Replay saving is opt-in and game-specific.
 
-The CLI choice board is derived from supplied legal actions and printed beside
-the public game board on every prompt and final display. Occupied/unavailable
-cells show dashes. Starter selection is explicit engine configuration, independent
-of player mark and randomness; it does not expose hidden information. The CLI
-assigns its selected human/AI starter X. The programmatic engine also supports
-O-first configuration, preserved across resets and clones.
+Choice displays must be derived from supplied legal actions. Starter selection
+is explicit public engine configuration and does not expose hidden information.
+CLI layout and starter semantics are described in the
+[architecture](ARCHITECTURE.md#simulation-metrics-human-play-and-replays).
 
 ## Public Tic-Tac-Toe replays
 
-The CLI now assigns the human/AI starter X and the other player O; it supports
-explicit --game selection. Optional --save-replay exports only public placements,
+Optional --save-replay exports only public placements,
 starting seat, and ending status, including a cancelled prefix. No seeds, rewards,
 observations, private events, or authoritative snapshots are saved. Inspection
 validates the entire supported log through an engine before printing public boards.
@@ -230,6 +231,57 @@ visibility; compare seeded chance trajectories; and try invalid actions at every
 important phase. The Phase 1 hidden-card fixture demonstrates these checks but
 does not replace validation of each future game.
 
+## Guildworks player views and history
+
+Active, inactive and terminal Guildworks observations use the same schema and
+visibility. Wrapper fields identify observer, actor and phase. Payload fields are
+round, placements (owners in fixed space order), remaining workers, ink, scores,
+own sorted hand, both hand counts, deck count, ordered discard and filtered
+history. There is no terminal hand reveal. Public composition permits legitimate
+card-count deductions; the engine supplies no privileged deductions/probabilities.
+
+History retains public placements, actual draw counts (including zero), resolved
+ink/point gains, revealed crafts, passes and round transitions, plus only the
+observer's own private card receipts. Setup draw counts and own receipts are
+included. Craft value determines its public cost and point gain. Private card
+events have exactly the drawing seat as recipient. Filter before constructing
+the observation; histories contain no hidden-event sequence numbers or gaps.
+There are no private scores or rewards in this game. Full StepResults still stay
+in trusted orchestration; runner agents receive neither results nor events.
+
+Legal actions depend only on public occupancy/phase and the acting player's own
+hand and ink. Inactive and terminal choices are empty. Draw choices contain no
+card values; archive drawing and lottery rolling finish before step returns.
+All player records contain immutable tuples/scalars/frozen events and remain
+stable after later steps/reset. Seeds, RNG, opponent hands, deck order and private
+opponent receipts are absent from both rendering and observations. Clones remain
+trusted engine tools. Tests exchange unseen cards while preserving deck composition
+and legitimate private histories, and reorder the hidden deck before revelation.
+No hidden-information simulator or replay export is provided.
+
+The Guildworks recurrent encoder consumes only a filtered observation's current
+fields and new visible history events. It never reads an engine, opponent private
+events, authoritative clone, seed, RNG state or rewards. The fixed action encoder
+consumes supplied choices only. Hidden-world tests cover tokens, masks, action
+sampling, value predictions and recurrent memory under the same permitted inputs.
+Filtered history is retained across turns, including own draws, even when the
+current hand no longer contains those cards. No privileged terminal revelation
+or observation-dependent hidden-world reconstruction is introduced.
+
+Recurrent actors keep independent per-seat memory and sampling RNG and reset
+between games. Frozen parameter copies do not carry another seat's memory.
+The collector is trusted: it reads the incremental reward tuple, but stores only
+each seat's own interval rewards in its own episode. Full episodes are recomputed
+from zero for recurrent PPO; histories and hidden states never cross seats or
+episode boundaries. Targets and old behavior predictions are learning signals,
+not model features. This is latest-policy on-policy self-play without replay.
+
+Guildworks checkpoints exclude all observations, histories, episode tokens and
+recurrent hidden states. Root seeds in the separate training manifest can
+reconstruct setup and remain trusted metadata. Frozen random evaluation reads
+policy inputs under the same boundary and supplies no optimizer samples; it
+preserves the training model, optimizer, shuffle RNG and future sampling schedule.
+
 ## Tic-Tac-Toe player views
 
 Tic-Tac-Toe has no hidden board information. Both valid seats, including inactive
@@ -246,6 +298,21 @@ The completed engine passes the shared engine/rejection conformance helpers and
 game-specific visibility tests. Clones preserve authoritative state and private
 RNG state independently; cloning is a trusted engine operation and does not make
 the cloned engine an agent input or expose RNG data through observations.
+
+## Observation tensor boundaries
+
+`encode_tic_tac_toe_observation` in `boardgame_ai.models.encoders` consumes only
+the filtered Observation and its public board. It accepts no engine, GameState,
+legal actions, rewards, seed, or RNG. Observer-relative marks and public
+actor/phase metadata become six float32 planes. Finished views keep the same
+visibility restrictions; no reward or privileged terminal data is added.
+Fresh tensors share no mutable storage with observations or other calls.
+Schema validation cannot detect secret data incorrectly included in a future
+game's observation; each game still owns filtering and visibility tests.
+The reachable-board encoding audit constructs only public observation records
+and uses an independent rules oracle; it never reads authoritative state.
+Seat relabeling preserves observer-relative tensors. Tic-Tac-Toe's fully public
+board audit does not establish hidden-world equivalence for future games.
 
 ## Legal-action tensor boundaries
 
@@ -354,3 +421,25 @@ Plots use trusted training diagnostics and result summaries. Raw reports contain
 reconstructive seed metadata and belong in trusted output directories. Public
 figure copies contain aggregate diagnostics/results only, no observations,
 private events, engine snapshots, or model weights. Source files are read-only.
+
+## Public search inputs
+
+The search agent and simulator import no authoritative engine. The constructor
+accepts only the public TicTacToeObservation wrapper and supplied root actions;
+unsupported payloads reject through schema validation. Reachability enumeration
+uses public rules only and stores no solved values or opponent decisions.
+Imagined observations are constructed for the leaf actor; the evaluator sees only
+that observation and rule-derived legal actions. Simulated incremental rewards
+remain search bookkeeping, never model features. Terminal network calls are
+skipped. Evaluation tactics and baseline trajectories remain measurement only.
+
+
+## Connect Four player views
+
+Both seats see the entire immutable board and public column history, including
+when inactive or terminal. Views contain no engine, RNG or seed. Supplied actions
+contain only non-full column indices for the current actor; other seats have no
+choices. The human renderer consumes the same observation, with 1–7 column labels
+translated at the UI boundary. AI agents receive structured observations and
+supplied actions, never rendered text or authoritative clones. There are no
+private events or random outcomes in this deterministic game.
