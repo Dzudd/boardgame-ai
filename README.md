@@ -1,8 +1,8 @@
 # General-Purpose Board Game AI
 
-A Python platform with a tested Tic-Tac-Toe engine and PyTorch PPO self-play
-learner. The long-term direction is MuZero-style search learning, with future
-hidden-information games and multiple atomic decisions per turn.
+A Python platform with Tic-Tac-Toe, the original hidden-card worker-placement
+game Guildworks, and a Tic-Tac-Toe PyTorch PPO self-play learner. The long-term
+direction is MuZero-style search learning and multiple-game learning.
 
 ## Project documents
 
@@ -15,6 +15,7 @@ hidden-information games and multiple atomic decisions per turn.
 | [Phase 4 results](PHASE4_RESULTS.md) | Training curves, matched controls, measurements, and limitations |
 | [Phase 4.5 results](PHASE45_RESULTS.md) | Monitoring, throughput, controlled comparison and decision |
 | [Phase 7 results](PHASE7_RESULTS.md) | Public search evaluation and heuristic-O diagnosis |
+| [Phase 5 results](PHASE5_RESULTS.md) | Guildworks recurrent learning protocol and functional validation |
 | [Search-learning design](SEARCH_LEARNING_DESIGN.md) | Public simulation, search backups and separate target learner |
 | [Frozen policy diagnosis](POLICY_DIAGNOSIS.md) | Public tactics, per-seat signals, isolated PPO update evidence |
 | [Policy evaluation](POLICY_EVALUATION.md) | Checkpoint identity and fixed-opponent results |
@@ -26,8 +27,10 @@ is complete at its declared bounded scope. Monitoring, repeated profiling and
 a three-seed entropy comparison are implemented and measured. The comparison did
 not establish improvement. Public simulation and bounded search evaluation are now
 implemented; see [Phase 7 results](PHASE7_RESULTS.md) for measured gains and the
-remaining heuristic-O failure. The next implementation milestone is Phase 5
-game mechanics and information-boundary tests; further Tic-Tac-Toe tuning is optional.
+remaining heuristic-O failure. Phase 5 is complete for Guildworks' declared rules,
+with filtered history, recurrent memory/PPO, complete games, checkpoint resume
+and information-boundary tests. The bounded functional run does not establish
+robust strength or a benefit from recurrent memory.
 Training uses latest-policy self-play only; baseline opponents are evaluation
 instruments. The current protocol and future MuZero direction are described in
 the architecture and roadmap. This README covers setup and supported usage.
@@ -121,6 +124,103 @@ PyTorch. It triggers on pushes, pull requests, and manual dispatch. The private 
 `origin/master`. See [GitHub Actions](https://github.com/Dzudd/boardgame-ai/actions)
 for hosted check results. These checks can also be run locally using the commands
 above.
+
+## Connect Four
+
+```powershell
+.\.venv\Scripts\python.exe -m boardgame_ai play --game connect-four
+.\.venv\Scripts\python.exe -m boardgame_ai play --game connect-four --starts ai --agent-seed 42
+```
+
+Every human turn shows the aligned 7-column, 6-row board with column numbers
+1–7 underneath. Enter a column number to drop a disc; full columns and invalid
+input prompt again. X starts; four horizontally, vertically or diagonally wins.
+A full board without a winner draws. Enter quit, EOF or Ctrl+C to stop.
+The opponent selects uniformly from supplied legal columns with a private RNG.
+
+`games.connect_four` exports `ConnectFourEngine` and `ConnectFourObservation`.
+The existing `run_match` interface supports random or scripted agents with
+`max_steps=42`; `games.connect_four.evaluation.connect_four_outcome` adapts results.
+AI inputs contain a public row-major board (top row first), public zero-based
+column history, observer, current actor and phase. Legal `drop(column: int)`
+actions use zero-based columns 0–6, ordered left to right. Human input alone uses
+1–7. Both seats can observe throughout; inactive/terminal legal choices are empty.
+There is no chance or hidden information. Rewards are zero until a win, then
++1 for the winner and −1 for the loser; a draw gives zero. Rendering uses only
+an observation. Training, learned opponents, search and replay export are not
+implemented for this game. Existing game defaults remain unchanged.
+
+## Guildworks (programmatic play)
+
+Four rounds, two workers each per round. Place on a free public space for ink,
+cards, points or a resolved ink roll; then the same player crafts one affordable
+hidden card or passes. Crafts cost the card value and score value+1. Hands/deck
+stay private, discard/counts/resources/scores stay public. Highest score after
+32 decisions wins, equal scores draw. Full [rules](ARCHITECTURE.md#guildworks-rules-and-transitions)
+and [visibility](INFORMATION_BOUNDARIES.md#guildworks-player-views-and-history)
+define chance, rewards and history.
+
+```python
+from boardgame_ai.agents import RandomAgent
+from boardgame_ai.games.guildworks import GuildworksEngine, GuildworksObservation
+from boardgame_ai.games.guildworks.evaluation import guildworks_outcome
+from boardgame_ai.simulation import run_match
+
+game = GuildworksEngine()
+result = run_match(
+    game,
+    (RandomAgent[GuildworksObservation](), RandomAgent[GuildworksObservation]()),
+    engine_seed=42, agent_seeds=(100, 101), max_steps=32,
+)
+assert result.terminated and result.num_steps == 32
+print(game.render(player_id=0))  # Only seat 0's filtered view.
+print(guildworks_outcome(game))
+```
+
+The existing `Agent` interface also supports scripted decisions; complete scripted
+and random games are tested through the shared runner. Human play is available:
+
+```powershell
+.\.venv\Scripts\python.exe -m boardgame_ai play --game guildworks
+.\.venv\Scripts\python.exe -m boardgame_ai play --game guildworks --starts ai --engine-seed 42 --agent-seed 100
+```
+
+Choose a numbered action at each placement and craft/pass prompt. The display
+shows your own hand and the public board, resources, scores, discard and counts.
+AI messages show only public chosen actions. `--starts` assigns the first seat;
+the round starter then alternates under the rules. Random is the default and
+only Guildworks opponent. Invalid input prompts again without advancing play;
+quit/EOF/Ctrl+C stops without declaring an outcome. Final scores and win/loss/tie
+are printed after a complete game. Replay saving is rejected for Guildworks;
+hidden-information search and replay remain future work.
+Keep reconstructive engine seeds in trusted outputs.
+
+Recurrent Guildworks training uses a separate command and checkpoint format:
+
+```powershell
+.\.venv\Scripts\python.exe -m boardgame_ai.training.guildworks_run runs/new-guildworks --device cpu --threads 1 --updates 16 --games-per-update 16
+# Resume to a larger total update budget with the same seed and schedule:
+.\.venv\Scripts\python.exe -m boardgame_ai.training.guildworks_run runs/new-guildworks --device cpu --threads 1 --updates 32 --games-per-update 16 --resume
+```
+
+Default seed is 20261016. Each update collects complete latest-policy self-play
+games for both seats, then optimizes full recurrent seat episodes. No random
+opponent samples enter training. Default PPO minibatches contain eight seat
+episodes; two epochs and gamma=1 target own rule-defined point returns. Use
+`--device cuda` explicitly for CUDA optimization; acting stays on CPU. The command
+saves training.json, latest.pt and updates.jsonl, then evaluates frozen initial
+and final policies against random (default 128 games/seat, root 20261030) into
+evaluation.json. CLI flags set budgets/seeds/device; programmatic RecurrentRunConfig
+also accepts a PPOConfig. New output must be absent/empty. Resume restores model,
+Adam and shuffle RNG at an update boundary; same-runtime CPU continuation is
+tested. Checkpoints contain no engine, hidden states or player histories.
+
+Programmatic agents use `RecurrentGuildworksAgent(load_checkpoint(path).model)`
+from `models.guildworks` and `training.guildworks_run`, with normal `run_match`
+lifecycle and a separate instance per seat. The human CLI currently plays against
+random only. No recurrent-policy human opponent, replay or hidden-state search
+adapter is added. See [architecture](ARCHITECTURE.md#guildworks-recurrent-learning)
+for the token/action and full-episode training contracts.
 
 ## Tic-Tac-Toe
 
@@ -751,8 +851,9 @@ matchup, scoring, lengths, and limitations.
 .\.venv\Scripts\python.exe -m boardgame_ai play --help
 ```
 
-Select the game with `--game tic-tac-toe` (the current default and only supported
-game). Choose the starter with `--starts human` (default) or `--starts ai`.
+Select Tic-Tac-Toe with `--game tic-tac-toe` (the default), or Guildworks as
+described above. The following options describe Tic-Tac-Toe. Choose the starter
+with `--starts human` (default) or `--starts ai`.
 The starter is X and the other player O; your mark is printed in the opening
 message. Separate `--human` and X/O starter options have been removed.
 `--opponent` accepts `random` or `heuristic`.

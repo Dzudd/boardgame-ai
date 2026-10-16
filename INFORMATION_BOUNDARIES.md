@@ -185,6 +185,16 @@ events, observations, authoritative snapshots, or action histories are exported.
 
 ## Human CLI presentation
 
+The Guildworks human adapter also receives only detached observations and legal
+actions through `run_match`. Its numbered menus contain only supplied choices;
+invalid input retries reuse the same inputs and consume no step or RNG. The AI
+reporting wrapper prints only its chosen public placement, revealed craft or
+pass; it never renders the AI's own view. Chance outcomes are already resolved
+when the human next sees their hand and public state. Final rendering uses the
+human seat's filtered view, with public score-based outcome classification.
+Neither normal play nor cancellation exports history, seeds or private events.
+Guildworks replay saving and unsupported opponents reject before starting play.
+
 The Tic-Tac-Toe human adapter receives only detached observation/legal inputs
 through run_match, like any agent. It prints the public board and legal cells,
 and returns a supplied placement. Its opponent wrapper prints only the public
@@ -229,6 +239,57 @@ unseen state and compare player inputs; mutate returned payloads; inspect event
 visibility; compare seeded chance trajectories; and try invalid actions at every
 important phase. The Phase 1 hidden-card fixture demonstrates these checks but
 does not replace validation of each future game.
+
+## Guildworks player views and history
+
+Active, inactive and terminal Guildworks observations use the same schema and
+visibility. Wrapper fields identify observer, actor and phase. Payload fields are
+round, placements (owners in fixed space order), remaining workers, ink, scores,
+own sorted hand, both hand counts, deck count, ordered discard and filtered
+history. There is no terminal hand reveal. Public composition permits legitimate
+card-count deductions; the engine supplies no privileged deductions/probabilities.
+
+History retains public placements, actual draw counts (including zero), resolved
+ink/point gains, revealed crafts, passes and round transitions, plus only the
+observer's own private card receipts. Setup draw counts and own receipts are
+included. Craft value determines its public cost and point gain. Private card
+events have exactly the drawing seat as recipient. Filter before constructing
+the observation; histories contain no hidden-event sequence numbers or gaps.
+There are no private scores or rewards in this game. Full StepResults still stay
+in trusted orchestration; runner agents receive neither results nor events.
+
+Legal actions depend only on public occupancy/phase and the acting player's own
+hand and ink. Inactive and terminal choices are empty. Draw choices contain no
+card values; archive drawing and lottery rolling finish before step returns.
+All player records contain immutable tuples/scalars/frozen events and remain
+stable after later steps/reset. Seeds, RNG, opponent hands, deck order and private
+opponent receipts are absent from both rendering and observations. Clones remain
+trusted engine tools. Tests exchange unseen cards while preserving deck composition
+and legitimate private histories, and reorder the hidden deck before revelation.
+No hidden-information simulator or replay export is provided.
+
+The Guildworks recurrent encoder consumes only a filtered observation's current
+fields and new visible history events. It never reads an engine, opponent private
+events, authoritative clone, seed, RNG state or rewards. The fixed action encoder
+consumes supplied choices only. Hidden-world tests cover tokens, masks, action
+sampling, value predictions and recurrent memory under the same permitted inputs.
+Filtered history is retained across turns, including own draws, even when the
+current hand no longer contains those cards. No privileged terminal revelation
+or observation-dependent hidden-world reconstruction is introduced.
+
+Recurrent actors keep independent per-seat memory and sampling RNG and reset
+between games. Frozen parameter copies do not carry another seat's memory.
+The collector is trusted: it reads the incremental reward tuple, but stores only
+each seat's own interval rewards in its own episode. Full episodes are recomputed
+from zero for recurrent PPO; histories and hidden states never cross seats or
+episode boundaries. Targets and old behavior predictions are learning signals,
+not model features. This is latest-policy on-policy self-play without replay.
+
+Guildworks checkpoints exclude all observations, histories, episode tokens and
+recurrent hidden states. Root seeds in the separate training manifest can
+reconstruct setup and remain trusted metadata. Frozen random evaluation reads
+policy inputs under the same boundary and supplies no optimizer samples; it
+preserves the training model, optimizer, shuffle RNG and future sampling schedule.
 
 ## Tic-Tac-Toe player views
 
@@ -364,3 +425,14 @@ Imagined observations are constructed for the leaf actor; the evaluator sees onl
 that observation and rule-derived legal actions. Simulated incremental rewards
 remain search bookkeeping, never model features. Terminal network calls are
 skipped. Evaluation tactics and baseline trajectories remain measurement only.
+
+
+## Connect Four player views
+
+Both seats see the entire immutable board and public column history, including
+when inactive or terminal. Views contain no engine, RNG or seed. Supplied actions
+contain only non-full column indices for the current actor; other seats have no
+choices. The human renderer consumes the same observation, with 1–7 column labels
+translated at the UI boundary. AI agents receive structured observations and
+supplied actions, never rendered text or authoritative clones. There are no
+private events or random outcomes in this deterministic game.

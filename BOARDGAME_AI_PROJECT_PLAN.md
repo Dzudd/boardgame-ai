@@ -3,9 +3,10 @@
 **Status:** Phases 1–4 complete under the original minimal criterion; Phase 4.5
 complete at the declared bounded investigation scope.
 **Current:** The brought-forward Phase 7 public simulator, bounded search
-evaluation and diagnosis are complete; see PHASE7_RESULTS.md.
-**Next:** Return to Phase 5 game mechanics and information boundaries. PPO and
-Tic-Tac-Toe search remain references; robust Tic-Tac-Toe play is not a gate.
+evaluation and diagnosis are complete; see PHASE7_RESULTS.md. Phase 5 is complete
+for the declared Guildworks rules, including recurrent memory/PPO; see PHASE5_RESULTS.md.
+**Next:** Define the bounded Phase 6 multi-game evaluation protocol and game choices.
+PPO and Tic-Tac-Toe search remain references; robust Tic-Tac-Toe play is not a gate.
 
 ## Goal and principles
 
@@ -152,7 +153,7 @@ or teacher targets enter any run. Report failure to improve honestly; this phase
 does not promise perfect play. Search implementation belongs to the prioritized
 Phase 7 track, which can be brought forward after this review before Phase 5.
 
-### Phase 5 — Complex mechanics and partial observability
+### Phase 5 — Complex mechanics and partial observability (complete)
 
 **Deliverable:** a small custom card/worker-placement test game.
 
@@ -163,16 +164,35 @@ random games and indistinguishable-world observations/actions before adding
 encoders, recurrent memory or PPO. Keep the search milestone frozen as a reference;
 additional Tic-Tac-Toe tuning is optional, not a prerequisite.
 
-- [ ] Implement multiple atomic decisions within one turn.
-- [ ] Add explicit decision phases and turn/round transitions.
-- [ ] Implement hidden hands, deck, discard pile and public card counts.
-- [ ] Implement drawing cards and other chance events.
-- [ ] Implement filtered observations and player-specific history.
-- [ ] Add tests ensuring hidden state never leaks.
-- [ ] Add recurrent agent memory and recurrent PPO training.
-- [ ] Test edge cases: empty decks, skipped phases, interrupts, extra turns.
+- [x] Implement multiple atomic decisions within one turn.
+- [x] Add explicit decision phases and turn/round transitions.
+- [x] Implement hidden hands, deck, discard pile and public card counts.
+- [x] Implement drawing cards and other chance events.
+- [x] Implement filtered observations and player-specific history.
+- [x] Add game-specific hidden-world equivalence and visibility tests.
+- [x] Add recurrent agent memory and recurrent PPO training.
+- [x] Test empty/partial decks, forced passes and repeated actors at round boundaries;
+  reject unsupported skip/interrupt/extra-turn actions atomically. These mechanics
+  are outside the declared game rules rather than unimplemented live phases.
+
+First bounded milestone complete: Guildworks, an original four-round game with
+32 atomic decisions, public point rewards, filtered histories, private seeded
+draws/rolls, rendering and an outcome adapter. Complete scripted/random runner
+games, empty/partial decks, blocked placements and forced crafting passes are
+tested. Filtered human CLI play against random is also available. Interrupts,
+extra turns and skipped decision phases are outside these
+rules. Full visible-history GRU memory, complete-episode recurrent PPO, portable
+checkpoints and exact CPU resume are implemented separately from Tic-Tac-Toe.
+The declared 256-game functional run and isolated initial/final random evaluation
+completed; see PHASE5_RESULTS.md. This establishes functioning training, not
+robust strength, balance or a measured benefit from memory.
 
 **Acceptance criteria:** the agent can play complete partially observed games; no action reveals an unresolved random outcome; same-player consecutive actions work.
+
+Connect Four is additionally available as a standalone shared-interface engine
+and human-versus-random CLI, with public observations/history and rule tests.
+This adds another playable game; it does not establish multi-game learning or
+select the Phase 6 evaluation protocol.
 
 ### Phase 6 — Multi-game learning
 
@@ -214,6 +234,7 @@ additional Tic-Tac-Toe tuning is optional, not a prerequisite.
 **Deliverable:** reliable human-versus-AI experience and tournament tools.
 
 - [x] Provide CLI human play for Tic-Tac-Toe against random/heuristic agents.
+- [x] Provide filtered Guildworks human CLI play against RandomAgent.
 - [ ] Add human play against trained checkpoints and a web UI if needed.
 - [ ] Add selectable games, agents and difficulty levels.
 - [x] Save and inspect public Tic-Tac-Toe move replays.
@@ -227,9 +248,9 @@ additional Tic-Tac-Toe tuning is optional, not a prerequisite.
 ## Search direction
 
 The Phase 4.5 review brought the first Phase 7 milestone forward. Public simulation,
-16/32 search evaluation and heuristic-O trace diagnosis are now complete. Return
-to Phase 5's minimal game and visibility tests; neither more search tuning nor
-solving Tic-Tac-Toe is required first. Prior-concentration ablation is deferred
+16/32 search evaluation and heuristic-O trace diagnosis are now complete. Phase 5's
+minimal Guildworks engine and visibility tests are established; neither more
+search tuning nor solving Tic-Tac-Toe is required first. Prior-concentration ablation is deferred
 optional research. The longer-term search sequence remains:
 
 1. Validate bounded policy/value-guided search with permitted rule-based simulation.
