@@ -1,11 +1,15 @@
 # Board Game AI — Roadmap
 
-**Status:** Phases 1–4 complete under the original minimal criterion; Phase 4.5
-complete at the declared bounded investigation scope.
-**Current:** The brought-forward Phase 7 public simulator, bounded search
-evaluation and diagnosis are complete; see PHASE7_RESULTS.md. Phase 5 is complete
-for the declared Guildworks rules, including recurrent memory/PPO; see PHASE5_RESULTS.md.
-**Next:** Define the bounded Phase 6 multi-game evaluation protocol and game choices.
+This document owns phase goals, tasks, completion status and acceptance criteria.
+Implemented contracts belong in [architecture](ARCHITECTURE.md); current evidence,
+limitations and the next milestone belong in [progress](PROGRESS.md).
+
+**Status:** Phases 1–3 complete; Phase 4 complete under its original minimal
+criterion; Phase 4.5 complete at its declared bounded investigation scope;
+Phase 5 complete for the declared Guildworks rules, including recurrent memory/PPO.
+Only the brought-forward public simulator, bounded search evaluation and diagnosis
+milestone of Phase 7 is complete. Phases 6–8 retain unfinished tasks below.
+**Next milestone:** Define the bounded Phase 6 multi-game evaluation protocol and game choices.
 PPO and Tic-Tac-Toe search remain references; robust Tic-Tac-Toe play is not a gate.
 
 ## Goal and principles
@@ -24,8 +28,8 @@ on known games.
   decisions; future sampled self-play replay needs its own learner design.
 - Keep game-defined rewards and per-player credit assignment. A win/loss does
   not prove every move was good/bad; heuristic bonuses are not a diagnosis.
-- Work one small task at a time. Measure learning quality and throughput
-  separately, with explicit budgets, reproducible seeds, and honest limitations.
+- Measure learning quality and throughput separately, with explicit budgets,
+  reproducible seeds, and honest limitations.
 
 Technical contracts: [architecture](ARCHITECTURE.md) and
 [information boundaries](INFORMATION_BOUNDARIES.md). Usage: [README](README.md).
@@ -175,17 +179,14 @@ additional Tic-Tac-Toe tuning is optional, not a prerequisite.
   reject unsupported skip/interrupt/extra-turn actions atomically. These mechanics
   are outside the declared game rules rather than unimplemented live phases.
 
-First bounded milestone complete: Guildworks, an original four-round game with
-32 atomic decisions, public point rewards, filtered histories, private seeded
-draws/rolls, rendering and an outcome adapter. Complete scripted/random runner
-games, empty/partial decks, blocked placements and forced crafting passes are
-tested. Filtered human CLI play against random is also available. Interrupts,
-extra turns and skipped decision phases are outside these
-rules. Full visible-history GRU memory, complete-episode recurrent PPO, portable
-checkpoints and exact CPU resume are implemented separately from Tic-Tac-Toe.
-The declared 256-game functional run and isolated initial/final random evaluation
-completed; see PHASE5_RESULTS.md. This establishes functioning training, not
-robust strength, balance or a measured benefit from memory.
+The declared Guildworks engine, filtered human CLI, full visible-history GRU memory
+and complete-episode recurrent PPO are implemented. The 256-game functional run
+and isolated initial/final random evaluation completed; see
+[Phase 5 results](PHASE5_RESULTS.md) for evidence and
+[architecture](ARCHITECTURE.md#guildworks-rules-and-transitions) for the rules.
+This establishes functioning training, not robust strength, balance or a measured
+benefit from memory. Interrupts, extra turns and skipped decision phases remain
+outside the declared rules.
 
 **Acceptance criteria:** the agent can play complete partially observed games; no action reveals an unresolved random outcome; same-player consecutive actions work.
 
@@ -197,6 +198,10 @@ select the Phase 6 evaluation protocol.
 ### Phase 6 — Multi-game learning
 
 **Deliverable:** independent and shared agents trained on multiple games.
+
+The [proposed first bounded milestone](docs/PHASE6_MILESTONE.md) describes an
+independent Connect Four learning baseline and trained-checkpoint human play.
+It is a proposal, not a frozen evaluation protocol or a completed phase task.
 
 - [ ] Add at least two more games using the same engine interface.
 - [ ] Implement game-specific observation encoders.
@@ -213,6 +218,10 @@ select the Phase 6 evaluation protocol.
 ### Phase 7 — Advanced search and research
 
 **Deliverable:** experimentally validated planning enhancements.
+
+**Partial:** the public-rule Tic-Tac-Toe simulator, bounded search evaluation and
+diagnosis milestone is complete; [Phase 7 results](PHASE7_RESULTS.md) document its
+limited gains. The phase-wide acceptance criterion is not yet met.
 
 - [ ] Implement explicit or learned hidden-state belief estimates.
 - [ ] Validate belief estimates against known simulated outcomes without leaking them at inference.
@@ -248,10 +257,10 @@ select the Phase 6 evaluation protocol.
 ## Search direction
 
 The Phase 4.5 review brought the first Phase 7 milestone forward. Public simulation,
-16/32 search evaluation and heuristic-O trace diagnosis are now complete. Phase 5's
-minimal Guildworks engine and visibility tests are established; neither more
-search tuning nor solving Tic-Tac-Toe is required first. Prior-concentration ablation is deferred
-optional research. The longer-term search sequence remains:
+16/32 search evaluation and heuristic-O trace diagnosis are complete. Phase 5 is
+complete at its declared scope, and Phase 6 protocol design is next; additional
+search tuning or solving Tic-Tac-Toe is not a prerequisite. Prior-concentration
+ablation is deferred optional research. The longer-term search sequence remains:
 
 1. Validate bounded policy/value-guided search with permitted rule-based simulation.
 2. Train from self-play search policies and outcomes using budgeted replay sampling.

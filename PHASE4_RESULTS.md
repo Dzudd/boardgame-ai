@@ -1,16 +1,19 @@
 # Phase 4 results and acceptance
 
-Completed on 2026-10-15. All eight Phase 4 tasks are implemented and tested.
-The user ran 1,000 CUDA PPO updates (64,000 self-play games, seed 42); analysis
-performed no further training and did not change the checkpoint or training log.
-Checkpoint identity and the original 4,000-game protocol are in POLICY_EVALUATION.md.
+This report records Phase 4's matched controls, training curves and bounded
+acceptance evidence. Completed on 2026-10-15: all eight Phase 4 tasks are
+implemented and tested. The recorded training run used 1,000 CUDA PPO updates
+(64,000 self-play games, seed 42); analysis performed no further training and did
+not change the checkpoint or training log.
+Checkpoint identity and the original 4,000-game protocol are in
+[policy evaluation](POLICY_EVALUATION.md).
 
-**Current follow-up:** [Phase 4.5](BOARDGAME_AI_PROJECT_PLAN.md#phase-45--self-play-diagnosis-and-learning-reliability-planned)
-is planned to diagnose this weakness, monitor checkpoints, and assess self-play
-learning changes before harder games. The measurements below remain the original
-Phase 4 results. Training stays latest-policy self-play only; fixed opponents
-here are evaluation tools, not teachers or training experience. No causal
-diagnosis, repair, new experiment, or perfect-play requirement is implied.
+**Historical follow-up:** the weakness measured here motivated
+[Phase 4.5's completed investigation](PHASE45_RESULTS.md), including diagnosis,
+checkpoint monitoring and a bounded learning comparison. The measurements below
+remain the original Phase 4 results. Training stays latest-policy self-play only;
+fixed opponents here are evaluation tools, not teachers or training experience.
+This report alone establishes no causal diagnosis, repair or perfect-play claim.
 
 ## Matched baseline comparison
 
@@ -85,6 +88,7 @@ training-summary.json, and PNG/SVG versions of both figures. The training log
 hash and checkpoint hash bind the inputs. Charts were visually inspected.
 Tracked figure copies live in docs/phase4; generated JSON, logs, and model weights
 stay ignored under runs. Python 3.12.14, PyTorch 2.14.1+cu130, Matplotlib 3.11.2
-were used; evaluation/plots run on CPU. The next task was originally Phase 5,
-Task 1. The updated roadmap now prioritizes Phase 4.5, Task 1: read-only tactical
-and learning-signal diagnosis. Policy robustness remains unresolved.
+were used; evaluation/plots run on CPU. The subsequent read-only tactical and
+learning-signal diagnosis is recorded in [POLICY_DIAGNOSIS.md](POLICY_DIAGNOSIS.md).
+Policy robustness remains unresolved; see [current status](PROGRESS.md) for the
+next milestone.

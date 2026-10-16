@@ -1,6 +1,11 @@
 # Search-learning bridge — Phase 4.5 Task 5
 
-**Phase 4.5 design; Phase 7 evaluation now implemented.** Search-target learning remains unimplemented.
+This document retains the search/learner design rationale, prospective learning
+contracts and required tests. Implemented search details are identified separately;
+the shared [architecture](ARCHITECTURE.md) describes the current system.
+
+**Phase 4.5 design; bounded Phase 7 evaluation now implemented.** Search-target
+learning remains unimplemented, and Phase 7 as a whole remains incomplete.
 The first milestone is bounded policy/value-guided search for deterministic,
 fully public, two-seat, zero-sum Tic-Tac-Toe. PPO stays a comparison baseline.
 Hidden information, chance, general-sum games and learned dynamics require
@@ -123,7 +128,8 @@ public-rule learner. Future MuZero representation h(observation/history), dynami
 g(latent, action) and prediction f(latent) add reward/value/policy sequence losses,
 with explicit actor/perspective and imagined legality contracts. Do not infer
 hidden opponent cards or chance outcomes from true engine snapshots. Reanalysis,
-prioritized replay and learned beliefs are separate, unapproved extensions.
+prioritized replay and learned beliefs are separate extensions outside this
+design's scope.
 
 ## Required tests and first implementation milestone
 
@@ -144,8 +150,9 @@ prioritized replay and learned beliefs are separate, unapproved extensions.
    Checkpoint replay/RNG/optimizer resume must match an uninterrupted tiny run.
 
 **Implemented milestone:** public simulator and bounded search evaluation, with
-raw greedy policy versus 16/32 simulations. See PHASE7_PROTOCOL.md and
-PHASE7_RESULTS.md. Search-target replay learning remains a separate later task.
+raw greedy policy versus 16/32 simulations. See the [Phase 7 protocol](PHASE7_PROTOCOL.md)
+and [results](PHASE7_RESULTS.md). Search-target replay learning remains a separate
+later task.
 
 
 ## Implementation details

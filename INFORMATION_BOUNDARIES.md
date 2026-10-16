@@ -1,5 +1,11 @@
 # Player visibility and engine boundaries
 
+Normative visibility, ownership, and isolation rules for engines, agents, models,
+training, evaluation, and search. These rules apply to new implementations as well
+as the current games. [Architecture](ARCHITECTURE.md) describes technical contracts;
+the [roadmap](BOARDGAME_AI_PROJECT_PLAN.md) owns phase acceptance criteria, and
+[progress](PROGRESS.md) records current verification and limitations.
+
 ## Self-play learning and evaluation separation
 
 Training experience is generated only by self-play, currently one latest shared
@@ -22,8 +28,8 @@ state, and resume behavior; evaluation reports remain trusted outputs.
 
 ## Frozen policy diagnostic boundary
 
-The Task 1 tactical audit accepts only a public acting-seat observation and its
-supplied legal actions. Public X-first board enumeration and one-ply checks are
+The [frozen policy audit](POLICY_DIAGNOSIS.md) accepts only a public acting-seat
+observation and its supplied legal actions. Public X-first board enumeration and one-ply checks are
 measurement only; no solver labels, tactical rewards or teacher actions enter PPO.
 Seeded trajectories come exclusively from the unchanged latest shared policy.
 Trusted orchestration replays public actions, checks each seat's own interval
@@ -47,12 +53,13 @@ measurement only. Development reports are trusted reconstructive metadata; best
 checkpoint selection cannot inject opponent samples into PPO. Final-test seeds
 are separate and must be replaced when their results guide later tuning.
 
-The search-learning design now has a Tic-Tac-Toe simulator built only from
+The implemented Tic-Tac-Toe simulator is built only from
 public observations and supplied root actions. No live engine or authoritative
 clone reaches a search agent. Search visit distributions/outcomes need a separate
 learner; they cannot masquerade as raw-policy PPO samples. Self-generated replay
 is distinct from an opponent pool. Hidden/chance simulations, privileged critics
-and private-world reconstruction remain unsupported. See SEARCH_LEARNING_DESIGN.md.
+and private-world reconstruction remain unsupported. See the
+[search-learning design](SEARCH_LEARNING_DESIGN.md).
 
 ## Ownership and player inputs
 
@@ -80,19 +87,6 @@ Do not encode an unknown card in a draw choice. Return the draw outcome only
 after the engine resolves it, and only to players allowed to learn it.
 
 ## Events, rewards, and diagnostics
-
-`encode_tic_tac_toe_observation` in `boardgame_ai.models.encoders` consumes only
-the filtered Observation and its public board. It accepts no engine, GameState,
-legal actions, rewards, seed, or RNG. Observer-relative marks and public
-actor/phase metadata become six float32 planes. Finished views keep the same
-visibility restrictions; no reward or privileged terminal data is added.
-Fresh tensors share no mutable storage with observations or other calls.
-Schema validation cannot detect secret data incorrectly included in a future
-game's observation; each game still owns filtering and visibility tests.
-The reachable-board encoding audit constructs only public observation records
-and uses an independent rules oracle; it never reads authoritative state.
-Seat relabeling preserves observer-relative tensors. Tic-Tac-Toe's fully public
-board audit does not establish hidden-world equivalence for future games.
 
 Full `StepResult` records stay in trusted simulation/training orchestration.
 Call `result.events_for(player_id)` before delivering events. A public event has
@@ -205,17 +199,14 @@ view. Tic-Tac-Toe outcomes are public; this does not authorize exposing private
 outcomes in future games. Input retries consume no engine step, and cancellation
 submits no further action. Replay saving is opt-in and game-specific.
 
-The CLI choice board is derived from supplied legal actions and printed beside
-the public game board on every prompt and final display. Occupied/unavailable
-cells show dashes. Starter selection is explicit engine configuration, independent
-of player mark and randomness; it does not expose hidden information. The CLI
-assigns its selected human/AI starter X. The programmatic engine also supports
-O-first configuration, preserved across resets and clones.
+Choice displays must be derived from supplied legal actions. Starter selection
+is explicit public engine configuration and does not expose hidden information.
+CLI layout and starter semantics are described in the
+[architecture](ARCHITECTURE.md#simulation-metrics-human-play-and-replays).
 
 ## Public Tic-Tac-Toe replays
 
-The CLI now assigns the human/AI starter X and the other player O; it supports
-explicit --game selection. Optional --save-replay exports only public placements,
+Optional --save-replay exports only public placements,
 starting seat, and ending status, including a cancelled prefix. No seeds, rewards,
 observations, private events, or authoritative snapshots are saved. Inspection
 validates the entire supported log through an engine before printing public boards.
@@ -307,6 +298,21 @@ The completed engine passes the shared engine/rejection conformance helpers and
 game-specific visibility tests. Clones preserve authoritative state and private
 RNG state independently; cloning is a trusted engine operation and does not make
 the cloned engine an agent input or expose RNG data through observations.
+
+## Observation tensor boundaries
+
+`encode_tic_tac_toe_observation` in `boardgame_ai.models.encoders` consumes only
+the filtered Observation and its public board. It accepts no engine, GameState,
+legal actions, rewards, seed, or RNG. Observer-relative marks and public
+actor/phase metadata become six float32 planes. Finished views keep the same
+visibility restrictions; no reward or privileged terminal data is added.
+Fresh tensors share no mutable storage with observations or other calls.
+Schema validation cannot detect secret data incorrectly included in a future
+game's observation; each game still owns filtering and visibility tests.
+The reachable-board encoding audit constructs only public observation records
+and uses an independent rules oracle; it never reads authoritative state.
+Seat relabeling preserves observer-relative tensors. Tic-Tac-Toe's fully public
+board audit does not establish hidden-world equivalence for future games.
 
 ## Legal-action tensor boundaries
 
@@ -416,6 +422,7 @@ reconstructive seed metadata and belong in trusted output directories. Public
 figure copies contain aggregate diagnostics/results only, no observations,
 private events, engine snapshots, or model weights. Source files are read-only.
 
+## Public search inputs
 
 The search agent and simulator import no authoritative engine. The constructor
 accepts only the public TicTacToeObservation wrapper and supplied root actions;

@@ -26,6 +26,9 @@ secrets.json
 .codex/
 .agents/
 
+# Local AI instructions, session handoffs, and temporary operational notes
+/AI/
+
 # Additional environments, caches, and generated training artifacts
 venv/
 env/

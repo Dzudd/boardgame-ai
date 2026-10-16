@@ -1,5 +1,8 @@
 # Phase 7 frozen-search protocol
 
+This document preserves the predeclared frozen-search comparison and its limits.
+Measurements are recorded in [Phase 7 results](PHASE7_RESULTS.md).
+
 Declared before evaluation, 2026-10-15. Checkpoint: seed-45 development-selected
 update 1000, SHA256 b2f8e1c4c7b53f24646e13cba92e4d8ebd6ae32f60dcffa2b4f436cc1f274a80
 (same bytes as latest.pt). No training or selection in this experiment.

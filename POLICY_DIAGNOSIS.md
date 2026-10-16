@@ -1,5 +1,8 @@
 # Frozen policy diagnosis — Phase 4.5 Task 1
 
+This report records the tactical census, sampled learning signals and independent
+PPO arithmetic checks for one preserved checkpoint.
+
 Measured 2026-10-15 on the update-1000 checkpoint (29,020 optimizer steps),
 PyTorch 2.14.1+cu130, CPU, one thread. Task 1 is complete; policy strength is
 unchanged. No demonstrated learning-signal implementation defect was found.
@@ -132,7 +135,7 @@ KL .001456, clip fraction .025670; max absolute parameter change .0065513.
 This establishes that the update path operates consistently on the tested
 on-policy data, not that it improves tactics or would escape specialization.
 
-## Preservation, interpretation, and next task
+## Preservation and interpretation
 
 The source bytes were identical before/after. SHA-256 identities:
 
@@ -143,8 +146,9 @@ The source bytes were identical before/after. SHA-256 identities:
 | updates.jsonl | `245efcedd211074160eea4536507d719d9ff689db3cb6b8b8b55a866f5d49687` |
 
 Raw evidence: `runs/phase45-task1.json` (ignored local artifact). Reproduce with
-the README command and a new output filename. The report cannot overwrite an
-existing file or write into the checkpoint's directory. The audit requires the
+the [audit command](README.md#frozen-policy-tactical-and-learning-signal-audit) and
+a new output filename. The report cannot overwrite an existing file or write into
+the checkpoint's directory. The audit requires the
 training process to be stopped; it does not lock files against concurrent writers.
 
 **Established:** severe public tactical failures outside narrow self-play paths;
@@ -159,6 +163,7 @@ training it emerged. Narrow coverage and near-deterministic openings support
 these hypotheses without distinguishing them. One checkpoint, one training seed
 and a bounded diagnostic cannot establish general correctness or robust strength.
 
-Task 1 is complete. Subsequent monitoring, throughput evidence, controlled
-comparisons and the current next milestone are in [Phase 4.5 results](PHASE45_RESULTS.md).
+Task 1 is complete. Subsequent monitoring, throughput evidence and controlled
+comparisons are in [Phase 4.5 results](PHASE45_RESULTS.md); the current milestone is
+maintained in [PROGRESS.md](PROGRESS.md).
 The measurements above describe the preserved source policy, not later runs.

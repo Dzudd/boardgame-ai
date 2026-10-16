@@ -1,11 +1,12 @@
 # Fixed-opponent checkpoint evaluation
 
-Measured on 2026-10-15 after the user completed CUDA self-play training.
+This report records checkpoint identity, the fixed-opponent evaluation protocol
+and its measured outcomes. Measured on 2026-10-15 after CUDA self-play training.
 
 These baseline opponents are evaluation only. Their actions/rewards do not
 enter training; the project's methodology uses latest-policy self-play without
 external teachers or a historical opponent pool. The unchanged results below
-motivate the planned Phase 4.5 diagnostics in BOARDGAME_AI_PROJECT_PLAN.md.
+motivated the subsequent [Phase 4.5 diagnostics](POLICY_DIAGNOSIS.md).
 
 The checkpoint at `runs/tic-tac-toe-cuda/latest.pt` contains 1,000 completed PPO
 updates and 29,020 optimizer steps. The training configuration used 64 games per
@@ -39,11 +40,12 @@ Checkpoint SHA-256:
 The policy wins more games than it loses against random in both seats, with a
 large first-player advantage. It fails almost universally against the tactical
 heuristic, despite the final self-play update reporting 64 X wins in 64 games.
-Self-play success therefore does not establish a robust policy. The mechanism
-behind this weakness has not been diagnosed; no training configuration was changed.
+Self-play success therefore does not establish a robust policy. This evaluation
+does not establish the cause of the weakness and changed no training configuration.
 
 These Task 7 results alone do not establish optimal play or matched-control
-improvement. The completed Task 8 comparison and curves are in PHASE4_RESULTS.md.
+improvement. The completed Task 8 comparison and curves are in
+[Phase 4 results](PHASE4_RESULTS.md).
 The heuristic is the existing win/block/position agent, not an optimal solver.
 No confidence intervals or multiple independent training runs are included.
 Held-out RNG schedules do not imply disjoint board positions in deterministic

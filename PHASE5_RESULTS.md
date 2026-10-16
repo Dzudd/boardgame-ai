@@ -1,5 +1,8 @@
 # Phase 5 — Guildworks recurrent learning
 
+This report preserves the bounded functional-validation protocol, measured
+outcomes and evidence limits for Guildworks recurrent learning.
+
 ## Bounded completion protocol
 
 This is a functional validation of hidden-information recurrent self-play, not
@@ -60,11 +63,11 @@ and .56640625 after training. This is one small functional run with no strength
 threshold; it does not establish reliable improvement or a benefit from memory.
 No memory ablation was performed. Rewards optimize own points, not zero-sum wins.
 Evaluation root 20261030 is consumed; reserve fresh final seeds if these results
-inform later tuning. No additional training was performed during final cleanup.
+inform later tuning. No additional training was performed during report verification.
 
 Checkpoint SHA-256 (`runs/guildworks-phase5/latest.pt`):
 `ec27d0033a2d3d0f5360d43d269c8aaf5a185bd948a7237ca1d7df4b6411e237`.
-The stored evaluation report and checkpoint hash were rechecked during cleanup.
+The stored evaluation report and checkpoint hash were rechecked after the run.
 
 ## Verification and limits
 
@@ -80,5 +83,6 @@ CUDA update/checkpoint portability.
 No game balance, robust strength, cross-device numerical identity or speed claim
 is made. Human CLI opponents remain random only. Hidden-information search,
 public replay export, MuZero and multi-game learning remain future work.
-The next small task is to define Phase 6's bounded evaluation protocol and game
-choices before implementing a multi-game learner.
+Phase 6 requires a bounded evaluation protocol and game choices before implementing
+a multi-game learner; its status and next milestone are maintained in
+[PROGRESS.md](PROGRESS.md) and the [project plan](BOARDGAME_AI_PROJECT_PLAN.md).

@@ -8,9 +8,10 @@ are normative for every engine, agent, model, and future planner.
 ## Package and dependencies
 
 Python 3.12 is the development baseline; package metadata permits newer versions.
-Use the src/boardgame_ai namespace, setuptools, venv/pip, NumPy 2.x and PyTorch 2.x
-(minimum 2.6). Dependency ranges are not a lockfile or cross-version determinism
-guarantee. Ship py.typed and use strict mypy, Ruff, pytest, and Windows/Linux CI.
+The package uses the src/boardgame_ai namespace, setuptools, venv/pip, NumPy 2.x
+and PyTorch 2.x (minimum 2.6). Dependency ranges are not a lockfile or cross-version
+determinism guarantee. It ships py.typed and uses strict mypy, Ruff, pytest, and
+Windows/Linux CI.
 The core engine layer uses the standard library and stays independent of PyTorch.
 Numerical imports are deferred where possible so package imports/CLI help stay light.
 Hardware-specific Torch wheel selection is an environment choice.
@@ -182,7 +183,8 @@ resume requires identical seed, games/update and PPO config. Latest checkpoint
 is authoritative; interrupted work restarts from its update boundary. Metrics are
 saved after the checkpoint, so a crash may leave a missing metrics row. There is
 no mid-episode/update resume. Frozen initial/final random evaluations are separate
-from PPO; manifests and metrics are trusted outputs. See PHASE5_RESULTS.md.
+from PPO; manifests and metrics are trusted outputs. See
+[Phase 5 results](PHASE5_RESULTS.md).
 
 ## Tic-Tac-Toe and baseline agents
 
@@ -308,6 +310,7 @@ rewards sum without internal discounting. GAE uses delta=r+gamma*next_value-valu
 A=delta+gamma*lambda*A_next, returns=A+value. Never interleave seats or cross episode
 boundaries. Matching finite 1-D floating inputs produce detached same-dtype/device
 outputs; empty segments work and invalid coefficients/overflow reject.
+Gamma and GAE lambda must each be in [0, 1].
 True termination bootstraps zero without a model call; live cutoffs bootstrap
 from that player's filtered observation, including inactive views. Empty segments
 bootstrap zero. Collection resets every call; it does not resume a partial rollout.
@@ -463,13 +466,16 @@ labels never enter batches. Source checkpoint/config/log bytes are checked uncha
 new report output must be outside the source directory. Requires stopped training,
 not concurrent-writer locking. Protocol and limitations: [diagnosis](POLICY_DIAGNOSIS.md).
 
-## Planned extensions and constraints
+## Extension boundaries
 
-The roadmap owns Phase 4.5 completion and the result-based next milestone.
-[Search-learning design](SEARCH_LEARNING_DESIGN.md) specifies bounded public-only
-simulation, parent-seat vector backups and a separate self-generated visit/outcome
-learner. Search and replay learning remain unimplemented. Future batched collection
-needs per-game/seat RNG and numerical/sampling comparisons; changes in minibatch,
+The [roadmap](BOARDGAME_AI_PROJECT_PLAN.md) owns phase tasks and acceptance criteria;
+[progress](PROGRESS.md) identifies the current next milestone.
+[Public search evaluation](#public-search-evaluation) implements bounded
+Tic-Tac-Toe simulation and parent-seat vector backups. The separate self-generated
+visit/outcome learner and replay learning in the
+[search-learning design](SEARCH_LEARNING_DESIGN.md) remain unimplemented.
+Future batched collection needs per-game/seat RNG and numerical/sampling
+comparisons; changes in minibatch,
 collection size or sampling schedule require learning-quality experiments.
 
 Long-term: permitted rule-based MCTS → search-guided self-play targets/replay →
@@ -505,7 +511,7 @@ Learning tests cover hand-computed GAE/returns/PPO, illegal gradients, storage/R
 isolation, optimizer changes, corruption rejection, exact checkpoint continuation,
 and CPU/CUDA resume. CUDA tests check real inputs/parameters/gradients/Adam device
 placement; portable files serialize tensors on CPU. Current validation results
-belong in PROGRESS.md rather than historical per-task test counts here.
+belong in [progress](PROGRESS.md) rather than historical per-task test counts here.
 
 
 ## Public search evaluation
@@ -519,10 +525,12 @@ Backups carry two seat returns; for leaf actor s, G[s]=v and G[1-s]=-v,
 then each edge adds its incremental rule rewards with gamma=1. Terminal continuation
 is zero. Selection reads Q for the parent actor, without turn-based sign flips.
 Limits, tie-breaking, private exploration namespaces and node accounting are in
-SEARCH_LEARNING_DESIGN.md. PPO values are clipped heuristic estimates.
+[the search-learning design](SEARCH_LEARNING_DESIGN.md). PPO values are clipped
+heuristic estimates.
 
 `python -m boardgame_ai.search.evaluation CHECKPOINT NEW_OUTPUT_DIRECTORY`
-executes PHASE7_PROTOCOL.md on frozen CPU copies with global RNG isolation.
+executes the [Phase 7 protocol](PHASE7_PROTOCOL.md) on frozen CPU copies with
+global RNG isolation.
 It reports fixed-opponent matches, full tactical census, evaluator counts and
 latency; hashes verify source artifacts. No optimizer, replay or training targets.
 

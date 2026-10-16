@@ -1,5 +1,8 @@
 # Phase 7 public search evaluation
 
+This report records the brought-forward public-search evaluation and subsequent
+trace diagnosis. It does not claim completion of all planned Phase 7 tasks.
+
 Protocol: [predeclared budgets](PHASE7_PROTOCOL.md). Date: 2026-10-15.
 Frozen seed-45 update-1000 development-selected checkpoint, SHA256
 `b2f8e1c4c7b53f24646e13cba92e4d8ebd6ae32f60dcffa2b4f436cc1f274a80`.
@@ -171,9 +174,11 @@ Reproduce with an absent output directory:
 python -m boardgame_ai.search.diagnosis runs/monitored-seed45/latest.pt runs/phase7-seed45-search-20261112-final/results.json runs/new-heuristic-o-trace
 ```
 
-**Decision after milestone review:** return to Phase 5's minimal playable game,
-mechanics and visibility tests. The brought-forward search milestone is complete;
-solving Tic-Tac-Toe or further prior tuning is not a gate to broader platform work.
+**Recorded decision after milestone review:** return to Phase 5's minimal playable
+game, mechanics and visibility tests. That follow-up has since completed at the
+bounded scope recorded in [Phase 5 results](PHASE5_RESULTS.md). The brought-forward
+search milestone is complete; solving Tic-Tac-Toe or further prior tuning is not a
+gate to broader platform work. See [PROGRESS.md](PROGRESS.md) for the current milestone.
 A fixed-root prior-concentration ablation remains optional deferred research, with
 unchanged value head and 16/32 budgets. Any later strength claim needs a fresh
 reserved evaluation protocol. Search-target learning remains separate future work.

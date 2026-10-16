@@ -1,5 +1,8 @@
 # Phase 4.5 investigation results
 
+This report records monitoring validation, throughput measurements, the controlled
+self-play comparison and the resulting bounded-scope decision.
+
 Protocol: [predeclared budgets and criteria](PHASE45_PROTOCOL.md).
 Diagnosis: [Task 1](POLICY_DIAGNOSIS.md). Search milestone:
 [Task 5 design](SEARCH_LEARNING_DESIGN.md).
@@ -187,11 +190,11 @@ These differences reinforce the need to report seats and opponents separately.
 Raw evidence: `runs/phase45/entropy-comparison/experiment.json`, all training
 manifests/logs, 24 development reports, `selections.json`, six final reports and
 `results.json`. The original update-1000 checkpoint, configuration and log retain
-exactly the three SHA-256 identities in POLICY_DIAGNOSIS.md. The original run
-was never resumed or overwritten. Final seed 20261029 is now consumed; reserve
+exactly the three SHA-256 identities in [POLICY_DIAGNOSIS.md](POLICY_DIAGNOSIS.md).
+The original run was never resumed or overwritten. Final seed 20261029 is now consumed; reserve
 new final seeds for future tuning or milestone assessment.
 
-## Decision and next milestone — Task 6
+## Recorded decision — Task 6
 
 **Retain default PPO as a reference and prioritize bounded public-observation
 search evaluation before adding harder games.** The controlled entropy change
@@ -212,3 +215,6 @@ future changes inspectable; repeated timing supports limited same-device
 optimization evidence. None of this fixes the frozen policy or establishes
 optimal/robust play. Hidden-information generalization and stronger learning
 remain unresolved research work.
+
+The current milestone and phase statuses are maintained in [PROGRESS.md](PROGRESS.md)
+and the [project plan](BOARDGAME_AI_PROJECT_PLAN.md).
