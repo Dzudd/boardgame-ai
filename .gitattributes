@@ -1,0 +1,2 @@
+# Protocol provenance is byte-addressed; preserve bytes on Windows checkouts.
+src/boardgame_ai/training/protocols/* -text

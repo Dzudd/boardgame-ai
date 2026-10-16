@@ -422,6 +422,31 @@ reconstructive seed metadata and belong in trusted output directories. Public
 figure copies contain aggregate diagnostics/results only, no observations,
 private events, engine snapshots, or model weights. Source files are read-only.
 
+## Public search-target replay and learning
+
+The bounded CPU Tic-Tac-Toe search learner collects only latest-policy self-play
+from engine-filtered actor views and supplied choices. Both seats use the same
+frozen evaluator during each collection batch. Only normalized root visits and
+complete own-seat outcomes supervise the learner; no baseline trajectories,
+tactical categories, solver outputs, PPO probabilities or privileged critics enter
+its batch. Public rule reconstruction verifies replay legality, rewards and
+outcome perspective. Schema validation cannot prove arbitrary caller data origin;
+the production trainer populates replay exclusively through its own collector.
+
+Older completed self-generated target games may be sampled from FIFO replay;
+acting opponents always use the latest frozen evaluator. This is replay of
+learning targets, not a historical opponent pool or a change to PPO's on-policy
+contract. Each sample contains one permitted actor observation, never the other
+seat's view or authoritative state. Targets/rewards stay trusted learning signals
+and never become policy features. Public-rule training supports Tic-Tac-Toe only.
+
+Unlike PPO checkpoints, which exclude observations, the separate search format
+intentionally stores trusted public replay observations/actions/targets and
+reconstructive configuration. Those files are training artifacts, not generic
+public exports or player inputs. Restore validates permitted public trajectories;
+no hidden game support or terminal private revelations are added. No evaluation
+data are collected by this training runner.
+
 ## Public search inputs
 
 The search agent and simulator import no authoritative engine. The constructor

@@ -287,7 +287,8 @@ collectors independently impose zero terminal bootstrap. Masking/sampling are se
 
 Training experience comes only from latest-policy self-play, without external
 teachers, expert/solver labels, baseline training opponents, or a historical
-opponent pool. Historical self-generated replay is a different, future mechanism.
+opponent pool. Historical self-generated replay is implemented only in the
+separate public search-target learner; it never enters PPO.
 Fixed baselines measure strength outside training; their samples never enter PPO.
 No perfect solver is required. Public tactical audits are diagnostics, not labels.
 
@@ -379,6 +380,20 @@ No partial-minibatch/episode resume exists. Optional checkpoint monitoring adds
 immutable bounded snapshots and isolated development evaluation at update boundaries. CUDA is CLI default and fails if unavailable;
 there is no silent CPU fallback. CPU execution must be requested explicitly.
 
+Tic-Tac-Toe resume validates the metrics log against the authoritative checkpoint
+before further updates or monitoring. Only a final unterminated record that is a
+valid unfinished JSON object prefix is recoverable. All earlier or LF-terminated
+malformed records, invalid update/sample schemas, duplicate/non-increasing updates
+and history ahead of the checkpoint reject before log writes. Metrics emitted by
+the writer are ASCII JSON; invalid UTF-8 is corruption, not a torn emitted token.
+Complete rows and gaps are retained. Missing rows make cumulative samples unknown.
+An exclusively published `updates.jsonl.recovery-SHA256.bak` preserves all original
+bytes before atomic replacement removes a torn tail or adds a missing final LF.
+Retries reuse only an identical backup. No checkpoint/model/Adam/shuffle changes
+or synthetic rows occur during recovery. Single-writer ownership remains required.
+This recovery contract applies to the Tic-Tac-Toe runner; the separate Guildworks
+runner is unchanged.
+
 ## Evaluation and analysis
 
 TicTacToePolicyAgent snapshots a frozen CPU float32 model and owns sampling RNG.
@@ -389,8 +404,13 @@ Greedy versus deterministic heuristic repeats one path per seat, not independent
 
 Checkpoint evaluation hashes/loads one byte snapshot without modifying source
 weights, logs, or configuration. Reports identify hash/counters/mode/protocol,
-seeds, outcomes, lengths, and fixed errors; source and known training artifact
-overwrite paths are guarded. Parents must exist; explicit JSON reports overwrite.
+seeds, outcomes, lengths, and fixed errors. The CLI preflight and public report
+writer share destination validation: reserved training/monitoring names,
+development reports, `*.pt` checkpoints and snapshot directories reject, even if
+absent. Resolved paths are checked too. Every existing destination rejects,
+including hard links and symlinks; exclusive creation at the write boundary
+prevents truncation if a file appears after validation. Parents must exist.
+There is no report-overwrite bypass.
 Errors/truncations remain visible and yield nonzero CLI status. No optimizer in policy evaluation. Separate bounded search evaluation is described below.
 Held-out RNG namespaces do not imply unseen board positions.
 
@@ -443,6 +463,70 @@ The collector remains sequential: the fixed-corpus batched inference probe has
 small numerical differences and does not prove identical sampling or end-to-end
 speed. Protocol/results: [Phase 4.5](PHASE45_RESULTS.md).
 
+## Experiment protocol identity
+
+Phase 4.5 uses byte-frozen, versioned machine settings under
+`training/protocols/phase45-v1.json`, including explicit PPO values rather than
+mutable defaults. The settings source digest is pinned; changed settings require
+a new protocol version. New v2 experiment manifests hash saved `settings.json`
+and the original explanatory `protocol.md`. Resume verifies both saved hashes
+and exact machine settings, independently of the current explanatory Markdown.
+Package data and Git attributes preserve frozen protocol bytes across checkouts.
+
+The sole supported historical v1 mapping requires exact equality of every saved
+manifest field and the original SHA-256 `9d55a0f8ae4c4a34fb69d7ce44508139390d5b9290fd846a79f8ef0b706f834f`.
+That hash is verified against a packaged original snapshot recovered from commit
+`e56dd90`; its declared settings and the historical runner match the frozen
+machine settings. No old manifest/hash is rewritten. Unknown identities reject
+with instructions to restore provenance or review a new explicit mapping.
+`training.experiments --validate-only` performs only this read-only protocol
+check, without weight loading, training, evaluation, migration or output writes.
+It does not establish artifact integrity or cross-version numerical equivalence.
+
+## Public search-target learning
+
+`training.search_learning` implements a separate CPU feed-forward learner using
+the existing observation-only `NeuralEvaluator`, `SearchAgent` and public simulator.
+The engine owns real transitions; the collector supplies only filtered actor
+observations/legal actions to search. A single frozen evaluator serves both seats
+for all games collected in an update. Absolute game indices seed engine/seat
+streams using `boardgame-ai/search-learning/v1:{root}:{index}:{purpose}` (first
+eight SHA-256 bytes); search then retains its existing `search/v1` streams.
+
+Completed `SearchGame` replay records own observations, masks, root integer visits,
+selected actions, per-seat/global indices and undiscounted own-seat outcomes.
+Game-level metadata identifies frozen policy version/hash, absolute game index,
+search configuration and evaluator calls; incremental rewards verify outcome
+perspective. Public reconstruction validates the complete trajectory. Simulation
+traces, baseline matches, tactical categories and PPO batches are not inputs.
+
+Loss is mean visit-target cross entropy plus `.5*(v-z)^2`; targets are detached
+and legal-normalized, illegal log terms masked before multiplication. Finite
+predictions, losses, gradients and updated parameters are required. Adam uses
+explicit learning rate and gradient clipping. FIFO replay counts completed games;
+sample uniformly over games, then positions, with replacement using a private
+CPU Torch generator. Log replay age and sampled-position count. Current default
+capacity/batch/steps/collection/search settings follow the bridge design;
+`unroll_steps=0` rejects sequence unrolling. These are not experiment budgets.
+
+`training.search_run` requires an explicit total-update budget and absent/empty
+new output. Immutable `training.json` records configuration and learner identity.
+The separate search-outcome model/learner checkpoint schema contains CPU weights,
+Adam, replay, sampling RNG, counters, model mode and latest metrics. Restricted
+loading validates tensors, Adam, replay rules/provenance and absolute schedule.
+PPO checkpoints and generic PPO checkpoint evaluation are incompatible with it.
+The loaded model supports the existing raw-policy adapter programmatically.
+
+Save the authoritative checkpoint atomically before immutable per-update report
+publication. Resume republishes a missing current report from the checkpoint
+without regenerating games or repeating optimization. Existing mismatched reports
+reject; partial collection/optimization requires fresh reload of the last saved
+boundary. Configurations must match and total requested updates may only grow.
+Exact continuation is tested on the same CPU/runtime/thread setting. Single-writer
+ownership, atomic replacement and hard-link report publication are required.
+There is no CUDA learner, partial-episode resume or empirical strength claim.
+See [implementation evidence](docs/reviews/2026-10-16-search-target-implementation.md).
+
 ## Frozen policy diagnosis
 
 `python -m boardgame_ai.policy_audit` is a separate bounded CPU diagnostic, using
@@ -473,7 +557,8 @@ The [roadmap](BOARDGAME_AI_PROJECT_PLAN.md) owns phase tasks and acceptance crit
 [Public search evaluation](#public-search-evaluation) implements bounded
 Tic-Tac-Toe simulation and parent-seat vector backups. The separate self-generated
 visit/outcome learner and replay learning in the
-[search-learning design](SEARCH_LEARNING_DESIGN.md) remain unimplemented.
+[search-learning design](SEARCH_LEARNING_DESIGN.md) have a bounded CPU implementation
+described below; strength, throughput and broader extensions remain unverified.
 Future batched collection needs per-game/seat RNG and numerical/sampling
 comparisons; changes in minibatch,
 collection size or sampling schedule require learning-quality experiments.

@@ -12,6 +12,10 @@ import torch
 
 from boardgame_ai.policy_evaluation import evaluate_policy_checkpoint
 from boardgame_ai.training.checkpoint import load_ppo_checkpoint
+from boardgame_ai.training.experiment_protocol import (
+    create_experiment_protocol,
+    validate_experiment_protocol,
+)
 from boardgame_ai.training.monitoring import (
     MonitoringConfig,
     atomic_json,
@@ -37,44 +41,27 @@ def paired_interval(differences: list[float]) -> dict[str, Any]:
 
 
 def run_experiments(output: Path, *, resume: bool = False) -> dict[str, Any]:
-    protocol_path = Path("PHASE45_PROTOCOL.md")
-    protocol: dict[str, Any] = {
-        "schema_version": 1,
-        "protocol_sha256": sha256(protocol_path.read_bytes()).hexdigest(),
-        "seeds": [42, 43, 44],
-        "updates": 200,
-        "games_per_update": 64,
-        "variants": {"baseline": 0.01, "entropy": 0.05},
-        "monitoring": asdict(MonitoringConfig()),
-        "final_seed": 20261029,
-        "final_games_per_seat": 512,
-        "device": "cpu",
-        "threads": 1,
-    }
     if resume:
-        if (
-            json.loads((output / "experiment.json").read_text(encoding="utf-8"))
-            != protocol
-        ):
-            raise ValueError("Experiment resume protocol mismatch")
+        protocol = validate_experiment_protocol(output)["settings"]
     else:
-        if output.exists():
-            raise ValueError("Experiment output must be absent")
-        output.mkdir(parents=True)
-        atomic_json(output / "experiment.json", protocol)
+        protocol = create_experiment_protocol(output, Path("PHASE45_PROTOCOL.md"))
+    provenance = json.loads((output / "experiment.json").read_text(encoding="utf-8"))
+    monitoring = MonitoringConfig(**protocol["monitoring"])
     previous_threads = torch.get_num_threads()
-    torch.set_num_threads(1)
+    torch.set_num_threads(protocol["threads"])
     try:
         for index, seed in enumerate(protocol["seeds"]):
             variants = list(protocol["variants"].items())
             for variant, entropy in variants[:: 1 if index % 2 == 0 else -1]:
                 directory = output / f"{variant}-{seed}"
                 config = TrainingConfig(
-                    updates=200,
-                    games_per_update=64,
+                    updates=protocol["updates"],
+                    games_per_update=protocol["games_per_update"],
                     seed=seed,
-                    device="cpu",
-                    ppo=replace(PPOConfig(), entropy_coefficient=entropy),
+                    device=protocol["device"],
+                    ppo=replace(
+                        PPOConfig(**protocol["ppo"]), entropy_coefficient=entropy
+                    ),
                 )
 
                 def progress(
@@ -89,7 +76,7 @@ def run_experiments(output: Path, *, resume: bool = False) -> dict[str, Any]:
                     directory,
                     config,
                     resume=directory.exists(),
-                    monitoring=MonitoringConfig(),
+                    monitoring=monitoring,
                     on_update=progress,
                 )
         # Freeze every development-only selection before opening any final results.
@@ -130,7 +117,10 @@ def run_experiments(output: Path, *, resume: bool = False) -> dict[str, Any]:
                     raise ValueError("Final report checkpoint mismatch")
             else:
                 evaluation = evaluate_policy_checkpoint(
-                    checkpoint, games_per_seat=512, seed=20261029
+                    checkpoint,
+                    games_per_seat=protocol["final_games_per_seat"],
+                    seed=protocol["final_seed"],
+                    mode=protocol["mode"],
                 )
                 cases: list[dict[str, Any]] = []
                 for case in evaluation.cases:
@@ -139,10 +129,13 @@ def run_experiments(output: Path, *, resume: bool = False) -> dict[str, Any]:
                         for r in case.report.records
                         if r.outcome is not None and r.error is None
                     ]
-                    if len(scores) != 512:
+                    count = protocol["final_games_per_seat"]
+                    if len(scores) != count:
                         raise ValueError("Incomplete final evaluation")
-                    mean = sum(scores) / 512
-                    se = sqrt(sum((v - mean) ** 2 for v in scores) / (512 * 511))
+                    mean = sum(scores) / count
+                    se = sqrt(
+                        sum((v - mean) ** 2 for v in scores) / (count * (count - 1))
+                    )
                     cases.append(
                         {
                             "seat": case.learner_seat,
@@ -164,11 +157,12 @@ def run_experiments(output: Path, *, resume: bool = False) -> dict[str, Any]:
                 report = {
                     **selection,
                     "checkpoint_sha256": evaluation.checkpoint_sha256,
-                    "final_seed": 20261029,
+                    "final_seed": protocol["final_seed"],
                     "cases": cases,
                     "evaluation": asdict(evaluation),
                     "balanced_score": sum(c["mean_score"] for c in cases) / 4,
-                    "total_training_games": 12800,
+                    "total_training_games": protocol["updates"]
+                    * protocol["games_per_update"],
                     "total_training_decisions": sum(
                         row["ppo"]["num_samples"] for row in logs
                     ),
@@ -176,7 +170,9 @@ def run_experiments(output: Path, *, resume: bool = False) -> dict[str, Any]:
                         row["ppo"]["optimizer_steps"] for row in logs
                     ),
                     "diagnostics": policy_diagnostics(
-                        load_ppo_checkpoint(checkpoint), games=64, seed=20261029
+                        load_ppo_checkpoint(checkpoint),
+                        games=monitoring.self_play_games,
+                        seed=protocol["final_seed"],
                     ),
                 }
                 atomic_json(destination, report)
@@ -210,7 +206,8 @@ def run_experiments(output: Path, *, resume: bool = False) -> dict[str, Any]:
                 }
             )
         result = {
-            "protocol": protocol,
+            "protocol": provenance,
+            "settings": protocol,
             "runs": results,
             "paired_balanced_effect": paired,
             "paired_case_effects": cases_paired,
@@ -226,8 +223,16 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--resume", action="store_true")
+    parser.add_argument(
+        "--validate-only",
+        action="store_true",
+        help="Read-only protocol compatibility check; no training/evaluation",
+    )
     args = parser.parse_args()
-    run_experiments(args.output, resume=args.resume)
+    if args.validate_only:
+        print(json.dumps(validate_experiment_protocol(args.output), indent=2))
+    else:
+        run_experiments(args.output, resume=args.resume)
 
 
 if __name__ == "__main__":

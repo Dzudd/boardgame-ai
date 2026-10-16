@@ -11,6 +11,7 @@ from typing import Literal
 from boardgame_ai.agents import RandomAgent, TicTacToeHeuristicAgent
 from boardgame_ai.agents.base import Agent
 from boardgame_ai.agents.policy_agent import PolicyMode, TicTacToePolicyAgent
+from boardgame_ai.artifact_safety import validate_evaluation_destination
 from boardgame_ai.games.tic_tac_toe import TicTacToeEngine, TicTacToeObservation
 from boardgame_ai.games.tic_tac_toe.evaluation import tic_tac_toe_outcome
 from boardgame_ai.simulation.evaluation import EvaluationReport, evaluate_batch
@@ -120,7 +121,7 @@ def evaluate_policy_checkpoint(
 
 
 def save_policy_evaluation(result: PolicyEvaluation, path: str | Path) -> None:
-    """Export trusted summary/match metadata JSON; parent must exist (overwrites).
+    """Export a new trusted JSON report; never replace an existing artifact.
 
     No boards, observations, private events, exception text, or full state.
     Validate JSON serialization before writing; seeds are trusted metadata.
@@ -133,4 +134,6 @@ def save_policy_evaluation(result: PolicyEvaluation, path: str | Path) -> None:
         )
         + "\n"
     )
-    Path(path).write_text(encoded, encoding="utf-8")
+    destination = validate_evaluation_destination(path)
+    with destination.open("x", encoding="utf-8") as stream:
+        stream.write(encoded)

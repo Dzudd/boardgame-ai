@@ -9,7 +9,7 @@ multi-game learning remain future work.
 
 | Game | Play and simulation | Learning and search | Replay |
 |---|---|---|---|
-| Tic-Tac-Toe | Engine, random/heuristic agents, human CLI | PPO self-play, frozen evaluation, bounded public-rule PUCT evaluation | Public move logs |
+| Tic-Tac-Toe | Engine, random/heuristic agents, human CLI | PPO, separate CPU search-target self-play/replay learner, frozen PPO and bounded PUCT evaluation | Public move logs |
 | Guildworks | Hidden-card worker placement, random/scripted matches, filtered human CLI | Visible-history GRU and recurrent PPO; no hidden-information search | Not implemented |
 | Connect Four | Public engine, random/scripted matches, human CLI | No learner or search integration | Not implemented |
 
@@ -36,8 +36,12 @@ claimed to provide robust or optimal play. See [current evidence](PROGRESS.md).
 | [Phase 4.5 protocol](PHASE45_PROTOCOL.md) / [results](PHASE45_RESULTS.md) | Declared monitoring/performance/comparison methods and measured outcomes |
 | [Phase 5 results](PHASE5_RESULTS.md) | Guildworks recurrent learning protocol and functional validation |
 | [Phase 7 protocol](PHASE7_PROTOCOL.md) / [results](PHASE7_RESULTS.md) | Bounded public-search evaluation and heuristic-O diagnosis |
-| [Search-learning design](SEARCH_LEARNING_DESIGN.md) | Search rationale and the separate, unimplemented search-target learner |
+| [Search-learning design](SEARCH_LEARNING_DESIGN.md) | Public search and separate search-target learner contracts |
+| [Search-target implementation](docs/reviews/2026-10-16-search-target-implementation.md) | Bounded CPU learner, replay/resume validation and remaining experiment work |
 | [Phase 6 milestone proposal](docs/PHASE6_MILESTONE.md) | Proposed Connect Four PPO baseline; protocol still to be defined |
+| [2026-10-16 audit and feasibility review](docs/reviews/2026-10-16-audit-and-feasibility.md) | Historical audit findings, architecture risks, and proposed learning-validation gates |
+| [Development direction and next-session prompt](docs/reviews/2026-10-16-development-direction.md) | Reasoning for prioritizing reliability and bounded learning validation |
+| [Reliability resolution](docs/reviews/2026-10-16-reliability-resolution.md) | Artifact safety, metrics recovery, protocol compatibility, validation and proposed next experiment |
 
 Shared documentation is self-contained in a clone. Optional machine-specific AI
 instructions, session handoffs, continuation prompts, and temporary notes belong
@@ -235,7 +239,13 @@ games-per-update, and PPO settings:
 
 `--updates` is the total budget; this continues toward 2000. Resume derives seeds
 from absolute indices and repeats an interrupted unsaved update. A crash between
-checkpoint saving and logging can leave a missing row. Changing seed, collection
+checkpoint saving and logging can leave a missing or unfinished final row.
+Tic-Tac-Toe resume preserves a damaged log in `updates.jsonl.recovery-SHA256.bak`
+before atomically repairing its append boundary. Complete history is retained;
+missing rows are not invented and cumulative sample counts remain unknown.
+Earlier corruption, newline-terminated malformed records, duplicate indices,
+and history ahead of the checkpoint reject without rewriting the log.
+Changing seed, collection
 size, or PPO configuration rejects. Device changes are allowed without numerical
 identity across devices/versions. There is no mid-episode/minibatch resume.
 [Architecture](ARCHITECTURE.md#seeds-checkpoints-and-resume) defines the contract;
@@ -273,8 +283,11 @@ After training, evaluate a frozen checkpoint on CPU:
 This plays 1,000 games per random/heuristic × X/O case (4,000 total), hashes/loads
 one checkpoint snapshot, and reports outcomes, lengths, seeds, counters, and error
 categories. No training or search occurs; source files remain untouched. The
-output parent must exist; an explicit report is overwritten, with guards against
-known training artifacts and the checkpoint.
+output parent must exist. Reports use exclusive creation and must be new; select
+a different filename to repeat evaluation. The CLI and report writer share guards
+for checkpoints (`*.pt`), training/monitoring manifests, best pointers,
+development reports, and snapshot directories. Existing destinations, including
+resolved aliases and hard links, are never replaced; no overwrite option exists.
 
 `sampled` matches the masked training distribution; `greedy` selects maximum
 logits with lowest-cell ties. A greedy policy versus a deterministic heuristic
@@ -325,9 +338,25 @@ $env:OMP_NUM_THREADS='1'
 .\.venv\Scripts\python.exe -m boardgame_ai.training.experiments --output runs/phase45/entropy-comparison
 ```
 
-Output must be absent; use `--resume` with the identical protocol if interrupted.
+Output must be absent; use `--resume` with identical machine settings if interrupted.
+New experiments retain `settings.json` and the original `protocol.md` snapshot
+with hashes in `experiment.json`. Editing explanatory Markdown does not change
+experiment identity. The packaged immutable [settings](src/boardgame_ai/training/protocols/phase45-v1.json)
+fix PPO values as well as budgets, seeds, monitoring and schedule identities.
 Raw reports and immutable selection manifests remain there. Reserve fresh final
 seeds for subsequent tuning claims.
+
+Check protocol compatibility without launching training or evaluation:
+
+```powershell
+.\.venv\Scripts\python.exe -m boardgame_ai.training.experiments --output runs/phase45/entropy-comparison --validate-only
+```
+
+This read-only check supports the exact historical v1 manifest whose original
+protocol hash begins `9d55a0f8`, verified against the archived original snapshot.
+It preserves the original manifest/hash; it does not migrate artifacts or certify
+checkpoint/report integrity. Unknown historical identities or changed settings
+reject with restoration/review instructions. See the [resolution record](docs/reviews/2026-10-16-reliability-resolution.md).
 
 The benchmark executes an explicitly supplied saved reference PPO source. To
 reproduce the historical comparison, ensure `runs/` exists and use new outputs:
@@ -355,6 +384,24 @@ three fixed-seat metric reports. [Baseline benchmarks](BASELINE_BENCHMARKS.md)
 defines scoring, counts, lengths, and limitations. [Development examples](docs/DEVELOPMENT.md#baseline-agents-and-simulation)
 show single games, deterministic batch subsets, and outcome adapters.
 
+## Public search-target training
+
+The separate learner supports CPU training and self-generated replay. A tiny
+functional smoke run (not a learning-quality experiment):
+
+```powershell
+.\.venv\Scripts\python.exe -m boardgame_ai.training.search_run runs/new-search-smoke --updates 1 --games-per-update 1 --simulations 2 --batch-size 2 --optimizer-steps 1
+```
+
+Output must be absent/empty. Total `--updates` is required. Resume with `--resume`,
+a larger total budget and identical seed/collection/search/replay/optimizer
+settings. `latest.pt` restores weights, Adam, replay, RNG and counters. Immutable
+`update-NNNNNNNN.json` files report collected decisions, simulations, evaluator
+calls, losses and replay age. There is no automatic evaluation. Search-outcome
+checkpoints cannot be passed to PPO-only `evaluate`; their loaded CPU model
+supports `TicTacToePolicyAgent` programmatically. See
+[implementation and limits](docs/reviews/2026-10-16-search-target-implementation.md).
+
 ## Public search evaluation
 
 Frozen CPU public-search evaluation is separate from training:
@@ -367,8 +414,8 @@ Output must not exist. The fixed [Phase 7 protocol](PHASE7_PROTOCOL.md) evaluate
 3,072 games total and 4,520 public boards per condition. Checkpoint/configuration/log
 files are preserved; evaluation never trains. [Results](PHASE7_RESULTS.md) record
 measured gains and persistent heuristic-O failure. Only public Tic-Tac-Toe search
-is supported; hidden/chance/same-player simulation and search-target learning
-remain future work.
+is supported; hidden/chance/same-player simulation remains future work. The
+separate CPU search-target learner above is functional, with strength unmeasured.
 
 ## Save and inspect replays
 

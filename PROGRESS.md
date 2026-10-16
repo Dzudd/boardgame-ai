@@ -13,16 +13,31 @@ protocols, measurements and detailed limitations.
 | Phase 4 | Complete under its original improvement-over-random criterion |
 | Phase 4.5 | Tasks 1–6 complete at the declared bounded scope |
 | Phase 5 | Complete at declared Guildworks scope: engine, CLI, recurrent memory/PPO and bounded functional run |
-| Phase 6 | Pending; multi-game protocol and game choices are the next milestone |
-| Phase 7 | Partial: public simulator, bounded 16/32 search evaluation and heuristic-O diagnosis complete; broader research tasks remain |
+| Phase 6 | Pending; multi-game protocol/game choices follow independent learning-quality validation |
+| Phase 7 | Partial: public simulator, bounded search evaluation/diagnosis and separate CPU search-target learner implemented; learning-quality comparison and broader research remain |
 | Phase 8 | Partial: baseline human CLI play and Tic-Tac-Toe public replays available; trained-agent human play and other product tasks remain |
 
-**Next milestone:** define Phase 6's bounded multi-game evaluation protocol and
-game choices before implementing a multi-game learner. Hidden-information search,
-MuZero and search-target replay learning need separately specified milestones.
+**Next milestone:** freeze one bounded independent learning-quality comparison
+before investing in shared learning; the [reliability resolution and proposal](docs/reviews/2026-10-16-reliability-resolution.md)
+specify the next question and required protocol decisions. The bounded CPU
+search-target learner is now functional; a throughput-based comparison protocol
+and empirical learning-quality evidence remain pending. Phase 6's multi-game
+protocol/game choices, hidden-information search and MuZero remain unfinished.
 
 ## Verified evidence
 
+- **Search-target learner:** separate CPU latest-policy search self-play, complete
+  own-seat outcome/visit targets, uniform-game/position FIFO replay, finite
+  cross-entropy/half-MSE optimization, dedicated checkpoints and exact tiny-run
+  resume are implemented. [Implementation and tests](docs/reviews/2026-10-16-search-target-implementation.md).
+  No strength experiment or throughput comparison was executed.
+
+- **Reliability:** evaluation reports require exclusive creation and protect
+  managed artifact destinations; Tic-Tac-Toe resume backs up and recovers an
+  unfinished final metrics record while rejecting earlier corruption. Versioned
+  experiment settings are separate from prose, with a read-only verified
+  compatibility path for the recorded Phase 4.5 v1 protocol. Original artifacts
+  and hashes remain intact. [Resolution and validation](docs/reviews/2026-10-16-reliability-resolution.md).
 - **Guildworks:** complete scripted/random games, filtered human CLI, hidden-world
   equivalence, recurrent memory/PPO and exact CPU resume are implemented and tested.
   The functional run completed 16 updates / 256 self-play games / 8,192 decisions.
@@ -54,8 +69,9 @@ MuZero and search-target replay learning need separately specified milestones.
   replay export remain unavailable.
 - Search supports public deterministic Tic-Tac-Toe only. Hidden/chance and
   same-player game simulation are unsupported; generic same-actor backup
-  arithmetic tests do not establish game support. Search-target learning, MuZero
-  and multi-game learning are not implemented.
+  arithmetic tests do not establish game support. Search-target learning is
+  CPU Tic-Tac-Toe/K=0 only; its strength is unmeasured, and generic checkpoint
+  evaluation still supports PPO only. MuZero and multi-game learning are absent.
 - Connect Four training, search and replay integration remain future work.
 - Evaluation baselines and tactical labels never enter latest-policy self-play
   training. Results identify consumed final seeds; subsequent tuning requires
@@ -63,10 +79,14 @@ MuZero and search-target replay learning need separately specified milestones.
 
 ## Validation
 
-Latest recorded implementation validation, before this documentation-only
-reorganization: **837 tests passed**, including Guildworks engine/CLI/recurrent
-training, 35 Connect Four rule/CLI tests and existing CPU/CUDA regressions.
-Ruff lint/format, strict mypy, dependency and whitespace checks passed.
+Latest full local validation: **924 tests passed, 1 skipped** (52.00 seconds),
+including 50 new search-target learner tests and existing CPU/CUDA regressions. The skip
+requires Windows symlink privilege; hard-link and resolved-path tests pass.
+Ruff lint/format, strict mypy, dependency, CLI smoke and whitespace checks passed.
+All 168 existing run artifacts remain unchanged, and the three principal
+checkpoint hashes match the historical audit. See the [resolution record](docs/reviews/2026-10-16-reliability-resolution.md)
+for recovery evidence and compatibility limits; the [learner implementation record](docs/reviews/2026-10-16-search-target-implementation.md)
+records its functional scope and the still-unexecuted learning comparison.
 
 The public simulator comparison covers 5,478 boards and 16,167 legal transitions
 per starting seat; search checks cover budgets, perspective, terminal handling,
