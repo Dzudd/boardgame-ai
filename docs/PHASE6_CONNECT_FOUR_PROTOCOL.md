@@ -1,13 +1,17 @@
 # Connect Four independent baseline: functional protocol v1
 
 Declared 2026-10-16, before learner implementation or measurement. Status:
-**model/collector/PPO/trainer checkpoint restore implemented and tested;
-run-level resume/provenance/caps/metrics and evaluation integration pending;
-functional training/evaluation run not executed**. This defines one independent
-baseline, not a strength experiment or multi-game protocol.
+**model/collector/PPO/trainer restore, bounded run/evaluation and checkpoint CLI
+implemented; functional run completed by the user and reviewed 2026-10-16**. This defines one
+independent baseline, not a strength experiment or multi-game protocol.
 The [numeric settings](phase6/connect-four-functional-v1.json) are the canonical
 machine-readable declaration; changing them requires a new protocol version.
-No existing CLI consumes this file yet. There are no measured results.
+The separate `boardgame_ai.training.connect_four_run` module consumes this file.
+The [recorded results](phase6/CONNECT_FOUR_FUNCTIONAL_RESULTS.md) describe the
+completed CPU functional run and its limitations. See
+[run usage](DEVELOPMENT.md#connect-four-bounded-runs).
+The [console runbook](phase6/CONNECT_FOUR_CONSOLE_RUNBOOK.md) gives operator commands
+and a read-only preflight. These readiness checks do not execute the protocol.
 
 ## Game roles and scope
 
@@ -114,10 +118,12 @@ in response to weak outcomes. This document schedules no execution now.
 
 ## Checkpoints, outputs and resume
 
-Implementation status: trainer-level save/load and exact next-update CPU restore
-are available. The run-level requirements below (saved protocol provenance,
-schedule, game counters, cumulative caps, metrics recovery and immutable snapshots)
-remain a specification for the next milestone; no run command supplies them yet.
+Implementation status: trainer restore and the run-level requirements below are
+available through a separate CPU/one-thread runner. Disposable tests exercise
+two-update stop/resume to four with one game/update under a separately named test
+protocol; they do not provide the declared 32-game run's measurements. The user
+subsequently completed that run through update-two pause/resume, then the fixed
+evaluation; the linked result report preserves its artifacts and failed startup.
 
 New output must be absent/empty. Preserve a copy and SHA-256 of the numeric
 settings and this protocol, plus code revision/dirty-tree identity, runtime,
@@ -145,7 +151,39 @@ two-update stop/resume to four in disposable output; it is a continuation of the
 32-game budget, not an additional experiment. A demonstration must also respect
 remaining cumulative wall time; budgets cannot reset on resume. CUDA portability
 is tested separately on disposable tiny fixtures, without cross-device identity
-or speed claims. Human checkpoint play is a later implementation increment.
+or speed claims. Portable-checkpoint human CLI play is implemented; see
+[usage](../README.md#connect-four). It is separate from this evaluation schedule,
+and its sampled/greedy options do not change the protocol settings.
+
+The run checkpoint is a versioned envelope around the existing validated trainer
+payload. `budget.json` is a separate cumulative training/evaluation ledger and
+`training-status.json` reports saved counts, known discarded complete-game work,
+stop reason and overruns. Partial collector decisions are explicitly unknown.
+The ledger reserves all remaining time before work, then settles actual elapsed
+time on normal completion or exceptions. A hard process kill leaves the reservation
+spent conservatively; it cannot reset a cap. Tiny final ledger-write overhead is
+not recursively charged. Checkpoint boundary elapsed time is a lower bound on the
+ledger, which includes failed/unsaved attempts and initialization/saves. A crash
+during initial setup can leave an incomplete directory that rejects resume;
+preserve it and investigate rather than treating it as a completed run.
+
+Resume validates saved settings/prose/initial snapshot hashes, model/learner/run
+identities, source digest, Python/Torch versions, counters, budget and metrics
+before repairing a tail. Current external prose is not reread. Source/runtime
+changes reject; Git revision/dirty status and diff/source digests remain recorded
+provenance. Complete metrics logs must agree with checkpoint sample counts; gaps
+remain gaps. A missing final snapshot can be published from the final boundary on
+resume without further collection. Healthy no-op resumes leave bytes unchanged.
+
+Evaluation is explicitly requested separately and requires the fixed final
+boundary. It uses immutable initial/final trainer snapshots and private per-game
+streams, including the paired random control. An exclusive `evaluation.json`
+records raw completed cases, checkpoint hashes, per-seat summaries, paired effects,
+failures and partial counts. A partial report is preserved and cannot be overwritten
+or rerun in place. Evaluation budget reservations also survive hard termination;
+there is no mid-evaluation continuation. These are single-writer APIs, not a
+concurrent run manager. CUDA trainer portability remains separately tested; this
+runner deliberately implements the protocol's CPU execution only.
 
 ## Reporting and acceptance
 

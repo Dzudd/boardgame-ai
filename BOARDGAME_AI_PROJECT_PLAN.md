@@ -10,12 +10,13 @@ Phase 5 complete for the declared Guildworks rules, including recurrent memory/P
 Phase 7 has a public simulator, bounded search evaluation/diagnosis and functional
 CPU search-target learner; its phase-wide criterion is not met. Phases 6–8 retain
 unfinished tasks below.
-**Next milestone:** Add the bounded Connect Four run layer: protocol provenance,
-absolute self-play schedule, metrics recovery, cumulative caps and isolated
-evaluation under the [functional protocol](docs/PHASE6_CONNECT_FOUR_PROTOCOL.md).
-Phase 6 observation/action adapters, policy/value model, self-play collector,
-PPO optimizer and trainer-level portable restore are implemented; the functional
-training run is unexecuted.
+**Next milestone:** predeclare the next independent Connect Four learning-quality
+study with fresh roots and multiple training seeds, after bounded throughput
+measurements. GPU experiments require run-layer integration first. The user runs
+campaigns in their own console. The bounded CPU
+[functional run](docs/phase6/CONNECT_FOUR_FUNCTIONAL_RESULTS.md) is complete;
+portable-checkpoint human play is implemented and tested. A single tiny run does
+not establish robust strength or the Phase 6 multi-game criteria.
 Shared-model/transfer protocols and independent
 learning-quality evidence remain pending, including the separate search/PPO
 [comparison proposal](docs/reviews/2026-10-16-reliability-resolution.md#proposed-next-bounded-learning-experiment-not-executed).
@@ -212,13 +213,17 @@ The [proposed first bounded milestone](docs/PHASE6_MILESTONE.md) describes an
 independent Connect Four learning baseline and trained-checkpoint human play.
 Its observation/fixed column-action encoders, independent policy/value model and
 complete-game self-play collector, PPO optimization and trainer-level checkpoint
-restore are implemented and tested. Run-level resume/provenance/metrics recovery,
-evaluation scheduling and checkpoint human play remain unimplemented. The
+restore, bounded run-level resume/provenance/metrics recovery, cumulative caps
+and isolated evaluation are implemented and tested. The declared CPU functional
+run completed through pause/resume and fixed random/control evaluation;
+portable-checkpoint human CLI play is implemented and tested. The
 [functional protocol](docs/PHASE6_CONNECT_FOUR_PROTOCOL.md) now specifies the
 independent model, self-play/evaluation budgets, seeds and resume contract;
 it is not a strength comparison or a frozen multi-game experiment. Fixed action
 indices do not implement general candidate-action scoring.
 
+- [x] Validate the bounded independent Connect Four functional learner: 32 self-play
+  games plus 192 fixed evaluation/control games. This does not complete shared learning.
 - [x] Add at least two more games using the same engine interface: Guildworks and
   Connect Four beyond the original Tic-Tac-Toe. A new held-out transfer game is
   still required before testing adaptation.
@@ -266,7 +271,9 @@ The phase-wide acceptance criterion is not yet met.
 
 - [x] Provide CLI human play for Tic-Tac-Toe against random/heuristic agents.
 - [x] Provide filtered Guildworks human CLI play against RandomAgent.
-- [ ] Add human play against trained checkpoints and a web UI if needed.
+- [x] Add Connect Four human CLI play against validated portable checkpoints,
+  functionally tested using disposable initialized and optimized snapshots.
+- [ ] Extend trained-checkpoint human play to other games and add a web UI if needed.
 - [ ] Add selectable games, agents and difficulty levels.
 - [x] Save and inspect public Tic-Tac-Toe move replays.
 - [ ] Save/load resumable games and extend replay support to other games.
@@ -281,8 +288,8 @@ The phase-wide acceptance criterion is not yet met.
 The Phase 4.5 review brought the first Phase 7 milestone forward. Public simulation,
 16/32 search evaluation and heuristic-O trace diagnosis are complete. Phase 5 is
 complete at its declared scope. Phase 6's independent Connect Four functional
-protocol has an implemented model/collector/PPO/trainer restore; bounded run-layer
-integration is next. Independent
+protocol has an implemented model/collector/PPO/trainer restore and bounded
+run/resume/evaluation layer; its bounded CPU functional run is complete. Independent
 learning-quality evidence is still needed before shared-model comparisons; additional
 search tuning or solving Tic-Tac-Toe is not a prerequisite. Prior-concentration
 ablation is deferred optional research. The longer-term search sequence remains:

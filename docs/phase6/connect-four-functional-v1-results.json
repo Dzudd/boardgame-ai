@@ -1,0 +1,3279 @@
+{
+  "schema_version": 1,
+  "protocol_id": "connect-four-functional-v1",
+  "review_date": "2026-10-16",
+  "run_directory": "runs/connect-four-functional-retry1",
+  "settings": {
+    "protocol_id": "connect-four-functional-v1",
+    "schema_version": 1,
+    "purpose": "functional-validation-only",
+    "game_id": "connect_four",
+    "model_id": "connect-four-mlp64x64-actions7-v1",
+    "encoding_id": "connect-four-relative-6x6x7-v1",
+    "observation_shape": [
+      6,
+      6,
+      7
+    ],
+    "action_count": 7,
+    "hidden_sizes": [
+      64,
+      64
+    ],
+    "activation": "tanh",
+    "training": {
+      "seed": 630601,
+      "device": "cpu",
+      "threads": 1,
+      "updates": 4,
+      "games_per_update": 8,
+      "starting_player": 0,
+      "max_steps_per_game": 42,
+      "collection": "complete-latest-policy-self-play",
+      "sampling": "masked-categorical",
+      "seed_namespace": "boardgame-ai/connect-four/ppo/v1",
+      "wall_time_cap_seconds": 120,
+      "ppo": {
+        "learning_rate": 0.0003,
+        "gamma": 1.0,
+        "gae_lambda": 0.95,
+        "clip_ratio": 0.2,
+        "value_coefficient": 0.5,
+        "entropy_coefficient": 0.01,
+        "epochs": 2,
+        "minibatch_size": 32,
+        "max_grad_norm": 0.5,
+        "normalize_advantages": true
+      }
+    },
+    "evaluation": {
+      "seed": 630602,
+      "control_seed": 630603,
+      "seed_namespace": "boardgame-ai/connect-four/evaluation/v1",
+      "opponent": "uniform-supplied-legal-random-v1",
+      "mode": "sampled",
+      "games_per_seat": 32,
+      "checkpoints": [
+        "initial",
+        "update-4"
+      ],
+      "selection": "fixed-last-update",
+      "control": "random-versus-random",
+      "control_games_per_seat": 32,
+      "wall_time_cap_seconds": 120
+    }
+  },
+  "provenance": {
+    "schema_version": 1,
+    "settings_sha256": "90b3dbfe607307c32fe04f5a1183277fd2783374abff3336ff9bc750dbd05bb6",
+    "protocol_sha256": "8445239f730575851bb0a7fdb4cfe6b5fcd08195d22201c28a529595a1cfbc80",
+    "initial_sha256": "dc74f12491f6641515dfa1cb86fd0e26c0686b99f3e0eb29fe8af05e48eb9745",
+    "code": {
+      "revision": "0af7052e3d8eb47c2291196c5ae378827a742118",
+      "status": "M ARCHITECTURE.md\n M BOARDGAME_AI_PROJECT_PLAN.md\n M INFORMATION_BOUNDARIES.md\n M PROGRESS.md\n M README.md\n M docs/DEVELOPMENT.md\n M docs/PHASE6_CONNECT_FOUR_PROTOCOL.md\n M docs/PHASE6_MILESTONE.md\n M src/boardgame_ai/cli.py\n M src/boardgame_ai/cli_connect_four.py\n M src/boardgame_ai/training/connect_four_checkpoint.py\n M src/boardgame_ai/training/metrics_log.py\n?? docs/phase6/CONNECT_FOUR_CONSOLE_RUNBOOK.md\n?? src/boardgame_ai/agents/connect_four_policy.py\n?? src/boardgame_ai/training/connect_four_evaluation.py\n?? src/boardgame_ai/training/connect_four_run.py\n?? src/boardgame_ai/training/protocols/connect-four-functional-v1.json\n?? tests/test_connect_four_console.py\n?? tests/test_connect_four_policy.py\n?? tests/test_connect_four_run.py",
+      "diff_sha256": "bc92f4378f7df5e88db83a02502d6d175b4e0a9e1c7b96e751f73c76414b1212",
+      "source_sha256": "d3996e07a18bd6870fa75ecfe825861361a8f8f0d7f5524ed9f64c5fef03047f"
+    },
+    "runtime": {
+      "python": "3.12.14",
+      "torch": "2.14.1+cu130",
+      "platform": "Windows-11-10.0.26300-SP0",
+      "processor": "AMD64 Family 25 Model 33 Stepping 0, AuthenticAMD",
+      "device": "cpu",
+      "threads": 1
+    },
+    "parameter_count": 20872
+  },
+  "training_status": {
+    "complete": true,
+    "stop_reason": "boundary",
+    "updates": 4,
+    "games": 32,
+    "decisions": 664,
+    "optimizer_steps": 46,
+    "elapsed_seconds": 3.904999999998836,
+    "cap_overrun_seconds": 0.0,
+    "discarded_complete_games": 0,
+    "discarded_complete_game_decisions": 0,
+    "partial_game_decisions": "unknown on collector failure"
+  },
+  "budget": {
+    "settings_sha256": "90b3dbfe607307c32fe04f5a1183277fd2783374abff3336ff9bc750dbd05bb6",
+    "training": 3.9209999999948195,
+    "evaluation": 2.2030000000013388
+  },
+  "updates": [
+    {
+      "update": 1,
+      "games": 8,
+      "decisions": 169,
+      "optimizer_steps": 12,
+      "sample_presentations": 338,
+      "replay_reuse": 0,
+      "ppo": {
+        "num_samples": 169,
+        "optimizer_steps": 12,
+        "total_loss": 0.12794137327276037,
+        "policy_loss": -0.005666812760590096,
+        "value_loss": 0.3047416979039209,
+        "entropy": 1.8762661585441003,
+        "approximate_kl": 0.0017184537474462796,
+        "clip_fraction": 0.0
+      },
+      "outcomes": [
+        [
+          -1.0,
+          1.0
+        ],
+        [
+          -1.0,
+          1.0
+        ],
+        [
+          1.0,
+          -1.0
+        ],
+        [
+          1.0,
+          -1.0
+        ],
+        [
+          1.0,
+          -1.0
+        ],
+        [
+          -1.0,
+          1.0
+        ],
+        [
+          1.0,
+          -1.0
+        ],
+        [
+          1.0,
+          -1.0
+        ]
+      ],
+      "unique_acting_positions": 160,
+      "action_frequencies": [
+        24,
+        16,
+        20,
+        26,
+        28,
+        26,
+        29
+      ],
+      "collection_seconds": 0.07799999999406282,
+      "optimization_seconds": 0.20300000000133878,
+      "checkpoint_seconds": 0.0,
+      "elapsed_seconds": 1.7809999999954016,
+      "cap_overrun_seconds": 0.0
+    },
+    {
+      "update": 2,
+      "games": 16,
+      "decisions": 328,
+      "optimizer_steps": 22,
+      "sample_presentations": 656,
+      "replay_reuse": 0,
+      "ppo": {
+        "num_samples": 159,
+        "optimizer_steps": 10,
+        "total_loss": 0.13256448610398755,
+        "policy_loss": -0.006465304104037255,
+        "value_loss": 0.3157117322743314,
+        "entropy": 1.8826075788563903,
+        "approximate_kl": 0.0013049531650419037,
+        "clip_fraction": 0.0
+      },
+      "outcomes": [
+        [
+          -1.0,
+          1.0
+        ],
+        [
+          1.0,
+          -1.0
+        ],
+        [
+          -1.0,
+          1.0
+        ],
+        [
+          -1.0,
+          1.0
+        ],
+        [
+          1.0,
+          -1.0
+        ],
+        [
+          -1.0,
+          1.0
+        ],
+        [
+          -1.0,
+          1.0
+        ],
+        [
+          1.0,
+          -1.0
+        ]
+      ],
+      "unique_acting_positions": 148,
+      "action_frequencies": [
+        16,
+        16,
+        24,
+        33,
+        24,
+        25,
+        21
+      ],
+      "collection_seconds": 0.07800000000133878,
+      "optimization_seconds": 0.01600000000325963,
+      "checkpoint_seconds": 0.014999999999417923,
+      "elapsed_seconds": 1.889999999999418,
+      "cap_overrun_seconds": 0.0
+    },
+    {
+      "update": 3,
+      "games": 24,
+      "decisions": 497,
+      "optimizer_steps": 34,
+      "sample_presentations": 994,
+      "replay_reuse": 0,
+      "ppo": {
+        "num_samples": 169,
+        "optimizer_steps": 12,
+        "total_loss": 0.12363122421256184,
+        "policy_loss": -0.008004073648763127,
+        "value_loss": 0.3008859913201022,
+        "entropy": 1.880770033280525,
+        "approximate_kl": 0.0019177783796558235,
+        "clip_fraction": 0.0
+      },
+      "outcomes": [
+        [
+          -1.0,
+          1.0
+        ],
+        [
+          1.0,
+          -1.0
+        ],
+        [
+          -1.0,
+          1.0
+        ],
+        [
+          -1.0,
+          1.0
+        ],
+        [
+          -1.0,
+          1.0
+        ],
+        [
+          -1.0,
+          1.0
+        ],
+        [
+          1.0,
+          -1.0
+        ],
+        [
+          1.0,
+          -1.0
+        ]
+      ],
+      "unique_acting_positions": 159,
+      "action_frequencies": [
+        23,
+        20,
+        32,
+        24,
+        21,
+        23,
+        26
+      ],
+      "collection_seconds": 0.11000000000058208,
+      "optimization_seconds": 0.2969999999986612,
+      "checkpoint_seconds": 0.0,
+      "elapsed_seconds": 3.7959999999948195,
+      "cap_overrun_seconds": 0.0
+    },
+    {
+      "update": 4,
+      "games": 32,
+      "decisions": 664,
+      "optimizer_steps": 46,
+      "sample_presentations": 1328,
+      "replay_reuse": 0,
+      "ppo": {
+        "num_samples": 167,
+        "optimizer_steps": 12,
+        "total_loss": 0.1383437701684986,
+        "policy_loss": -0.001726223323159589,
+        "value_loss": 0.3166334048181237,
+        "entropy": 1.8246707141756298,
+        "approximate_kl": 0.0011930606660118025,
+        "clip_fraction": 0.0
+      },
+      "outcomes": [
+        [
+          1.0,
+          -1.0
+        ],
+        [
+          1.0,
+          -1.0
+        ],
+        [
+          1.0,
+          -1.0
+        ],
+        [
+          1.0,
+          -1.0
+        ],
+        [
+          1.0,
+          -1.0
+        ],
+        [
+          1.0,
+          -1.0
+        ],
+        [
+          1.0,
+          -1.0
+        ],
+        [
+          -1.0,
+          1.0
+        ]
+      ],
+      "unique_acting_positions": 157,
+      "action_frequencies": [
+        18,
+        20,
+        26,
+        43,
+        21,
+        27,
+        12
+      ],
+      "collection_seconds": 0.062000000005355105,
+      "optimization_seconds": 0.01600000000325963,
+      "checkpoint_seconds": 0.014999999999417923,
+      "elapsed_seconds": 3.904999999998836,
+      "cap_overrun_seconds": 0.0
+    }
+  ],
+  "evaluation": {
+    "schema_version": 1,
+    "settings_sha256": "90b3dbfe607307c32fe04f5a1183277fd2783374abff3336ff9bc750dbd05bb6",
+    "cases": {
+      "initial": [
+        {
+          "seat": 0,
+          "index": 0,
+          "seeds": {
+            "engine": 920349461763952201,
+            "policy": 3904852933235908163,
+            "opponent": 15323792701887013797
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 29,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 0,
+          "index": 1,
+          "seeds": {
+            "engine": 9024501619084767749,
+            "policy": 3382311516022613203,
+            "opponent": 3208579631007245360
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 9,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 0,
+          "index": 2,
+          "seeds": {
+            "engine": 15946581459450184228,
+            "policy": 15421779044697943938,
+            "opponent": 10634736499734295325
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 19,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 0,
+          "index": 3,
+          "seeds": {
+            "engine": 7487350172411284516,
+            "policy": 10542483355326061208,
+            "opponent": 3312234695976261122
+          },
+          "outcome": "loss",
+          "score": 0.0,
+          "length": 14,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 0,
+          "index": 4,
+          "seeds": {
+            "engine": 4566691320938125328,
+            "policy": 10233545409233745997,
+            "opponent": 959171968313409459
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 19,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 0,
+          "index": 5,
+          "seeds": {
+            "engine": 17772564897364332023,
+            "policy": 2822220944332275489,
+            "opponent": 6442891379354338529
+          },
+          "outcome": "loss",
+          "score": 0.0,
+          "length": 16,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 0,
+          "index": 6,
+          "seeds": {
+            "engine": 669668105798743379,
+            "policy": 752808857121879406,
+            "opponent": 9214790943747990742
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 17,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 0,
+          "index": 7,
+          "seeds": {
+            "engine": 10391548956835460743,
+            "policy": 7609508806861119737,
+            "opponent": 11176301452529817437
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 23,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 0,
+          "index": 8,
+          "seeds": {
+            "engine": 1768550177380219531,
+            "policy": 1242642641572843522,
+            "opponent": 8592418609323542703
+          },
+          "outcome": "loss",
+          "score": 0.0,
+          "length": 30,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 0,
+          "index": 9,
+          "seeds": {
+            "engine": 14637653039450238629,
+            "policy": 6855503646036961389,
+            "opponent": 13638145522152085920
+          },
+          "outcome": "loss",
+          "score": 0.0,
+          "length": 24,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 0,
+          "index": 10,
+          "seeds": {
+            "engine": 6976609380855224621,
+            "policy": 926494019288326734,
+            "opponent": 12800464222329764710
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 21,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 0,
+          "index": 11,
+          "seeds": {
+            "engine": 8177116405825204510,
+            "policy": 15388431375782264638,
+            "opponent": 14668203309102654269
+          },
+          "outcome": "loss",
+          "score": 0.0,
+          "length": 30,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 0,
+          "index": 12,
+          "seeds": {
+            "engine": 8492520999527758050,
+            "policy": 414653677127491198,
+            "opponent": 17934866215702876283
+          },
+          "outcome": "loss",
+          "score": 0.0,
+          "length": 30,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 0,
+          "index": 13,
+          "seeds": {
+            "engine": 11590929763641350116,
+            "policy": 528531564324019767,
+            "opponent": 15342961097482959555
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 29,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 0,
+          "index": 14,
+          "seeds": {
+            "engine": 10668337503229010267,
+            "policy": 14980954757297299943,
+            "opponent": 1504330932249766580
+          },
+          "outcome": "loss",
+          "score": 0.0,
+          "length": 24,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 0,
+          "index": 15,
+          "seeds": {
+            "engine": 7376869219421720168,
+            "policy": 6431256163507269873,
+            "opponent": 17099082729749486536
+          },
+          "outcome": "loss",
+          "score": 0.0,
+          "length": 24,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 0,
+          "index": 16,
+          "seeds": {
+            "engine": 12775045454801482763,
+            "policy": 16049347834077860822,
+            "opponent": 13570505130321034863
+          },
+          "outcome": "loss",
+          "score": 0.0,
+          "length": 34,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 0,
+          "index": 17,
+          "seeds": {
+            "engine": 3740274516776151066,
+            "policy": 12560058559941990798,
+            "opponent": 1062236475277296094
+          },
+          "outcome": "loss",
+          "score": 0.0,
+          "length": 22,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 0,
+          "index": 18,
+          "seeds": {
+            "engine": 15586970817256306815,
+            "policy": 10952470313063697656,
+            "opponent": 13926927707637695171
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 25,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 0,
+          "index": 19,
+          "seeds": {
+            "engine": 16239886544931607951,
+            "policy": 4301902238804582862,
+            "opponent": 15520380242908222558
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 25,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 0,
+          "index": 20,
+          "seeds": {
+            "engine": 4886224306914545560,
+            "policy": 7675766418988273562,
+            "opponent": 4529708149117623297
+          },
+          "outcome": "loss",
+          "score": 0.0,
+          "length": 16,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 0,
+          "index": 21,
+          "seeds": {
+            "engine": 14220114631601679140,
+            "policy": 15778605136687615403,
+            "opponent": 9337135044840183317
+          },
+          "outcome": "loss",
+          "score": 0.0,
+          "length": 18,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 0,
+          "index": 22,
+          "seeds": {
+            "engine": 8537004552325198015,
+            "policy": 7011426399428732407,
+            "opponent": 10497299700829244948
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 21,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 0,
+          "index": 23,
+          "seeds": {
+            "engine": 17493166084958141469,
+            "policy": 14978903455515848140,
+            "opponent": 12262010955979415770
+          },
+          "outcome": "loss",
+          "score": 0.0,
+          "length": 28,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 0,
+          "index": 24,
+          "seeds": {
+            "engine": 13166569960270888951,
+            "policy": 15393857711950787485,
+            "opponent": 4338178110275094970
+          },
+          "outcome": "loss",
+          "score": 0.0,
+          "length": 32,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 0,
+          "index": 25,
+          "seeds": {
+            "engine": 14262408156986744914,
+            "policy": 17463785067612108616,
+            "opponent": 9818484263906868668
+          },
+          "outcome": "loss",
+          "score": 0.0,
+          "length": 16,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 0,
+          "index": 26,
+          "seeds": {
+            "engine": 15848804704792678810,
+            "policy": 17659603089713960931,
+            "opponent": 15605506808872297559
+          },
+          "outcome": "loss",
+          "score": 0.0,
+          "length": 30,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 0,
+          "index": 27,
+          "seeds": {
+            "engine": 88305479751239005,
+            "policy": 10384596832411888517,
+            "opponent": 17762805304936389270
+          },
+          "outcome": "loss",
+          "score": 0.0,
+          "length": 26,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 0,
+          "index": 28,
+          "seeds": {
+            "engine": 12720294824167761333,
+            "policy": 9284947708206059603,
+            "opponent": 2448667805112867435
+          },
+          "outcome": "loss",
+          "score": 0.0,
+          "length": 24,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 0,
+          "index": 29,
+          "seeds": {
+            "engine": 16368889955276892876,
+            "policy": 978973263933291166,
+            "opponent": 9883568931932014156
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 15,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 0,
+          "index": 30,
+          "seeds": {
+            "engine": 7424644391919136376,
+            "policy": 13525463998478894895,
+            "opponent": 8688641493384427442
+          },
+          "outcome": "loss",
+          "score": 0.0,
+          "length": 22,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 0,
+          "index": 31,
+          "seeds": {
+            "engine": 15696935261978030772,
+            "policy": 977911521175093920,
+            "opponent": 9362544751917696556
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 25,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 1,
+          "index": 0,
+          "seeds": {
+            "engine": 6201511080276700666,
+            "policy": 17525089415715017002,
+            "opponent": 7990905235948469536
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 18,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 1,
+          "index": 1,
+          "seeds": {
+            "engine": 5280119331034501867,
+            "policy": 7637755831755479745,
+            "opponent": 14912065066419474862
+          },
+          "outcome": "loss",
+          "score": 0.0,
+          "length": 15,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 1,
+          "index": 2,
+          "seeds": {
+            "engine": 13542615091684115531,
+            "policy": 2000880397052738510,
+            "opponent": 1023888333805316206
+          },
+          "outcome": "loss",
+          "score": 0.0,
+          "length": 17,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 1,
+          "index": 3,
+          "seeds": {
+            "engine": 14950627575930139283,
+            "policy": 3495422256862714811,
+            "opponent": 13008573764252806522
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 16,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 1,
+          "index": 4,
+          "seeds": {
+            "engine": 8152286283652141367,
+            "policy": 5825953920749766280,
+            "opponent": 2120510461786084039
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 22,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 1,
+          "index": 5,
+          "seeds": {
+            "engine": 16760694672688785128,
+            "policy": 5131398844252839326,
+            "opponent": 18219853757861659037
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 10,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 1,
+          "index": 6,
+          "seeds": {
+            "engine": 12134966953774535464,
+            "policy": 8670520744319897059,
+            "opponent": 12783541415399717200
+          },
+          "outcome": "loss",
+          "score": 0.0,
+          "length": 9,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 1,
+          "index": 7,
+          "seeds": {
+            "engine": 4439911022816957680,
+            "policy": 7350652882507767682,
+            "opponent": 14377495893882400866
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 24,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 1,
+          "index": 8,
+          "seeds": {
+            "engine": 9032204631855483266,
+            "policy": 5044595854740925759,
+            "opponent": 5883214628837904265
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 20,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 1,
+          "index": 9,
+          "seeds": {
+            "engine": 2117295141061966518,
+            "policy": 15068693496037417430,
+            "opponent": 8857647820408615238
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 28,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 1,
+          "index": 10,
+          "seeds": {
+            "engine": 12478814168906311828,
+            "policy": 5246483963843121240,
+            "opponent": 11924250696696561266
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 30,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 1,
+          "index": 11,
+          "seeds": {
+            "engine": 6861669473941376530,
+            "policy": 9691712349844444138,
+            "opponent": 2086179085723965994
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 14,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 1,
+          "index": 12,
+          "seeds": {
+            "engine": 10587165141809913695,
+            "policy": 5038581808743191340,
+            "opponent": 7012536569040413361
+          },
+          "outcome": "loss",
+          "score": 0.0,
+          "length": 15,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 1,
+          "index": 13,
+          "seeds": {
+            "engine": 11176897435218037212,
+            "policy": 5882716181617234423,
+            "opponent": 14174999524986248824
+          },
+          "outcome": "loss",
+          "score": 0.0,
+          "length": 23,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 1,
+          "index": 14,
+          "seeds": {
+            "engine": 12468764967462889581,
+            "policy": 3232536296703018201,
+            "opponent": 5571193029438120252
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 24,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 1,
+          "index": 15,
+          "seeds": {
+            "engine": 7986744577656643454,
+            "policy": 9767169617405437939,
+            "opponent": 16041470292853910178
+          },
+          "outcome": "loss",
+          "score": 0.0,
+          "length": 21,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 1,
+          "index": 16,
+          "seeds": {
+            "engine": 10747242845870887323,
+            "policy": 14945847828807304498,
+            "opponent": 6664798261091134779
+          },
+          "outcome": "loss",
+          "score": 0.0,
+          "length": 23,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 1,
+          "index": 17,
+          "seeds": {
+            "engine": 10355882298821882668,
+            "policy": 5502168599476458724,
+            "opponent": 9280816720786456933
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 26,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 1,
+          "index": 18,
+          "seeds": {
+            "engine": 196095783299712025,
+            "policy": 7527427135879961785,
+            "opponent": 4519927120504752428
+          },
+          "outcome": "loss",
+          "score": 0.0,
+          "length": 17,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 1,
+          "index": 19,
+          "seeds": {
+            "engine": 2035792708785641884,
+            "policy": 16890243817366432440,
+            "opponent": 7636508932197802554
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 26,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 1,
+          "index": 20,
+          "seeds": {
+            "engine": 11995389156241298391,
+            "policy": 2898495822363221683,
+            "opponent": 10574413418356046121
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 16,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 1,
+          "index": 21,
+          "seeds": {
+            "engine": 13213817475801008491,
+            "policy": 14929579724739315640,
+            "opponent": 8262770102753519735
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 22,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 1,
+          "index": 22,
+          "seeds": {
+            "engine": 8187089142172438425,
+            "policy": 1135140460585920308,
+            "opponent": 14502258418744149198
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 26,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 1,
+          "index": 23,
+          "seeds": {
+            "engine": 605057516869998624,
+            "policy": 17642560956510379187,
+            "opponent": 14411892743262263216
+          },
+          "outcome": "loss",
+          "score": 0.0,
+          "length": 15,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 1,
+          "index": 24,
+          "seeds": {
+            "engine": 17026057180851909538,
+            "policy": 16170183378156295071,
+            "opponent": 18129370411977685708
+          },
+          "outcome": "loss",
+          "score": 0.0,
+          "length": 15,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 1,
+          "index": 25,
+          "seeds": {
+            "engine": 18151678269755369278,
+            "policy": 11988746852250524951,
+            "opponent": 9213263073305147865
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 28,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 1,
+          "index": 26,
+          "seeds": {
+            "engine": 1411282577861750830,
+            "policy": 8927655228868633234,
+            "opponent": 2633697920632365234
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 26,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 1,
+          "index": 27,
+          "seeds": {
+            "engine": 9672598682221612057,
+            "policy": 3530044775820879120,
+            "opponent": 11027345677814728598
+          },
+          "outcome": "loss",
+          "score": 0.0,
+          "length": 23,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 1,
+          "index": 28,
+          "seeds": {
+            "engine": 9012730425985698507,
+            "policy": 7361449168434783114,
+            "opponent": 16273582224807506238
+          },
+          "outcome": "loss",
+          "score": 0.0,
+          "length": 21,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 1,
+          "index": 29,
+          "seeds": {
+            "engine": 7479712825409924328,
+            "policy": 5350312243648277633,
+            "opponent": 11402334069891714026
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 18,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 1,
+          "index": 30,
+          "seeds": {
+            "engine": 13974413578315838307,
+            "policy": 15691573261030923644,
+            "opponent": 2491226554613068085
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 26,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 1,
+          "index": 31,
+          "seeds": {
+            "engine": 702473784484687367,
+            "policy": 13998223632212375424,
+            "opponent": 11516081874740078728
+          },
+          "outcome": "loss",
+          "score": 0.0,
+          "length": 7,
+          "errors": 0,
+          "truncations": 0
+        }
+      ],
+      "final": [
+        {
+          "seat": 0,
+          "index": 0,
+          "seeds": {
+            "engine": 920349461763952201,
+            "policy": 3904852933235908163,
+            "opponent": 15323792701887013797
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 11,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 0,
+          "index": 1,
+          "seeds": {
+            "engine": 9024501619084767749,
+            "policy": 3382311516022613203,
+            "opponent": 3208579631007245360
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 9,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 0,
+          "index": 2,
+          "seeds": {
+            "engine": 15946581459450184228,
+            "policy": 15421779044697943938,
+            "opponent": 10634736499734295325
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 15,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 0,
+          "index": 3,
+          "seeds": {
+            "engine": 7487350172411284516,
+            "policy": 10542483355326061208,
+            "opponent": 3312234695976261122
+          },
+          "outcome": "loss",
+          "score": 0.0,
+          "length": 14,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 0,
+          "index": 4,
+          "seeds": {
+            "engine": 4566691320938125328,
+            "policy": 10233545409233745997,
+            "opponent": 959171968313409459
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 21,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 0,
+          "index": 5,
+          "seeds": {
+            "engine": 17772564897364332023,
+            "policy": 2822220944332275489,
+            "opponent": 6442891379354338529
+          },
+          "outcome": "loss",
+          "score": 0.0,
+          "length": 16,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 0,
+          "index": 6,
+          "seeds": {
+            "engine": 669668105798743379,
+            "policy": 752808857121879406,
+            "opponent": 9214790943747990742
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 17,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 0,
+          "index": 7,
+          "seeds": {
+            "engine": 10391548956835460743,
+            "policy": 7609508806861119737,
+            "opponent": 11176301452529817437
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 23,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 0,
+          "index": 8,
+          "seeds": {
+            "engine": 1768550177380219531,
+            "policy": 1242642641572843522,
+            "opponent": 8592418609323542703
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 9,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 0,
+          "index": 9,
+          "seeds": {
+            "engine": 14637653039450238629,
+            "policy": 6855503646036961389,
+            "opponent": 13638145522152085920
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 13,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 0,
+          "index": 10,
+          "seeds": {
+            "engine": 6976609380855224621,
+            "policy": 926494019288326734,
+            "opponent": 12800464222329764710
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 21,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 0,
+          "index": 11,
+          "seeds": {
+            "engine": 8177116405825204510,
+            "policy": 15388431375782264638,
+            "opponent": 14668203309102654269
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 27,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 0,
+          "index": 12,
+          "seeds": {
+            "engine": 8492520999527758050,
+            "policy": 414653677127491198,
+            "opponent": 17934866215702876283
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 27,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 0,
+          "index": 13,
+          "seeds": {
+            "engine": 11590929763641350116,
+            "policy": 528531564324019767,
+            "opponent": 15342961097482959555
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 27,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 0,
+          "index": 14,
+          "seeds": {
+            "engine": 10668337503229010267,
+            "policy": 14980954757297299943,
+            "opponent": 1504330932249766580
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 19,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 0,
+          "index": 15,
+          "seeds": {
+            "engine": 7376869219421720168,
+            "policy": 6431256163507269873,
+            "opponent": 17099082729749486536
+          },
+          "outcome": "loss",
+          "score": 0.0,
+          "length": 24,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 0,
+          "index": 16,
+          "seeds": {
+            "engine": 12775045454801482763,
+            "policy": 16049347834077860822,
+            "opponent": 13570505130321034863
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 23,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 0,
+          "index": 17,
+          "seeds": {
+            "engine": 3740274516776151066,
+            "policy": 12560058559941990798,
+            "opponent": 1062236475277296094
+          },
+          "outcome": "loss",
+          "score": 0.0,
+          "length": 22,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 0,
+          "index": 18,
+          "seeds": {
+            "engine": 15586970817256306815,
+            "policy": 10952470313063697656,
+            "opponent": 13926927707637695171
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 25,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 0,
+          "index": 19,
+          "seeds": {
+            "engine": 16239886544931607951,
+            "policy": 4301902238804582862,
+            "opponent": 15520380242908222558
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 25,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 0,
+          "index": 20,
+          "seeds": {
+            "engine": 4886224306914545560,
+            "policy": 7675766418988273562,
+            "opponent": 4529708149117623297
+          },
+          "outcome": "loss",
+          "score": 0.0,
+          "length": 16,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 0,
+          "index": 21,
+          "seeds": {
+            "engine": 14220114631601679140,
+            "policy": 15778605136687615403,
+            "opponent": 9337135044840183317
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 21,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 0,
+          "index": 22,
+          "seeds": {
+            "engine": 8537004552325198015,
+            "policy": 7011426399428732407,
+            "opponent": 10497299700829244948
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 23,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 0,
+          "index": 23,
+          "seeds": {
+            "engine": 17493166084958141469,
+            "policy": 14978903455515848140,
+            "opponent": 12262010955979415770
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 31,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 0,
+          "index": 24,
+          "seeds": {
+            "engine": 13166569960270888951,
+            "policy": 15393857711950787485,
+            "opponent": 4338178110275094970
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 23,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 0,
+          "index": 25,
+          "seeds": {
+            "engine": 14262408156986744914,
+            "policy": 17463785067612108616,
+            "opponent": 9818484263906868668
+          },
+          "outcome": "loss",
+          "score": 0.0,
+          "length": 40,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 0,
+          "index": 26,
+          "seeds": {
+            "engine": 15848804704792678810,
+            "policy": 17659603089713960931,
+            "opponent": 15605506808872297559
+          },
+          "outcome": "loss",
+          "score": 0.0,
+          "length": 30,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 0,
+          "index": 27,
+          "seeds": {
+            "engine": 88305479751239005,
+            "policy": 10384596832411888517,
+            "opponent": 17762805304936389270
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 11,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 0,
+          "index": 28,
+          "seeds": {
+            "engine": 12720294824167761333,
+            "policy": 9284947708206059603,
+            "opponent": 2448667805112867435
+          },
+          "outcome": "loss",
+          "score": 0.0,
+          "length": 24,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 0,
+          "index": 29,
+          "seeds": {
+            "engine": 16368889955276892876,
+            "policy": 978973263933291166,
+            "opponent": 9883568931932014156
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 15,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 0,
+          "index": 30,
+          "seeds": {
+            "engine": 7424644391919136376,
+            "policy": 13525463998478894895,
+            "opponent": 8688641493384427442
+          },
+          "outcome": "loss",
+          "score": 0.0,
+          "length": 22,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 0,
+          "index": 31,
+          "seeds": {
+            "engine": 15696935261978030772,
+            "policy": 977911521175093920,
+            "opponent": 9362544751917696556
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 25,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 1,
+          "index": 0,
+          "seeds": {
+            "engine": 6201511080276700666,
+            "policy": 17525089415715017002,
+            "opponent": 7990905235948469536
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 28,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 1,
+          "index": 1,
+          "seeds": {
+            "engine": 5280119331034501867,
+            "policy": 7637755831755479745,
+            "opponent": 14912065066419474862
+          },
+          "outcome": "loss",
+          "score": 0.0,
+          "length": 17,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 1,
+          "index": 2,
+          "seeds": {
+            "engine": 13542615091684115531,
+            "policy": 2000880397052738510,
+            "opponent": 1023888333805316206
+          },
+          "outcome": "loss",
+          "score": 0.0,
+          "length": 17,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 1,
+          "index": 3,
+          "seeds": {
+            "engine": 14950627575930139283,
+            "policy": 3495422256862714811,
+            "opponent": 13008573764252806522
+          },
+          "outcome": "loss",
+          "score": 0.0,
+          "length": 25,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 1,
+          "index": 4,
+          "seeds": {
+            "engine": 8152286283652141367,
+            "policy": 5825953920749766280,
+            "opponent": 2120510461786084039
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 10,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 1,
+          "index": 5,
+          "seeds": {
+            "engine": 16760694672688785128,
+            "policy": 5131398844252839326,
+            "opponent": 18219853757861659037
+          },
+          "outcome": "loss",
+          "score": 0.0,
+          "length": 31,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 1,
+          "index": 6,
+          "seeds": {
+            "engine": 12134966953774535464,
+            "policy": 8670520744319897059,
+            "opponent": 12783541415399717200
+          },
+          "outcome": "loss",
+          "score": 0.0,
+          "length": 9,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 1,
+          "index": 7,
+          "seeds": {
+            "engine": 4439911022816957680,
+            "policy": 7350652882507767682,
+            "opponent": 14377495893882400866
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 34,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 1,
+          "index": 8,
+          "seeds": {
+            "engine": 9032204631855483266,
+            "policy": 5044595854740925759,
+            "opponent": 5883214628837904265
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 24,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 1,
+          "index": 9,
+          "seeds": {
+            "engine": 2117295141061966518,
+            "policy": 15068693496037417430,
+            "opponent": 8857647820408615238
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 28,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 1,
+          "index": 10,
+          "seeds": {
+            "engine": 12478814168906311828,
+            "policy": 5246483963843121240,
+            "opponent": 11924250696696561266
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 22,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 1,
+          "index": 11,
+          "seeds": {
+            "engine": 6861669473941376530,
+            "policy": 9691712349844444138,
+            "opponent": 2086179085723965994
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 20,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 1,
+          "index": 12,
+          "seeds": {
+            "engine": 10587165141809913695,
+            "policy": 5038581808743191340,
+            "opponent": 7012536569040413361
+          },
+          "outcome": "loss",
+          "score": 0.0,
+          "length": 13,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 1,
+          "index": 13,
+          "seeds": {
+            "engine": 11176897435218037212,
+            "policy": 5882716181617234423,
+            "opponent": 14174999524986248824
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 22,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 1,
+          "index": 14,
+          "seeds": {
+            "engine": 12468764967462889581,
+            "policy": 3232536296703018201,
+            "opponent": 5571193029438120252
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 24,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 1,
+          "index": 15,
+          "seeds": {
+            "engine": 7986744577656643454,
+            "policy": 9767169617405437939,
+            "opponent": 16041470292853910178
+          },
+          "outcome": "loss",
+          "score": 0.0,
+          "length": 21,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 1,
+          "index": 16,
+          "seeds": {
+            "engine": 10747242845870887323,
+            "policy": 14945847828807304498,
+            "opponent": 6664798261091134779
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 26,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 1,
+          "index": 17,
+          "seeds": {
+            "engine": 10355882298821882668,
+            "policy": 5502168599476458724,
+            "opponent": 9280816720786456933
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 24,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 1,
+          "index": 18,
+          "seeds": {
+            "engine": 196095783299712025,
+            "policy": 7527427135879961785,
+            "opponent": 4519927120504752428
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 14,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 1,
+          "index": 19,
+          "seeds": {
+            "engine": 2035792708785641884,
+            "policy": 16890243817366432440,
+            "opponent": 7636508932197802554
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 24,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 1,
+          "index": 20,
+          "seeds": {
+            "engine": 11995389156241298391,
+            "policy": 2898495822363221683,
+            "opponent": 10574413418356046121
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 16,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 1,
+          "index": 21,
+          "seeds": {
+            "engine": 13213817475801008491,
+            "policy": 14929579724739315640,
+            "opponent": 8262770102753519735
+          },
+          "outcome": "loss",
+          "score": 0.0,
+          "length": 29,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 1,
+          "index": 22,
+          "seeds": {
+            "engine": 8187089142172438425,
+            "policy": 1135140460585920308,
+            "opponent": 14502258418744149198
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 12,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 1,
+          "index": 23,
+          "seeds": {
+            "engine": 605057516869998624,
+            "policy": 17642560956510379187,
+            "opponent": 14411892743262263216
+          },
+          "outcome": "loss",
+          "score": 0.0,
+          "length": 29,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 1,
+          "index": 24,
+          "seeds": {
+            "engine": 17026057180851909538,
+            "policy": 16170183378156295071,
+            "opponent": 18129370411977685708
+          },
+          "outcome": "loss",
+          "score": 0.0,
+          "length": 15,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 1,
+          "index": 25,
+          "seeds": {
+            "engine": 18151678269755369278,
+            "policy": 11988746852250524951,
+            "opponent": 9213263073305147865
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 26,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 1,
+          "index": 26,
+          "seeds": {
+            "engine": 1411282577861750830,
+            "policy": 8927655228868633234,
+            "opponent": 2633697920632365234
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 26,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 1,
+          "index": 27,
+          "seeds": {
+            "engine": 9672598682221612057,
+            "policy": 3530044775820879120,
+            "opponent": 11027345677814728598
+          },
+          "outcome": "loss",
+          "score": 0.0,
+          "length": 23,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 1,
+          "index": 28,
+          "seeds": {
+            "engine": 9012730425985698507,
+            "policy": 7361449168434783114,
+            "opponent": 16273582224807506238
+          },
+          "outcome": "loss",
+          "score": 0.0,
+          "length": 21,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 1,
+          "index": 29,
+          "seeds": {
+            "engine": 7479712825409924328,
+            "policy": 5350312243648277633,
+            "opponent": 11402334069891714026
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 20,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 1,
+          "index": 30,
+          "seeds": {
+            "engine": 13974413578315838307,
+            "policy": 15691573261030923644,
+            "opponent": 2491226554613068085
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 26,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 1,
+          "index": 31,
+          "seeds": {
+            "engine": 702473784484687367,
+            "policy": 13998223632212375424,
+            "opponent": 11516081874740078728
+          },
+          "outcome": "loss",
+          "score": 0.0,
+          "length": 7,
+          "errors": 0,
+          "truncations": 0
+        }
+      ],
+      "control": [
+        {
+          "seat": 0,
+          "index": 0,
+          "seeds": {
+            "engine": 920349461763952201,
+            "policy": 14295493125988738355,
+            "opponent": 15323792701887013797
+          },
+          "outcome": "loss",
+          "score": 0.0,
+          "length": 26,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 0,
+          "index": 1,
+          "seeds": {
+            "engine": 9024501619084767749,
+            "policy": 3594912029857918955,
+            "opponent": 3208579631007245360
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 25,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 0,
+          "index": 2,
+          "seeds": {
+            "engine": 15946581459450184228,
+            "policy": 16014702448941673664,
+            "opponent": 10634736499734295325
+          },
+          "outcome": "loss",
+          "score": 0.0,
+          "length": 26,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 0,
+          "index": 3,
+          "seeds": {
+            "engine": 7487350172411284516,
+            "policy": 11487201708977173174,
+            "opponent": 3312234695976261122
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 9,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 0,
+          "index": 4,
+          "seeds": {
+            "engine": 4566691320938125328,
+            "policy": 3441427560774112698,
+            "opponent": 959171968313409459
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 13,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 0,
+          "index": 5,
+          "seeds": {
+            "engine": 17772564897364332023,
+            "policy": 2008886386678902274,
+            "opponent": 6442891379354338529
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 21,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 0,
+          "index": 6,
+          "seeds": {
+            "engine": 669668105798743379,
+            "policy": 7701980865388809105,
+            "opponent": 9214790943747990742
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 33,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 0,
+          "index": 7,
+          "seeds": {
+            "engine": 10391548956835460743,
+            "policy": 17401633558361351813,
+            "opponent": 11176301452529817437
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 19,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 0,
+          "index": 8,
+          "seeds": {
+            "engine": 1768550177380219531,
+            "policy": 11230722753801001288,
+            "opponent": 8592418609323542703
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 15,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 0,
+          "index": 9,
+          "seeds": {
+            "engine": 14637653039450238629,
+            "policy": 8891129222142457290,
+            "opponent": 13638145522152085920
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 25,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 0,
+          "index": 10,
+          "seeds": {
+            "engine": 6976609380855224621,
+            "policy": 3852698043002474207,
+            "opponent": 12800464222329764710
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 27,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 0,
+          "index": 11,
+          "seeds": {
+            "engine": 8177116405825204510,
+            "policy": 15504119542712004674,
+            "opponent": 14668203309102654269
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 21,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 0,
+          "index": 12,
+          "seeds": {
+            "engine": 8492520999527758050,
+            "policy": 11723350921832298929,
+            "opponent": 17934866215702876283
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 35,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 0,
+          "index": 13,
+          "seeds": {
+            "engine": 11590929763641350116,
+            "policy": 16786563243513661630,
+            "opponent": 15342961097482959555
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 25,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 0,
+          "index": 14,
+          "seeds": {
+            "engine": 10668337503229010267,
+            "policy": 17965401551928129691,
+            "opponent": 1504330932249766580
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 17,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 0,
+          "index": 15,
+          "seeds": {
+            "engine": 7376869219421720168,
+            "policy": 11254506771272240881,
+            "opponent": 17099082729749486536
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 13,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 0,
+          "index": 16,
+          "seeds": {
+            "engine": 12775045454801482763,
+            "policy": 17741419687992163857,
+            "opponent": 13570505130321034863
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 31,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 0,
+          "index": 17,
+          "seeds": {
+            "engine": 3740274516776151066,
+            "policy": 9187676084499935509,
+            "opponent": 1062236475277296094
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 21,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 0,
+          "index": 18,
+          "seeds": {
+            "engine": 15586970817256306815,
+            "policy": 6642186709375712292,
+            "opponent": 13926927707637695171
+          },
+          "outcome": "loss",
+          "score": 0.0,
+          "length": 12,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 0,
+          "index": 19,
+          "seeds": {
+            "engine": 16239886544931607951,
+            "policy": 9076909746765307522,
+            "opponent": 15520380242908222558
+          },
+          "outcome": "loss",
+          "score": 0.0,
+          "length": 18,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 0,
+          "index": 20,
+          "seeds": {
+            "engine": 4886224306914545560,
+            "policy": 12728515392513788887,
+            "opponent": 4529708149117623297
+          },
+          "outcome": "loss",
+          "score": 0.0,
+          "length": 16,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 0,
+          "index": 21,
+          "seeds": {
+            "engine": 14220114631601679140,
+            "policy": 441900914185201098,
+            "opponent": 9337135044840183317
+          },
+          "outcome": "loss",
+          "score": 0.0,
+          "length": 28,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 0,
+          "index": 22,
+          "seeds": {
+            "engine": 8537004552325198015,
+            "policy": 5184989505746223781,
+            "opponent": 10497299700829244948
+          },
+          "outcome": "loss",
+          "score": 0.0,
+          "length": 34,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 0,
+          "index": 23,
+          "seeds": {
+            "engine": 17493166084958141469,
+            "policy": 13255408943993023500,
+            "opponent": 12262010955979415770
+          },
+          "outcome": "loss",
+          "score": 0.0,
+          "length": 32,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 0,
+          "index": 24,
+          "seeds": {
+            "engine": 13166569960270888951,
+            "policy": 15407756741302510823,
+            "opponent": 4338178110275094970
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 31,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 0,
+          "index": 25,
+          "seeds": {
+            "engine": 14262408156986744914,
+            "policy": 16999639224530731239,
+            "opponent": 9818484263906868668
+          },
+          "outcome": "loss",
+          "score": 0.0,
+          "length": 26,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 0,
+          "index": 26,
+          "seeds": {
+            "engine": 15848804704792678810,
+            "policy": 5002401065299956424,
+            "opponent": 15605506808872297559
+          },
+          "outcome": "loss",
+          "score": 0.0,
+          "length": 34,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 0,
+          "index": 27,
+          "seeds": {
+            "engine": 88305479751239005,
+            "policy": 11633659121526282652,
+            "opponent": 17762805304936389270
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 19,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 0,
+          "index": 28,
+          "seeds": {
+            "engine": 12720294824167761333,
+            "policy": 13849771581520044555,
+            "opponent": 2448667805112867435
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 15,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 0,
+          "index": 29,
+          "seeds": {
+            "engine": 16368889955276892876,
+            "policy": 17492108073703577686,
+            "opponent": 9883568931932014156
+          },
+          "outcome": "loss",
+          "score": 0.0,
+          "length": 16,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 0,
+          "index": 30,
+          "seeds": {
+            "engine": 7424644391919136376,
+            "policy": 10197325437138258643,
+            "opponent": 8688641493384427442
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 15,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 0,
+          "index": 31,
+          "seeds": {
+            "engine": 15696935261978030772,
+            "policy": 11998217795529719596,
+            "opponent": 9362544751917696556
+          },
+          "outcome": "loss",
+          "score": 0.0,
+          "length": 24,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 1,
+          "index": 0,
+          "seeds": {
+            "engine": 6201511080276700666,
+            "policy": 18321023322018391737,
+            "opponent": 7990905235948469536
+          },
+          "outcome": "loss",
+          "score": 0.0,
+          "length": 33,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 1,
+          "index": 1,
+          "seeds": {
+            "engine": 5280119331034501867,
+            "policy": 9064810022833437849,
+            "opponent": 14912065066419474862
+          },
+          "outcome": "loss",
+          "score": 0.0,
+          "length": 17,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 1,
+          "index": 2,
+          "seeds": {
+            "engine": 13542615091684115531,
+            "policy": 3022768828771955461,
+            "opponent": 1023888333805316206
+          },
+          "outcome": "loss",
+          "score": 0.0,
+          "length": 17,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 1,
+          "index": 3,
+          "seeds": {
+            "engine": 14950627575930139283,
+            "policy": 2808563741119547885,
+            "opponent": 13008573764252806522
+          },
+          "outcome": "loss",
+          "score": 0.0,
+          "length": 21,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 1,
+          "index": 4,
+          "seeds": {
+            "engine": 8152286283652141367,
+            "policy": 11470765912053003784,
+            "opponent": 2120510461786084039
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 26,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 1,
+          "index": 5,
+          "seeds": {
+            "engine": 16760694672688785128,
+            "policy": 10995673674345487527,
+            "opponent": 18219853757861659037
+          },
+          "outcome": "loss",
+          "score": 0.0,
+          "length": 17,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 1,
+          "index": 6,
+          "seeds": {
+            "engine": 12134966953774535464,
+            "policy": 16293679927115333184,
+            "opponent": 12783541415399717200
+          },
+          "outcome": "loss",
+          "score": 0.0,
+          "length": 9,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 1,
+          "index": 7,
+          "seeds": {
+            "engine": 4439911022816957680,
+            "policy": 9170845646005750460,
+            "opponent": 14377495893882400866
+          },
+          "outcome": "loss",
+          "score": 0.0,
+          "length": 13,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 1,
+          "index": 8,
+          "seeds": {
+            "engine": 9032204631855483266,
+            "policy": 13628293222099697920,
+            "opponent": 5883214628837904265
+          },
+          "outcome": "loss",
+          "score": 0.0,
+          "length": 19,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 1,
+          "index": 9,
+          "seeds": {
+            "engine": 2117295141061966518,
+            "policy": 1341472156631948710,
+            "opponent": 8857647820408615238
+          },
+          "outcome": "loss",
+          "score": 0.0,
+          "length": 15,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 1,
+          "index": 10,
+          "seeds": {
+            "engine": 12478814168906311828,
+            "policy": 14470583798241860624,
+            "opponent": 11924250696696561266
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 30,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 1,
+          "index": 11,
+          "seeds": {
+            "engine": 6861669473941376530,
+            "policy": 3150489528987234790,
+            "opponent": 2086179085723965994
+          },
+          "outcome": "loss",
+          "score": 0.0,
+          "length": 23,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 1,
+          "index": 12,
+          "seeds": {
+            "engine": 10587165141809913695,
+            "policy": 199074301257585200,
+            "opponent": 7012536569040413361
+          },
+          "outcome": "loss",
+          "score": 0.0,
+          "length": 13,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 1,
+          "index": 13,
+          "seeds": {
+            "engine": 11176897435218037212,
+            "policy": 13862522390599492414,
+            "opponent": 14174999524986248824
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 18,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 1,
+          "index": 14,
+          "seeds": {
+            "engine": 12468764967462889581,
+            "policy": 3866728246498157373,
+            "opponent": 5571193029438120252
+          },
+          "outcome": "loss",
+          "score": 0.0,
+          "length": 25,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 1,
+          "index": 15,
+          "seeds": {
+            "engine": 7986744577656643454,
+            "policy": 9420477037271850680,
+            "opponent": 16041470292853910178
+          },
+          "outcome": "loss",
+          "score": 0.0,
+          "length": 33,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 1,
+          "index": 16,
+          "seeds": {
+            "engine": 10747242845870887323,
+            "policy": 6366828949128060931,
+            "opponent": 6664798261091134779
+          },
+          "outcome": "loss",
+          "score": 0.0,
+          "length": 35,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 1,
+          "index": 17,
+          "seeds": {
+            "engine": 10355882298821882668,
+            "policy": 14913060035820011701,
+            "opponent": 9280816720786456933
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 10,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 1,
+          "index": 18,
+          "seeds": {
+            "engine": 196095783299712025,
+            "policy": 16609978274552780293,
+            "opponent": 4519927120504752428
+          },
+          "outcome": "loss",
+          "score": 0.0,
+          "length": 19,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 1,
+          "index": 19,
+          "seeds": {
+            "engine": 2035792708785641884,
+            "policy": 5207577080177466769,
+            "opponent": 7636508932197802554
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 16,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 1,
+          "index": 20,
+          "seeds": {
+            "engine": 11995389156241298391,
+            "policy": 11566688990516479513,
+            "opponent": 10574413418356046121
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 30,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 1,
+          "index": 21,
+          "seeds": {
+            "engine": 13213817475801008491,
+            "policy": 6238915157060454319,
+            "opponent": 8262770102753519735
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 26,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 1,
+          "index": 22,
+          "seeds": {
+            "engine": 8187089142172438425,
+            "policy": 18061433036623950548,
+            "opponent": 14502258418744149198
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 30,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 1,
+          "index": 23,
+          "seeds": {
+            "engine": 605057516869998624,
+            "policy": 8909214543606284749,
+            "opponent": 14411892743262263216
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 22,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 1,
+          "index": 24,
+          "seeds": {
+            "engine": 17026057180851909538,
+            "policy": 5435622750153665856,
+            "opponent": 18129370411977685708
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 36,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 1,
+          "index": 25,
+          "seeds": {
+            "engine": 18151678269755369278,
+            "policy": 6609093002036061256,
+            "opponent": 9213263073305147865
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 14,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 1,
+          "index": 26,
+          "seeds": {
+            "engine": 1411282577861750830,
+            "policy": 13932571646821178634,
+            "opponent": 2633697920632365234
+          },
+          "outcome": "loss",
+          "score": 0.0,
+          "length": 19,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 1,
+          "index": 27,
+          "seeds": {
+            "engine": 9672598682221612057,
+            "policy": 6995232787225361778,
+            "opponent": 11027345677814728598
+          },
+          "outcome": "loss",
+          "score": 0.0,
+          "length": 31,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 1,
+          "index": 28,
+          "seeds": {
+            "engine": 9012730425985698507,
+            "policy": 1718786264278348828,
+            "opponent": 16273582224807506238
+          },
+          "outcome": "loss",
+          "score": 0.0,
+          "length": 23,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 1,
+          "index": 29,
+          "seeds": {
+            "engine": 7479712825409924328,
+            "policy": 9524827672672045818,
+            "opponent": 11402334069891714026
+          },
+          "outcome": "loss",
+          "score": 0.0,
+          "length": 23,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 1,
+          "index": 30,
+          "seeds": {
+            "engine": 13974413578315838307,
+            "policy": 17040756868951277481,
+            "opponent": 2491226554613068085
+          },
+          "outcome": "win",
+          "score": 1.0,
+          "length": 18,
+          "errors": 0,
+          "truncations": 0
+        },
+        {
+          "seat": 1,
+          "index": 31,
+          "seeds": {
+            "engine": 702473784484687367,
+            "policy": 16018137246998031746,
+            "opponent": 11516081874740078728
+          },
+          "outcome": "loss",
+          "score": 0.0,
+          "length": 7,
+          "errors": 0,
+          "truncations": 0
+        }
+      ]
+    },
+    "checkpoint_sha256": {
+      "initial": "dc74f12491f6641515dfa1cb86fd0e26c0686b99f3e0eb29fe8af05e48eb9745",
+      "final": "a6d8fde0036c3934978f5886dc63588395e96eb9d683effc6bcfdb7ea3d5a4c8"
+    },
+    "complete": true,
+    "stop_reason": null,
+    "failure": null,
+    "elapsed_seconds": 2.188000000001921,
+    "cap_overrun_seconds": 0.0,
+    "summaries": {
+      "initial": {
+        "seats": [
+          {
+            "seat": 0,
+            "games": 32,
+            "win": 13,
+            "draw": 0,
+            "loss": 19,
+            "score": 0.40625,
+            "mean_length": 23.03125,
+            "errors": 0,
+            "truncations": 0
+          },
+          {
+            "seat": 1,
+            "games": 32,
+            "win": 19,
+            "draw": 0,
+            "loss": 13,
+            "score": 0.59375,
+            "mean_length": 20.03125,
+            "errors": 0,
+            "truncations": 0
+          }
+        ],
+        "balanced_score": 0.5
+      },
+      "final": {
+        "seats": [
+          {
+            "seat": 0,
+            "games": 32,
+            "win": 23,
+            "draw": 0,
+            "loss": 9,
+            "score": 0.71875,
+            "mean_length": 20.90625,
+            "errors": 0,
+            "truncations": 0
+          },
+          {
+            "seat": 1,
+            "games": 32,
+            "win": 19,
+            "draw": 0,
+            "loss": 13,
+            "score": 0.59375,
+            "mean_length": 21.34375,
+            "errors": 0,
+            "truncations": 0
+          }
+        ],
+        "balanced_score": 0.65625
+      },
+      "control": {
+        "seats": [
+          {
+            "seat": 0,
+            "games": 32,
+            "win": 20,
+            "draw": 0,
+            "loss": 12,
+            "score": 0.625,
+            "mean_length": 22.5625,
+            "errors": 0,
+            "truncations": 0
+          },
+          {
+            "seat": 1,
+            "games": 32,
+            "win": 12,
+            "draw": 0,
+            "loss": 20,
+            "score": 0.375,
+            "mean_length": 21.5,
+            "errors": 0,
+            "truncations": 0
+          }
+        ],
+        "balanced_score": 0.5
+      }
+    },
+    "effects": {
+      "final_minus_initial": {
+        "available": true,
+        "seats": [
+          {
+            "seat": 0,
+            "mean": 0.3125,
+            "standard_error": 0.08324928557283298,
+            "interval": [
+              0.14933140027724737,
+              0.47566859972275266
+            ]
+          },
+          {
+            "seat": 1,
+            "mean": 0.0,
+            "standard_error": 0.07777137710478188,
+            "interval": [
+              -0.15243189912537247,
+              0.15243189912537247
+            ]
+          }
+        ],
+        "balanced_mean": 0.15625,
+        "balanced_interval": [
+          0.04460382249439572,
+          0.2678961775056043
+        ],
+        "method": "approximate paired normal interval; game-level only, no training-seed uncertainty"
+      },
+      "final_minus_control": {
+        "available": true,
+        "seats": [
+          {
+            "seat": 0,
+            "mean": 0.09375,
+            "standard_error": 0.12180907025658719,
+            "interval": [
+              -0.1449957777029109,
+              0.3324957777029109
+            ]
+          },
+          {
+            "seat": 1,
+            "mean": 0.21875,
+            "standard_error": 0.1075232064224037,
+            "interval": [
+              0.008004515412088742,
+              0.42949548458791126
+            ]
+          }
+        ],
+        "balanced_mean": 0.15625,
+        "balanced_interval": [
+          -0.0029772006011859753,
+          0.315477200601186
+        ],
+        "method": "approximate paired normal interval; game-level only, no training-seed uncertainty"
+      }
+    }
+  },
+  "independent_checks": {
+    "parameter_delta_l2": 0.4342060539892968,
+    "parameter_delta_max_abs": 0.010702183470129967,
+    "changed_parameters": 15240,
+    "training_seat0_wins": 18,
+    "training_seat1_wins": 14,
+    "training_draws": 0,
+    "sample_presentations": 1328,
+    "action_frequencies": [
+      81,
+      72,
+      102,
+      126,
+      94,
+      101,
+      88
+    ],
+    "collection_seconds": 0.3280000000013388,
+    "optimization_seconds": 0.5320000000065193,
+    "checkpoint_seconds": 0.029999999998835847,
+    "evaluation_decisions": 4140
+  },
+  "artifact_sha256": {
+    "budget.json": "9b1cd65b5d4afc4fc15169d15a4dcdfbd6a0cc13711328958040cf92e785eb6a",
+    "evaluation.json": "12d77af1719453627ed7edaf0fc7c033ed0359444f6ac786e2736704df663107",
+    "final.pt": "a6d8fde0036c3934978f5886dc63588395e96eb9d683effc6bcfdb7ea3d5a4c8",
+    "initial.pt": "dc74f12491f6641515dfa1cb86fd0e26c0686b99f3e0eb29fe8af05e48eb9745",
+    "latest.pt": "6fec04417ef2a253f938641dceb2b55572bb5dd26e0c744e8fafe754dd273b07",
+    "protocol.md": "8445239f730575851bb0a7fdb4cfe6b5fcd08195d22201c28a529595a1cfbc80",
+    "settings.json": "90b3dbfe607307c32fe04f5a1183277fd2783374abff3336ff9bc750dbd05bb6",
+    "training-status.json": "f5a00a0c4b5873c4eec94ea2d6ba7a77e105cb067b7e912032d7fab3380414fc",
+    "training.json": "0bba864a7af3de6df6acdde10602fe59cf2e62e6447127d5654730533121ab3c",
+    "updates.jsonl": "8be0dc76bada5d3c64ce1a2d75a8a5a74269f4f3e53e084a7c1ceeb7e0c94e16"
+  },
+  "saved_settings_utf8": "{\r\n  \"protocol_id\": \"connect-four-functional-v1\",\r\n  \"schema_version\": 1,\r\n  \"purpose\": \"functional-validation-only\",\r\n  \"game_id\": \"connect_four\",\r\n  \"model_id\": \"connect-four-mlp64x64-actions7-v1\",\r\n  \"encoding_id\": \"connect-four-relative-6x6x7-v1\",\r\n  \"observation_shape\": [6, 6, 7],\r\n  \"action_count\": 7,\r\n  \"hidden_sizes\": [64, 64],\r\n  \"activation\": \"tanh\",\r\n  \"training\": {\r\n    \"seed\": 630601,\r\n    \"device\": \"cpu\",\r\n    \"threads\": 1,\r\n    \"updates\": 4,\r\n    \"games_per_update\": 8,\r\n    \"starting_player\": 0,\r\n    \"max_steps_per_game\": 42,\r\n    \"collection\": \"complete-latest-policy-self-play\",\r\n    \"sampling\": \"masked-categorical\",\r\n    \"seed_namespace\": \"boardgame-ai/connect-four/ppo/v1\",\r\n    \"wall_time_cap_seconds\": 120,\r\n    \"ppo\": {\r\n      \"learning_rate\": 0.0003,\r\n      \"gamma\": 1.0,\r\n      \"gae_lambda\": 0.95,\r\n      \"clip_ratio\": 0.2,\r\n      \"value_coefficient\": 0.5,\r\n      \"entropy_coefficient\": 0.01,\r\n      \"epochs\": 2,\r\n      \"minibatch_size\": 32,\r\n      \"max_grad_norm\": 0.5,\r\n      \"normalize_advantages\": true\r\n    }\r\n  },\r\n  \"evaluation\": {\r\n    \"seed\": 630602,\r\n    \"control_seed\": 630603,\r\n    \"seed_namespace\": \"boardgame-ai/connect-four/evaluation/v1\",\r\n    \"opponent\": \"uniform-supplied-legal-random-v1\",\r\n    \"mode\": \"sampled\",\r\n    \"games_per_seat\": 32,\r\n    \"checkpoints\": [\"initial\", \"update-4\"],\r\n    \"selection\": \"fixed-last-update\",\r\n    \"control\": \"random-versus-random\",\r\n    \"control_games_per_seat\": 32,\r\n    \"wall_time_cap_seconds\": 120\r\n  }\r\n}\r\n",
+  "saved_protocol_utf8": "# Connect Four independent baseline: functional protocol v1\r\n\r\nDeclared 2026-10-16, before learner implementation or measurement. Status:\r\n**model/collector/PPO/trainer restore and bounded run/evaluation layer implemented;\r\nfunctional training/evaluation protocol run not executed**. This defines one\r\nindependent baseline, not a strength experiment or multi-game protocol.\r\nThe [numeric settings](phase6/connect-four-functional-v1.json) are the canonical\r\nmachine-readable declaration; changing them requires a new protocol version.\r\nThe separate `boardgame_ai.training.connect_four_run` module consumes this file.\r\nThere are no measured protocol results. See\r\n[run usage](DEVELOPMENT.md#connect-four-bounded-runs).\r\nThe [console runbook](phase6/CONNECT_FOUR_CONSOLE_RUNBOOK.md) gives operator commands\r\nand a read-only preflight. These readiness checks do not execute the protocol.\r\n\r\n## Game roles and scope\r\n\r\nTic-Tac-Toe is the original game. Guildworks and Connect Four are the two\r\nadditional engines using the shared interface, satisfying that engine task.\r\nTheir engine conformance does not establish shared learning. Tic-Tac-Toe and\r\nGuildworks learners remain independent references; this milestone specifies an\r\nindependent Connect Four PPO baseline. Their historical results are not matched\r\ncompute comparisons with this run.\r\n\r\nFor later shared-model work, the current three games are development games.\r\nTransfer game C must be an additional, as-yet-unselected game, chosen and frozen\r\nbefore shared training and adaptation evaluation. Connect Four is not an unseen\r\ntransfer game after this development work. The shared architecture, candidate\r\nscoring, sampler, transfer protocol and final strength seeds remain unspecified.\r\nNo shared-learning or transfer acceptance criterion is completed here.\r\n\r\n## Policy, actions and value\r\n\r\nUse the implemented observer-relative float32 `(6, 6, 7)` encoding: own discs,\r\nopponent discs, empty cells, own turn, opponent turn, terminal. Flatten 252\r\nfeatures into Linear(252,64), tanh, Linear(64,64), tanh; independent linear heads\r\nproduce seven raw logits and one unbounded own-seat return estimate. Total:\r\n20,872 parameters. No dropout, recurrence, search, privileged critic or extra\r\nhistory features. Initial parameters use standard PyTorch CPU initialization\r\ninside an isolated seeded context. No existing checkpoint format is reused.\r\n\r\nMask logits using supplied legal actions; sample the categorical distribution\r\nat temperature 1 with private per-seat CPU generators, then decode to the supplied\r\n`drop(column)` object. Indices are 0 through 6; human labels remain 1 through 7.\r\nNever infer availability from board emptiness alone. Inactive/terminal tensors\r\nare representable but have empty masks; do not sample them. True termination\r\nalways bootstraps zero, irrespective of network output.\r\n\r\n## Self-play and optimization\r\n\r\nEvery update collects eight complete games with a single frozen latest policy\r\nin both seats, starting seat 0, at most 42 decisions/game. A live game at the\r\nbound is a failure, not a training truncation. Use no historical opponents,\r\nevaluation games, teacher labels or replay. Optimize all collected decisions\r\nexactly twice, in shuffled minibatches of 32 with the final smaller batch kept.\r\n\r\nThe game supplies zero intermediate rewards and terminal winner/loser +1/-1,\r\nor 0/0 for a draw. Accumulate each seat's own incremental rewards from its last\r\ndecision through the next own decision or termination. In particular, the seat\r\nthat does not act on the terminal move still receives its terminal increment.\r\nGAE is separate per seat and episode, with gamma=1 and lambda=.95 on the own-seat\r\ndecision clock. Values estimate own return, never the opponent's prediction.\r\nCombine only after GAE; normalize advantages across the entire update with the\r\nexisting PPO normalization convention. No reward shaping or reward normalization.\r\n\r\nUse Adam and the existing clipped PPO objective, half-MSE value loss, masked\r\nentropy, gradient clipping and nonfinite checks. All coefficients are explicit\r\nin the numeric settings. Existing feed-forward PPO batch validation assumes\r\nTic-Tac-Toe shapes `(6,3,3)` and nine actions. Implementation must add explicit\r\nConnect Four support or a separate adapter, retaining old defaults, checkpoint\r\nidentity, numeric behavior and regression tests. Passing larger tensors to the\r\ncurrent validator is unsupported. The implemented Connect Four adapter shares\r\nthe loss/optimizer loop through an explicit seven-action validation path;\r\nthe existing Tic-Tac-Toe adapter retains its original shapes and defaults.\r\n\r\n## Seeds and isolation\r\n\r\nDerive an unsigned integer from the first eight SHA-256 digest bytes, big endian,\r\nof UTF-8 `namespace:root:index:stream`. Training uses its declared namespace and\r\nroot 630601. Initialization/shuffle use index 0 and streams `initialization` and\r\n`shuffle`. Game index is zero-based absolute update index times eight plus local\r\ngame index; streams are `engine`, `seat:0`, `seat:1`. Private CPU sampling\r\ngenerators are seeded directly with the derived unsigned 64-bit integers and\r\nreset between games.\r\nPrivate shuffle state is persisted, not recreated on resume. Initialization,\r\nacting, optimization scheduling and evaluation preserve global Python, NumPy,\r\nCPU Torch and already-initialized CUDA RNG state.\r\n\r\nEvaluation uses its separate namespace and root 630602. For seat s and case game\r\ni, use index `s*32+i` with streams `engine`, `policy`, `opponent`. Initial/final\r\nevaluation reuses this schedule for matched comparisons. The random control uses\r\nroot 630603 only for the designated seat's `policy` stream; its `engine` and\r\n`opponent` streams retain root 630602 and the same index rule, matching the\r\nlearned-policy evaluation. This preserves the paired comparison's opponent seeds.\r\nThese are functional evaluation seeds, not held-out strength-test seeds. Do not\r\nreuse them for an eventual final strength claim. Future strength studies must\r\npredeclare at least three training seeds and fresh final roots before execution.\r\n\r\n## Fixed functional budget and stop rules\r\n\r\nThe CPU, one-thread functional run has four updates: 32 self-play games and\r\n224 to 1,344 decisions. Each update has at most 336 samples; two epochs and\r\nminibatches of 32 imply at most 88 optimizer steps overall. Record actual counts.\r\nCompare initial and fixed update-4 checkpoints against RandomAgent for 32 games\r\nper learned seat per checkpoint: 128 evaluation games total. Also run a matched\r\nrandom-versus-random control for 32 games per designated seat: 64 games. The\r\nentire scheduled run is 224 games with at most 9,408 engine decisions. No\r\ncheckpoint selection, intermediate development evaluation or greedy sweep.\r\n\r\nTraining has a 120-second wall cap including collection, optimization and saves;\r\nevaluation has a separate 120-second cap including checkpoint loads and control\r\ngames. Check time between decisions/minibatches and before new work. Finish at\r\nthe cap without publishing an unfinished update; retain the last saved boundary\r\nand report incomplete counts. A single indivisible operation may overrun the\r\ncheck; report it. Stop on nonfinite values, illegal choices, truncation, artifact\r\nidentity mismatch or information-boundary failure. Do not extend caps or budgets\r\nin response to weak outcomes. This document schedules no execution now.\r\n\r\n## Checkpoints, outputs and resume\r\n\r\nImplementation status: trainer restore and the run-level requirements below are\r\navailable through a separate CPU/one-thread runner. Disposable tests exercise\r\ntwo-update stop/resume to four with one game/update under a separately named test\r\nprotocol; they do not execute or provide results for the declared 32-game run.\r\n\r\nNew output must be absent/empty. Preserve a copy and SHA-256 of the numeric\r\nsettings and this protocol, plus code revision/dirty-tree identity, runtime,\r\ndevice and threads. The numeric settings digest is the resume identity; prose\r\nedits outside a run cannot silently change its saved provenance. Save immutable\r\ninitial/final snapshots, `training.json`, `latest.pt`, `updates.jsonl` and new\r\nevaluation reports. Existing artifacts must never be overwritten by evaluation.\r\n\r\nUse a separate versioned checkpoint identifying game, model and encoding. It\r\ncontains CPU-portable weights, Adam, mode, configuration, counters, cumulative\r\ngames/decisions/optimizer work, cumulative elapsed budget and private shuffle state.\r\nExclude engines,\r\nobservations, rollout/history, global RNG and per-game live agent state. Validate\r\nall identities, shapes/dtypes/finiteness, optimizer structure and counters with\r\nrestricted weights-only loading before returning a fresh trainer or writing.\r\nReject Tic-Tac-Toe, Guildworks and search checkpoints without modifying outputs.\r\n\r\nPublish `latest.pt` atomically after each complete update, then append metrics.\r\nResume only at saved boundaries with unchanged settings; repeat unsaved work\r\nusing absolute game indices. A no-op resume must leave bytes unchanged. Support\r\nthe same validated tail-recovery/backup contract as the Tic-Tac-Toe metrics log;\r\nnever invent missing rows. Exact uninterrupted versus resumed CPU weights, Adam,\r\nshuffle state and future metrics must match except recorded timing. Test a\r\ntwo-update stop/resume to four in disposable output; it is a continuation of the\r\n32-game budget, not an additional experiment. A demonstration must also respect\r\nremaining cumulative wall time; budgets cannot reset on resume. CUDA portability\r\nis tested separately on disposable tiny fixtures, without cross-device identity\r\nor speed claims. Portable-checkpoint human CLI play is implemented; see\r\n[usage](../README.md#connect-four). It is separate from this evaluation schedule,\r\nand its sampled/greedy options do not change the protocol settings.\r\n\r\nThe run checkpoint is a versioned envelope around the existing validated trainer\r\npayload. `budget.json` is a separate cumulative training/evaluation ledger and\r\n`training-status.json` reports saved counts, known discarded complete-game work,\r\nstop reason and overruns. Partial collector decisions are explicitly unknown.\r\nThe ledger reserves all remaining time before work, then settles actual elapsed\r\ntime on normal completion or exceptions. A hard process kill leaves the reservation\r\nspent conservatively; it cannot reset a cap. Tiny final ledger-write overhead is\r\nnot recursively charged. Checkpoint boundary elapsed time is a lower bound on the\r\nledger, which includes failed/unsaved attempts and initialization/saves. A crash\r\nduring initial setup can leave an incomplete directory that rejects resume;\r\npreserve it and investigate rather than treating it as a completed run.\r\n\r\nResume validates saved settings/prose/initial snapshot hashes, model/learner/run\r\nidentities, source digest, Python/Torch versions, counters, budget and metrics\r\nbefore repairing a tail. Current external prose is not reread. Source/runtime\r\nchanges reject; Git revision/dirty status and diff/source digests remain recorded\r\nprovenance. Complete metrics logs must agree with checkpoint sample counts; gaps\r\nremain gaps. A missing final snapshot can be published from the final boundary on\r\nresume without further collection. Healthy no-op resumes leave bytes unchanged.\r\n\r\nEvaluation is explicitly requested separately and requires the fixed final\r\nboundary. It uses immutable initial/final trainer snapshots and private per-game\r\nstreams, including the paired random control. An exclusive `evaluation.json`\r\nrecords raw completed cases, checkpoint hashes, per-seat summaries, paired effects,\r\nfailures and partial counts. A partial report is preserved and cannot be overwritten\r\nor rerun in place. Evaluation budget reservations also survive hard termination;\r\nthere is no mid-evaluation continuation. These are single-writer APIs, not a\r\nconcurrent run manager. CUDA trainer portability remains separately tested; this\r\nrunner deliberately implements the protocol's CPU execution only.\r\n\r\n## Reporting and acceptance\r\n\r\nReport initial/final/control W/D/L, score (win=1, draw=.5, loss=0), errors,\r\ntruncations and lengths separately by learned/designated seat. Balanced score\r\nweights seats equally. Report final-minus-initial and final-minus-random effects\r\ndescriptively with paired game-level uncertainty; do not imply training-seed\r\nuncertainty from this single seed. Use paired score differences d at matching\r\nseat/index: estimate mean(d) with approximate interval mean(d) +/- 1.96 times\r\nsample-SD(d)/sqrt(32); balanced effect is the half-sum of seat means with standard\r\nerror .5*sqrt(SE_0^2+SE_1^2). Label these small-sample normal intervals approximate;\r\ninclude raw outcomes and do not use the interval as a pass/fail strength gate.\r\nPolicy and control use separate generators with matching engine/opponent seed\r\nschedules; resets make opponent streams comparable for matching cases. Actual\r\nopponent moves can diverge when the policies produce different legal choices.\r\n\r\nRecord self-play seat outcomes, entropy/loss/KL/clipping, unique public acting\r\npositions and action frequencies, decisions, parameter count, optimizer steps,\r\nsample presentations and replay reuse (zero). Separate collection, optimization,\r\ncheckpoint and evaluation wall time. Report hardware and threads. Raw self-play\r\noutcomes and low losses do not establish external strength.\r\n\r\nFunctional acceptance requires complete legal games, finite nonzero parameter\r\nupdates, correct both-seat reward/GAE, isolated evaluation, reproducible seeds,\r\nvalidated corruption rejection and exact CPU resume. Add hand-calculated reward\r\nand PPO tests plus encoder/agent/CLI regressions; run lint, formatting, strict\r\ntyping, full regression and available CUDA tests. Strength improvement is not\r\nrequired. Publish failures and partial counts honestly. No phase-wide task beyond\r\nthe existing two additional engines is claimed complete by this specification.\r\n\r\n## Later matched-compute and transfer studies\r\n\r\nSeparate models versus a shared model require a new predeclared protocol after\r\nbounded throughput measurements. Match total training wall time on the same\r\nhardware/threads, counting collection, inference, optimization and checkpointing;\r\nreport per-game sample allocations, optimizer presentations, parameter counts\r\nand inference latency separately. Also report an equal-environment-decision\r\ncomparison, which is not inherently compute-matched. Evaluation has a separately\r\nfixed equal budget. The 32-game functional run is not either comparison.\r\n\r\nTransfer must compare shared-pretrained versus fresh initialization on the same\r\nheld-out C seeds, architecture/adapters and adaptation budgets, showing the whole\r\nstrength-versus-cost curve. Evaluate A/B before and after C adaptation for\r\nforgetting, and compare shared versus separate per-game scores for negative\r\ntransfer. Freeze C, thresholds, time caps, training seeds and fresh final roots\r\nbefore shared fitting. Guildworks raw points and zero-sum game returns must keep\r\nseparate reports and declared fixed value/loss scales; do not pool raw rewards or\r\nderive normalization from evaluation data. These study details remain future work.\r\n",
+  "failed_initialization": {
+    "run_directory": "runs/connect-four-functional",
+    "reason": "Git executable unavailable in operator console",
+    "saved_run_boundary": false,
+    "updates": 0,
+    "decisions": 0,
+    "optimizer_steps": 0,
+    "reserved_training_seconds": 120,
+    "measured_elapsed_seconds": null,
+    "artifact_sha256": {
+      "budget.json": "7c6b0989efac9b81ee8e7c825164d55ec3a2874c53e4ea0902782668c556bdd0",
+      "initial.pt": "dc74f12491f6641515dfa1cb86fd0e26c0686b99f3e0eb29fe8af05e48eb9745",
+      "protocol.md": "8445239f730575851bb0a7fdb4cfe6b5fcd08195d22201c28a529595a1cfbc80",
+      "settings.json": "90b3dbfe607307c32fe04f5a1183277fd2783374abff3336ff9bc750dbd05bb6"
+    }
+  }
+}

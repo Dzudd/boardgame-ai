@@ -336,8 +336,8 @@ step indices. A live step cutoff raises; an optional absolute `deadline` from
 `time.monotonic()` raises `TimeoutError` between decisions. Partial samples do
 not return. The model/collector preserve source parameters, gradients, modes and
 global RNG. See the [architecture](../ARCHITECTURE.md#connect-four) and
-[functional protocol](PHASE6_CONNECT_FOUR_PROTOCOL.md) for contracts and remaining
-run-layer work. The example seed is separate from the declared functional run.
+[functional protocol](PHASE6_CONNECT_FOUR_PROTOCOL.md) for contracts and
+[bounded run usage](#connect-four-bounded-runs). The example seed is separate from the declared functional run.
 
 For a programmatic optimizer step on that current-policy rollout:
 
@@ -362,8 +362,9 @@ Neither function writes or reads trajectories, run schedules or protocol
 manifests. A failed/expired update may have performed minibatches; reload a saved
 boundary rather than saving or continuing the partial trainer. Exact CPU
 continuation requires the same next batches/runtime. Run-level resume, cumulative
-elapsed caps, metrics recovery and evaluation still need a separate bounded
-runner; these helpers do not execute the declared functional campaign.
+elapsed caps, metrics recovery and evaluation are supplied by the
+[separate bounded runner](#connect-four-bounded-runs); these helpers do not execute
+the declared functional campaign.
 
 ## Recording automated Tic-Tac-Toe matches
 
@@ -377,3 +378,71 @@ and [public replay boundary](../INFORMATION_BOUNDARIES.md#public-tic-tac-toe-rep
 The callback is trusted orchestration; other games need their own filtered replay
 adapter. Public Tic-Tac-Toe placement logs do not expose seeds, private events,
 observations, rewards, or authoritative snapshots.
+
+
+## Connect Four bounded runs
+
+The independent CPU runner consumes an explicit versioned numeric protocol and
+saves its bytes/hash, a prose copy/hash, code/runtime identity and immutable
+initial/final snapshots. The user completed the declared functional run; see
+[results](phase6/CONNECT_FOUR_FUNCTIONAL_RESULTS.md).
+The [console runbook](phase6/CONNECT_FOUR_CONSOLE_RUNBOOK.md) provides the complete
+operator sequence, expected counts, exit codes, recovery limits and result files.
+The following are usage examples, not recorded execution evidence:
+
+```powershell
+.\.venv\Scripts\python.exe -m boardgame_ai.training.connect_four_run runs/connect-four-functional --settings docs/phase6/connect-four-functional-v1.json --protocol docs/PHASE6_CONNECT_FOUR_PROTOCOL.md --check-only
+.\.venv\Scripts\python.exe -m boardgame_ai.training.connect_four_run runs/connect-four-functional --settings docs/phase6/connect-four-functional-v1.json --protocol docs/PHASE6_CONNECT_FOUR_PROTOCOL.md --stop-after 2
+.\.venv\Scripts\python.exe -m boardgame_ai.training.connect_four_run runs/connect-four-functional --settings docs/phase6/connect-four-functional-v1.json --protocol docs/PHASE6_CONNECT_FOUR_PROTOCOL.md --resume
+.\.venv\Scripts\python.exe -m boardgame_ai.training.connect_four_run runs/connect-four-functional --settings docs/phase6/connect-four-functional-v1.json --protocol docs/PHASE6_CONNECT_FOUR_PROTOCOL.md --evaluate
+```
+
+`--check-only` performs a read-only preflight for a new run. Combining it with
+`--resume` or `--evaluate` validates existing saved state and remaining caps without
+repairing metrics or changing artifacts/budgets. A new-run check constructs no
+model/trainer; existing-state checks load validated snapshots but never collect or
+optimize. It preserves global RNG and threads. Path/settings readiness is not a
+write-permission, throughput or strength guarantee.
+
+CLI exit codes are 0 for a successful operation/requested pause, 1 for incomplete
+work or an exhausted cap, 2 for argument/validation/I/O failures and 130 for Ctrl+C.
+The JSON training summary distinguishes `target_reached` from full-run `complete`.
+`--resume` and `--evaluate` are mutually exclusive; evaluation rejects a stop boundary.
+
+`--stop-after` is an absolute pause boundary within the declared total budget;
+it never adds updates. New output must be absent/empty. Training does not invoke
+evaluation. `latest.pt` is a separate run envelope, while `initial.pt`/`final.pt`
+are portable trainer snapshots. Generic Tic-Tac-Toe checkpoint commands do not
+consume these files. Human play accepts portable trainer snapshots through
+`play --game connect-four --checkpoint PATH`; see [README](../README.md#connect-four).
+
+`updates.jsonl` follows checkpoint publication. Resume backs up recoverable torn
+tails, rejects earlier corruption and never invents missing metrics. Healthy
+completed resume changes no bytes. The cumulative `budget.json` charges failed
+attempts and initialization/saves. A hard kill spends its outstanding reservation
+conservatively; do not manually reset it to extend the protocol. Saved source and
+Python/Torch identity must match on resume. `training-status.json` reports saved
+counts and incomplete work; inspect it and the ledger when a cap stops progress.
+Evaluation publishes an exclusive report with raw cases and paired effects;
+partial reports cannot be overwritten. See the
+[functional protocol](PHASE6_CONNECT_FOUR_PROTOCOL.md) for caps, seeds, recovery
+limits and interpretation. Tests use tiny separately named disposable settings,
+not the canonical experiment budget.
+
+
+## Frozen Connect Four policy agent
+
+`agents.connect_four_policy.ConnectFourPolicyAgent(model, mode="sampled")`
+implements the existing Agent contract. It snapshots finite CPU/CUDA float32
+weights into frozen CPU inference and preserves source gradients/modes. Use
+`mode="greedy"` for highest-legal-logit play with lowest-column ties. Both modes
+mask only supplied actions and return the supplied object; inactive/terminal
+selection rejects. The adapter receives no engine or optimizer.
+
+`reset(seed)` uses an unsigned 64-bit seed directly with a private CPU generator,
+matching Connect Four collection's sampling convention. `reset(None)` uses private
+system entropy. Invalid resets/decisions do not advance sampling RNG. Load a
+portable trainer using `load_connect_four_checkpoint(path, device="cpu")`, then
+construct the agent from its model; do not pass the run-level latest envelope.
+CLI loading is validated before prompting, keeps all files read-only and does not
+train or evaluate a protocol campaign. Help/random play retain lightweight imports.

@@ -72,9 +72,8 @@ executed column history for active, inactive and terminal seats. Supplied legal
 columns are 0–6 left to right, empty for inactive/terminal seats. Human CLI labels
 and input are 1–7; its renderer draws the board above the labels. The random
 opponent receives the same structured contract. Outcome adaptation reads only
-the terminal public board; cloning is independent. Search/replay and run-command
-integration remain future work. Rule and CLI tests include shared
-engine conformance.
+the terminal public board; cloning is independent. Search/replay integration
+remains future work. Rule and CLI tests include shared engine conformance.
 
 `models.encoders` provides Connect Four observation and fixed column-action
 encoders. Observations become fresh contiguous CPU float32 tensors `(6, 6, 7)`:
@@ -107,7 +106,7 @@ sampling generators use the supplied unsigned 64-bit seeds directly; the v1
 training seed helper implements the protocol's SHA-256 namespace/index/stream
 schedule. Source weights, gradients and mixed child train/eval modes are retained,
 including when the source is on CUDA. The caller owns updates between games;
-future update-batch orchestration must freeze weights throughout collection.
+the run layer freezes weights throughout each update collection batch.
 
 Complete games return `ConnectFourRollout` with separate `ConnectFourTrajectory`
 records: CPU float32 observations/log probabilities/values/own rewards, bool
@@ -147,9 +146,50 @@ replacement preserves the old file on failure under a single-writer assumption.
 Restricted loading preserves global RNG; CPU continuation with the same future
 batches is exact, with separate same-device CUDA tests. Cross-device equality is
 not promised. No observations, gradients, seeds, engine data or global RNG are
-serialized. These are trainer-level checkpoints: run manifests/protocol identity,
-game/decision scheduling counters, elapsed budget, metrics recovery, immutable
-snapshots, evaluation and CLI/human play remain to be integrated in a run layer.
+serialized. These remain trainer-level checkpoints; `training.connect_four_run`
+embeds their validated payload in a separate versioned atomic run envelope. The CPU/one-thread
+runner persists absolute update/game scheduling, settings/prose hashes and copies,
+source/runtime identity, game/decision/optimizer counters and checkpoint elapsed
+time. A separate budget ledger charges cumulative attempts, including failed
+work, with conservative outstanding reservations after hard process termination.
+Immutable initial/final trainer snapshots support separately requested evaluation.
+Checkpoint publication precedes JSONL metrics; validated tail backup/repair never
+invents rows. Source/runtime/settings mismatch and corrupt counters reject before
+metrics repair. Healthy completed resumes preserve bytes; missing final snapshots
+can be restored from the final boundary. `training-status.json` records incomplete
+counts and overruns. This is a single-writer runner with no mid-update restore.
+The run module's `--check-only` validates new-run paths/settings or existing
+resume/evaluation state without starting games, optimizing, repairing metrics or
+publishing artifacts. New checks construct no trainer; existing checks use
+restricted checkpoint validation. RNG, threads and cumulative ledgers are
+preserved. CLI summaries distinguish a reached pause boundary from a complete
+run, return nonzero on incomplete work, and report Ctrl+C separately. This
+readiness check is not a file reservation or a guarantee of permissions or timing.
+
+`training.connect_four_evaluation` reads fixed initial/final snapshots into fresh
+CPU models, uses separate per-game engine/policy/opponent streams and runs a paired
+random control. Its exclusive report preserves raw outcomes, per-seat scores and
+lengths, errors/truncations, approximate paired effects and partial counts. It
+never feeds PPO or changes training artifacts other than its separate evaluation
+budget. A partial report is preserved; evaluation does not resume mid-schedule.
+The [protocol](docs/PHASE6_CONNECT_FOUR_PROTOCOL.md) describes conservative crash
+accounting and initialization recovery limits.
+
+`agents.connect_four_policy.ConnectFourPolicyAgent` owns a frozen CPU copy of a
+finite CPU/CUDA float32 source model, preserving source gradients and child modes.
+It masks supplied choices, samples with a private directly seeded unsigned 64-bit
+CPU generator or selects the highest legal logit (lowest-column ties). It accepts
+only observation/actions and rejects inactive/terminal selection. Global RNG is
+preserved. This adapter does not change the declared evaluation schedule or mode.
+
+`play --game connect-four --checkpoint PATH` validates a portable trainer snapshot
+on CPU before prompting and wraps this policy in the existing reporting agent.
+`--policy-mode sampled|greedy` defaults to sampled; `--agent-seed` controls private
+sampling. Random play remains the default. Baseline/checkpoint options conflict,
+and unsupported games, replays, foreign/corrupt checkpoints and run-level latest
+envelopes reject. Initial/final snapshots are accepted; no optimizer is retained
+by the acting policy and no checkpoint/run file is written. Tests cover complete
+both-seat play and an optimized disposable checkpoint; no strength is asserted.
 
 ## Guildworks rules and transitions
 

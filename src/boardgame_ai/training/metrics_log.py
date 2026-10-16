@@ -111,11 +111,14 @@ def _unfinished_json(text: str) -> bool:
     return False
 
 
-def recover_metrics_log(path: Path, checkpoint_updates: int) -> int | None:
+def recover_metrics_log(
+    path: Path, checkpoint_updates: int, *, repair: bool = True
+) -> int | None:
     """Validate history, back up torn bytes, repair append boundary, count samples.
 
     Only valid unfinished final JSON without LF is recoverable. All other
     corruption rejects before writes. Gaps leave counts unknown, never invented.
+    repair=False performs the same validation/counting without modifying files.
     """
     original = path.read_bytes() if path.exists() else b""
     lines = original.splitlines(keepends=True)
@@ -151,7 +154,7 @@ def recover_metrics_log(path: Path, checkpoint_updates: int) -> int | None:
         previous = row["update"]
         rows.append(row)
         valid += line if line.endswith(b"\n") else line + b"\n"
-    if valid != original:
+    if repair and valid != original:
         backup = path.with_name(
             f"{path.name}.recovery-{sha256(original).hexdigest()}.bak"
         )

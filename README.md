@@ -2,7 +2,7 @@
 
 A Python platform for board-game engines, isolated player observations, simulation,
 and self-play learning. It implements Tic-Tac-Toe PPO, recurrent Guildworks PPO,
-and a Connect Four engine with an independent model/self-play collector.
+and independent Connect Four PPO with bounded runs and checkpoint human play.
 MuZero-style search learning and shared
 multi-game learning remain future work.
 
@@ -12,10 +12,11 @@ multi-game learning remain future work.
 |---|---|---|---|
 | Tic-Tac-Toe | Engine, random/heuristic agents, human CLI | PPO, separate CPU search-target self-play/replay learner, frozen PPO and bounded PUCT evaluation | Public move logs |
 | Guildworks | Hidden-card worker placement, random/scripted matches, filtered human CLI | Visible-history GRU and recurrent PPO; no hidden-information search | Not implemented |
-| Connect Four | Public engine, random/scripted matches, human CLI | Model, self-play collector, PPO and trainer checkpoint restore; run command/search pending | Not implemented |
+| Connect Four | Public engine, random/scripted matches, random/checkpoint human CLI | Independent PPO, bounded CPU run/resume/evaluation with functional results; search pending | Not implemented |
 
-Human CLI opponents are baselines; play against trained checkpoints is still
-planned. Training uses latest-policy self-play only; baseline opponents and
+Human CLI supports baseline opponents and portable Connect Four checkpoints.
+Checkpoint play is functionally tested; the declared Connect Four functional run
+completed, without establishing robust playing strength. Training uses latest-policy self-play only; baseline opponents and
 public tactical labels are evaluation instruments, never optimizer samples.
 The implemented learners and bounded search have measured limitations; none is
 claimed to provide robust or optimal play. See [current evidence](PROGRESS.md).
@@ -40,7 +41,7 @@ claimed to provide robust or optimal play. See [current evidence](PROGRESS.md).
 | [Search-learning design](SEARCH_LEARNING_DESIGN.md) | Public search and separate search-target learner contracts |
 | [Search-target implementation](docs/reviews/2026-10-16-search-target-implementation.md) | Bounded CPU learner, replay/resume validation and remaining experiment work |
 | [Phase 6 milestone proposal](docs/PHASE6_MILESTONE.md) | Connect Four PPO/checkpoint-play scope and implemented encoder subset |
-| [Connect Four functional protocol](docs/PHASE6_CONNECT_FOUR_PROTOCOL.md) | Independent model/collector/PPO/trainer restore implemented; bounded run layer and evaluation pending |
+| [Connect Four functional protocol](docs/PHASE6_CONNECT_FOUR_PROTOCOL.md) / [results](docs/phase6/CONNECT_FOUR_FUNCTIONAL_RESULTS.md) | Independent PPO and bounded run/resume/evaluation; functional run completed |
 | [2026-10-16 audit and feasibility review](docs/reviews/2026-10-16-audit-and-feasibility.md) | Historical audit findings, architecture risks, and proposed learning-validation gates |
 | [Development direction and next-session prompt](docs/reviews/2026-10-16-development-direction.md) | Reasoning for prioritizing reliability and bounded learning validation |
 | [Reliability resolution](docs/reviews/2026-10-16-reliability-resolution.md) | Artifact safety, metrics recovery, protocol compatibility, validation and proposed next experiment |
@@ -146,27 +147,49 @@ observations, and terminal rewards +1/−1/0. See the
 
 ## Connect Four
 
+The independent bounded PPO run/resume/evaluation layer is available through a
+[separate module command](docs/DEVELOPMENT.md#connect-four-bounded-runs). Its
+declared functional protocol is complete; [results](docs/phase6/CONNECT_FOUR_FUNCTIONAL_RESULTS.md)
+record a final balanced score of .65625 against random in one tiny run. Shared
+learning and robust strength evidence remain pending.
+Human checkpoint play is available with `--checkpoint`.
+Use the [console runbook](docs/phase6/CONNECT_FOUR_CONSOLE_RUNBOOK.md) for a
+read-only `--check-only` preflight and the train/resume/evaluate commands to run
+in your own PowerShell console.
+
 ```powershell
 .\.venv\Scripts\python.exe -m boardgame_ai play --game connect-four
 .\.venv\Scripts\python.exe -m boardgame_ai play --game connect-four --starts ai --agent-seed 42
+.\.venv\Scripts\python.exe -m boardgame_ai play --game connect-four --checkpoint runs/connect-four-functional-retry1/final.pt --agent-seed 42
+.\.venv\Scripts\python.exe -m boardgame_ai play --game connect-four --checkpoint runs/connect-four-functional-retry1/final.pt --policy-mode greedy --starts ai
 ```
+
+Checkpoint examples use the completed local run; in a fresh clone, create or
+restore a compatible snapshot first. `--checkpoint` accepts portable
+trainer snapshots (`initial.pt`, `final.pt`, or programmatically saved files),
+and rejects run-level `latest.pt`. It cannot be combined with `--opponent`.
+`--policy-mode sampled` is the default; `greedy` picks the highest legal logit
+with lowest-column ties. For checkpoint play, `--agent-seed` must be an unsigned
+64-bit integer; repeating it reproduces sampled choices for the same human moves.
+Loading validates the whole snapshot on CPU before human input and writes no files.
 
 The CLI shows a 7-column, 6-row board with aligned column labels 1–7. Enter a
 column to drop a disc; full columns and invalid input retry. X starts; four in a
 horizontal, vertical, or diagonal line wins; a full board without a winner draws.
-Quit, EOF, and Ctrl+C cancel. The opponent is random only.
+Quit, EOF, and Ctrl+C cancel. The default opponent is random.
 
 `ConnectFourEngine` and `ConnectFourObservation` support the shared `run_match`
 interface with `max_steps=42`; `connect_four_outcome` adapts results. Engine/model
-columns are zero-based 0–6; human input is 1–7. Training, learned opponents, search,
-and replay export are not implemented. Public observation and supplied-column
+columns are zero-based 0–6; human input is 1–7. Search and replay export
+remain unimplemented. Public observation and supplied-column
 encoders are available from `boardgame_ai.models.encoders`; their shapes and
 semantics are in [architecture](ARCHITECTURE.md#connect-four). An independent
 policy/value model and complete-game self-play collector are available
 programmatically; see the [development example](docs/DEVELOPMENT.md#connect-four-self-play).
 Programmatic PPO updates and portable trainer checkpoints are also available.
-The bounded run command, run-level resume/provenance/metrics recovery, learned
-CLI opponents and declared functional training/evaluation run remain pending.
+The bounded CPU run command provides run-level resume, protocol provenance,
+metrics recovery, cumulative caps and isolated evaluation. The user completed the
+declared functional training/evaluation run; larger learning-quality studies remain.
 
 ## Guildworks
 

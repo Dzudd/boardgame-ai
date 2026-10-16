@@ -495,3 +495,20 @@ Separate Connect Four checkpoints hold weights/Adam, configuration, counters and
 private shuffle RNG only. Run seeds, observations, histories and global RNG are
 excluded; loading never changes an existing trainer. Evaluation and baseline
 data are not collected by this optimizer/checkpoint layer.
+
+The bounded Connect Four run layer owns self-play provenance: every update uses
+only complete games from the same latest policy in both seats. Absolute game
+seeds, manifest hashes, cumulative timing, outcomes and action/position diagnostics
+are trusted orchestration metadata, never model inputs. The run checkpoint wraps
+only validated trainer state and scalar run metadata; no rollout is serialized.
+Separate fixed-snapshot evaluation uses its own namespace and fresh private
+sampling/opponent generators. Baseline/control decisions and evaluation outcomes
+never enter PPO, initialization, shuffle state or the future self-play schedule.
+
+Connect Four checkpoint human play loads trusted portable trainer state in CLI
+orchestration, then passes only a frozen model copy to the acting policy. The
+reporting wrapper forwards only detached observation/supplied legal actions and
+prints the chosen public column. Neither human nor policy receives checkpoint
+optimizer state, engine/state, rewards, seeds from the manifest, or run diagnostics.
+Private sampling resets per match; human games never enter training or protocol
+evaluation. Checkpoint and run artifacts remain read-only during play.

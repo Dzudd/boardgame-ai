@@ -1,4 +1,7 @@
-"""Human Connect Four play against a seeded random opponent."""
+"""Human Connect Four play against a random or frozen checkpoint opponent."""
+
+from pathlib import Path
+from typing import Literal
 
 from boardgame_ai.agents import Agent, RandomAgent
 from boardgame_ai.cli_play import PlayCancelled
@@ -35,13 +38,19 @@ class HumanConnectFourAgent(Agent[ConnectFourObservation]):
             print("That column is full or unavailable. Choose a column from 1 to 7.")
 
 
-class _ReportingAgent(RandomAgent[ConnectFourObservation]):
+class _ReportingAgent(Agent[ConnectFourObservation]):
+    def __init__(self, policy: Agent[ConnectFourObservation]) -> None:
+        self._policy = policy
+
+    def reset(self, seed: int | None = None) -> None:
+        self._policy.reset(seed)
+
     def select_action(
         self,
         observation: Observation[ConnectFourObservation],
         legal_actions: tuple[Action, ...],
     ) -> Action:
-        action = super().select_action(observation, legal_actions)
+        action = self._policy.select_action(observation, legal_actions)
         column = action.parameters[0][1]
         assert type(column) is int
         print(f"AI drops in column {column + 1}.")
@@ -49,18 +58,42 @@ class _ReportingAgent(RandomAgent[ConnectFourObservation]):
 
 
 def play_connect_four(
-    *, starts: str = "human", engine_seed: int | None, agent_seed: int | None
+    *,
+    starts: str = "human",
+    engine_seed: int | None,
+    agent_seed: int | None,
+    checkpoint: str | Path | None = None,
+    policy_mode: Literal["sampled", "greedy"] | None = None,
 ) -> None:
+    """Validate/load before human input; never modify checkpoint or run artifacts."""
     if starts not in ("human", "ai"):
         raise ValueError("Starter must be human or ai")
+    policy: Agent[ConnectFourObservation]
+    if checkpoint is None:
+        if policy_mode is not None:
+            raise ValueError("Policy mode requires a checkpoint")
+        policy = RandomAgent()
+    else:
+        # Preserve lightweight imports for random-only play and CLI help.
+        from boardgame_ai.agents.connect_four_policy import ConnectFourPolicyAgent
+        from boardgame_ai.training.connect_four_checkpoint import (
+            load_connect_four_checkpoint,
+        )
+
+        trainer = load_connect_four_checkpoint(checkpoint, device="cpu")
+        policy = ConnectFourPolicyAgent(trainer.model, mode=policy_mode or "sampled")
+        policy.reset(agent_seed)  # Reject invalid seeds before printing/prompting.
+        del trainer
     human_seat = 0 if starts == "human" else 1
     human = HumanConnectFourAgent()
-    ai = _ReportingAgent()
+    ai = _ReportingAgent(policy)
     agents: tuple[Agent[ConnectFourObservation], ...] = (
         (human, ai) if human_seat == 0 else (ai, human)
     )
     game = ConnectFourEngine()
     print(f"Connect Four: you are {'X' if human_seat == 0 else 'O'}; X starts.")
+    if checkpoint is not None:
+        print(f"Opponent: checkpoint policy ({policy_mode or 'sampled'}).")
     print("Drop a disc in columns 1-7. Four in a row wins. Enter quit to stop.")
     try:
         result = run_match(

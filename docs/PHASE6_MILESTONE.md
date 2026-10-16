@@ -1,6 +1,8 @@
 # Proposed first Phase 6 milestone
 
-The learner/checkpoint-play scope below remains a development proposal. The
+The scope below records the original bounded development proposal. Its learner,
+run layer and checkpoint play are now implemented; the user completed the
+[functional run](phase6/CONNECT_FOUR_FUNCTIONAL_RESULTS.md). The
 [independent functional protocol](PHASE6_CONNECT_FOUR_PROTOCOL.md) now fixes the
 first learner's technical contract and bounded validation budget; it is not a
 strength or multi-game experiment. Implemented prerequisites now include public
@@ -11,8 +13,9 @@ See [architecture](../ARCHITECTURE.md#connect-four) for the implemented contract
 The [roadmap](../BOARDGAME_AI_PROJECT_PLAN.md#phase-6--multi-game-learning)
 owns all Phase 6 tasks and acceptance criteria; [progress](../PROGRESS.md) owns
 current status. Connect Four has an engine, human-versus-random CLI and a
-programmatic self-play/PPO learner with trainer-level checkpoints. The bounded
-training/evaluation command and human checkpoint play remain unimplemented.
+programmatic self-play/PPO learner, bounded CPU run/resume/evaluation layer and
+portable-checkpoint human CLI play. The declared CPU functional run is complete;
+robust strength and multi-game criteria remain unestablished.
 
 ## Completed prerequisite and remaining scope
 
@@ -25,10 +28,15 @@ numeric settings. The model and complete-game self-play collector are implemente
 and tested, including both-seat terminal rewards/GAE, snapshot/RNG isolation,
 deadlines, deterministic sampling and CUDA-source collection. PPO and separate
 trainer checkpoint restore are now implemented and tested, with exact CPU
-continuation and CUDA portability. The next bounded Phase 6 task is the run layer:
+continuation and CUDA portability. The separate bounded run layer now supplies
 protocol provenance, absolute scheduling, metrics recovery, cumulative caps and
-isolated evaluation. These run-level guarantees are not supplied by trainer restore.
-The declared functional training/evaluation run has not been executed.
+isolated evaluation. Human CLI accepts validated portable snapshots through an
+explicit checkpoint option, with sampled/greedy play in either seat. Disposable
+tests include a snapshot after an optimizer update; they do not establish strength.
+The declared functional training/evaluation run has completed in the user's
+console and its saved evidence was reviewed without rerunning it. The next
+independent learning-quality study needs fresh roots, multiple seeds and new
+predeclared compute budgets; GPU run-layer integration remains pending.
 
 ## Scope and protocol prerequisites
 

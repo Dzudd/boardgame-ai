@@ -78,18 +78,10 @@ def _validate(payload: Any, trainer: ConnectFourPPOTrainer) -> None:
         raise ValueError("Connect Four shuffle state must be on CPU")
 
 
-def save_connect_four_checkpoint(
-    trainer: ConnectFourPPOTrainer, path: str | Path
-) -> None:
-    """Validate before atomically publishing a successful optimizer boundary.
-
-    Existing destinations must be compatible Connect Four checkpoints. Failed
-    updates cannot be saved. No run seeds/manifests, trajectories, global RNG or
-    gradients are stored; this is trainer restore, not a complete run scheduler.
-    Parent must exist. Like training, publication assumes a single writer.
-    """
-    if not isinstance(trainer, ConnectFourPPOTrainer) or not trainer.at_update_boundary:
-        raise ValueError("Expected a successful Connect Four PPO update boundary")
+def connect_four_payload(trainer: ConnectFourPPOTrainer) -> dict[str, Any]:
+    """Validated portable trainer payload for atomic run envelopes."""
+    if not trainer.at_update_boundary:
+        raise ValueError("Expected a successful PPO boundary")
     payload: dict[str, Any] = {
         "schema_version": 1,
         "game_id": "connect_four",
@@ -113,6 +105,22 @@ def save_connect_four_checkpoint(
             if isinstance(value, torch.Tensor):
                 moments[name] = value.detach().cpu().clone()
     _validate(payload, trainer)
+    return payload
+
+
+def save_connect_four_checkpoint(
+    trainer: ConnectFourPPOTrainer, path: str | Path
+) -> None:
+    """Validate before atomically publishing a successful optimizer boundary.
+
+    Existing destinations must be compatible Connect Four checkpoints. Failed
+    updates cannot be saved. No run seeds/manifests, trajectories, global RNG or
+    gradients are stored; this is trainer restore, not a complete run scheduler.
+    Parent must exist. Like training, publication assumes a single writer.
+    """
+    if not isinstance(trainer, ConnectFourPPOTrainer) or not trainer.at_update_boundary:
+        raise ValueError("Expected a successful Connect Four PPO update boundary")
+    payload = connect_four_payload(trainer)
     destination = Path(path)
     if destination.exists():
         existing = torch.load(destination, map_location="cpu", weights_only=True)
@@ -142,8 +150,20 @@ def load_connect_four_checkpoint(
     Games, scheduling seeds, protocol identity and elapsed caps belong to the
     future run layer. Cross-device numerical identity is not promised.
     """
-    target = resolve_training_device(device)
     payload = torch.load(path, map_location="cpu", weights_only=True)
+    return trainer_from_connect_four_payload(
+        payload, device=device, expected_config=expected_config
+    )
+
+
+def trainer_from_connect_four_payload(
+    payload: Any,
+    *,
+    device: str | torch.device = "cpu",
+    expected_config: PPOConfig | None = None,
+) -> ConnectFourPPOTrainer:
+    """Validate an embedded payload before constructing a fresh trainer."""
+    target = resolve_training_device(device)
     if (
         not isinstance(payload, dict)
         or set(payload) != _KEYS
