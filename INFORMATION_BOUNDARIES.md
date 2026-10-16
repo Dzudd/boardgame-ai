@@ -468,3 +468,30 @@ choices. The human renderer consumes the same observation, with 1–7 column lab
 translated at the UI boundary. AI agents receive structured observations and
 supplied actions, never rendered text or authoritative clones. There are no
 private events or random outcomes in this deterministic game.
+
+Connect Four tensor encoding consumes only the filtered observation wrapper and
+public board. Redundant move history is not a tensor feature. Both seats use
+observer-relative features with explicit actor/terminal planes. The action encoder
+uses supplied choices only; it never infers availability from empty board cells.
+Inactive and terminal masks are empty even when the board has space. Encoding
+and decoding consume no RNG, query no engine and retain no shared tensor storage.
+
+The Connect Four policy and value heads both consume only these encoded visible
+features. Complete-game self-play uses one frozen CPU policy copy for both seats
+with separate private sampling generators; no engine/state/reward/seed reaches
+forward. The collector is trusted orchestration and stores each seat's own
+interval rewards, including a loss delivered on the opponent's terminal move.
+Seat trajectories own their detached tensors; no histories or other-seat views
+become policy features. Terminal bootstrap is zero without terminal inference.
+Cutoffs/deadlines fail without returning incomplete learning samples. No baseline
+evaluation, replay or optimizer is part of this collector.
+
+The Connect Four PPO adapter computes GAE independently for complete own-seat
+sequences, then combines only detached permitted samples. Rewards, advantages,
+returns and behavior probabilities remain learning signals, never extra policy
+or value features. Callers must supply only current-policy self-play provenance;
+schema validation cannot prove the origin of arbitrary caller-created tensors.
+Separate Connect Four checkpoints hold weights/Adam, configuration, counters and
+private shuffle RNG only. Run seeds, observations, histories and global RNG are
+excluded; loading never changes an existing trainer. Evaluation and baseline
+data are not collected by this optimizer/checkpoint layer.

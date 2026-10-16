@@ -13,18 +13,39 @@ protocols, measurements and detailed limitations.
 | Phase 4 | Complete under its original improvement-over-random criterion |
 | Phase 4.5 | Tasks 1–6 complete at the declared bounded scope |
 | Phase 5 | Complete at declared Guildworks scope: engine, CLI, recurrent memory/PPO and bounded functional run |
-| Phase 6 | Pending; multi-game protocol/game choices follow independent learning-quality validation |
+| Phase 6 | Two additional engines and Connect Four encoders/model/collector/PPO/trainer restore available; bounded run layer, shared training and transfer pending |
 | Phase 7 | Partial: public simulator, bounded search evaluation/diagnosis and separate CPU search-target learner implemented; learning-quality comparison and broader research remain |
 | Phase 8 | Partial: baseline human CLI play and Tic-Tac-Toe public replays available; trained-agent human play and other product tasks remain |
 
-**Next milestone:** freeze one bounded independent learning-quality comparison
-before investing in shared learning; the [reliability resolution and proposal](docs/reviews/2026-10-16-reliability-resolution.md)
-specify the next question and required protocol decisions. The bounded CPU
-search-target learner is now functional; a throughput-based comparison protocol
-and empirical learning-quality evidence remain pending. Phase 6's multi-game
-protocol/game choices, hidden-information search and MuZero remain unfinished.
+**Next milestone:** add the bounded Connect Four run layer under the
+[functional protocol](docs/PHASE6_CONNECT_FOUR_PROTOCOL.md): saved protocol
+provenance, absolute self-play schedule, cumulative caps, metrics recovery and
+isolated evaluation. Model/collector/PPO and trainer checkpoint restore are now
+implemented. Shared learning requires later independent learning-quality
+evidence. The separate search-target/PPO comparison
+still needs throughput-based budgets; shared-game/transfer protocols,
+hidden-information search and MuZero remain unfinished.
 
 ## Verified evidence
+
+- **Phase 6 independent prerequisites:** Connect Four observer-relative tensors,
+  supplied-column masks/decoding, a 20,872-parameter policy/value model and a
+  complete-game self-play collector are implemented. The 43 encoder tests and
+  56 model/collector tests cover perspectives, legal masked sampling, own-seat
+  terminal rewards and hand-calculated GAE, full columns, wins/draws, deadline/
+  cutoff rejection, frozen snapshots, RNG/storage isolation and CUDA-source
+  collection. A further 47 PPO/checkpoint tests cover hand-calculated clipped
+  losses and gradients, optimizer changes, corrupt/incompatible file rejection,
+  atomic-save failures, partial-update/deadline protection, exact CPU next-update
+  and two-plus-two self-play continuation, and CUDA portable restore. These are
+  disposable functional tests, not a strength experiment.
+  The independent-baseline [functional protocol](docs/PHASE6_CONNECT_FOUR_PROTOCOL.md)
+  is now specified with versioned numeric settings: 32 self-play games, both-seat
+  initial/final random evaluation, fixed caps and CPU resume requirements. It has
+  not been executed; run-level provenance/scheduling/resume/metrics and evaluation
+  integration remain. Guildworks and Connect Four count as the two additional
+  engines beyond Tic-Tac-Toe; a future unseen transfer game remains to be selected
+  before shared training.
 
 - **Search-target learner:** separate CPU latest-policy search self-play, complete
   own-seat outcome/visit targets, uniform-game/position FIFO replay, finite
@@ -71,22 +92,35 @@ protocol/game choices, hidden-information search and MuZero remain unfinished.
   same-player game simulation are unsupported; generic same-actor backup
   arithmetic tests do not establish game support. Search-target learning is
   CPU Tic-Tac-Toe/K=0 only; its strength is unmeasured, and generic checkpoint
-  evaluation still supports PPO only. MuZero and multi-game learning are absent.
-- Connect Four training, search and replay integration remain future work.
+  evaluation still supports Tic-Tac-Toe PPO only. MuZero and multi-game learning
+  are absent.
+- Connect Four has programmatic PPO and trainer checkpoint restore; the bounded
+  run layer, run-level resume, evaluation, search and replay remain future work. Its
+  fixed column encoding does not establish general candidate-action scoring
+  or shared-model learning.
 - Evaluation baselines and tactical labels never enter latest-policy self-play
   training. Results identify consumed final seeds; subsequent tuning requires
   fresh final-test seeds. Limited measured gains do not establish robust play.
 
 ## Validation
 
-Latest full local validation: **924 tests passed, 1 skipped** (52.00 seconds),
-including 50 new search-target learner tests and existing CPU/CUDA regressions. The skip
+Latest full local validation: **1,070 tests passed, 1 skipped** (72.86 seconds),
+including 47 new PPO/checkpoint tests and existing CPU/CUDA regressions. The skip
 requires Windows symlink privilege; hard-link and resolved-path tests pass.
 Ruff lint/format, strict mypy, dependency, CLI smoke and whitespace checks passed.
+The suite used the approved unrestricted setup because previous sandbox runs
+encountered temporary-directory permission errors in existing tests.
 All 168 existing run artifacts remain unchanged, and the three principal
-checkpoint hashes match the historical audit. See the [resolution record](docs/reviews/2026-10-16-reliability-resolution.md)
+checkpoint hashes retain their previously verified historical identities. See the [resolution record](docs/reviews/2026-10-16-reliability-resolution.md)
 for recovery evidence and compatibility limits; the [learner implementation record](docs/reviews/2026-10-16-search-target-implementation.md)
 records its functional scope and the still-unexecuted learning comparison.
+
+Protocol definition checks also verified JSON/PPO configuration compatibility,
+20,872 model parameters, 32 self-play games, at most 1,344 training
+decisions/88 optimizer steps, 192 evaluation/control games and 9,408 total
+decisions. Updated document links and whitespace checks pass. The functional
+training/evaluation budget remains unexecuted; collection, optimizer and checkpoint
+tests use disposable fixtures without modifying recorded runs or source artifacts.
 
 The public simulator comparison covers 5,478 boards and 16,167 legal transitions
 per starting seat; search checks cover budgets, perspective, terminal handling,

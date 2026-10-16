@@ -72,8 +72,84 @@ executed column history for active, inactive and terminal seats. Supplied legal
 columns are 0–6 left to right, empty for inactive/terminal seats. Human CLI labels
 and input are 1–7; its renderer draws the board above the labels. The random
 opponent receives the same structured contract. Outcome adaptation reads only
-the terminal public board; cloning is independent. No training/search/replay
-adapter is introduced. Rule and CLI tests include shared engine conformance.
+the terminal public board; cloning is independent. Search/replay and run-command
+integration remain future work. Rule and CLI tests include shared
+engine conformance.
+
+`models.encoders` provides Connect Four observation and fixed column-action
+encoders. Observations become fresh contiguous CPU float32 tensors `(6, 6, 7)`:
+own discs, opponent discs, empty cells, own turn, opponent turn, terminal.
+Coordinates stay top-to-bottom/left-to-right for both seats. Turn/terminal planes
+are constant; terminal views retain the board with zero turn planes. Public move
+history is omitted because board and actor suffice for this deterministic game.
+Schema validation rejects invalid seats, cells and phase/actor combinations; it
+does not certify reachability, gravity or history consistency.
+
+`drop(column)` maps to indices 0 through 6. Fresh CPU bool masks `(7,)` derive
+exclusively from supplied choices, including all-false inactive/terminal masks.
+Decoding returns the supplied object; malformed/duplicate/unavailable choices
+reject. The existing logit masker supports seven-column masks and rejects empty
+choices. This fixed mapping is not general candidate-action encoding/scoring.
+
+`models.connect_four.ConnectFourActorCritic` has a 252-to-64-to-64 tanh body,
+seven raw policy logits and one unbounded observer-return value, with 20,872
+parameters. Both heads receive the same visible tensor; terminal outputs are
+predictions, not permission to act. CPU float32 initialization is explicit;
+`initial_connect_four_model` uses an unsigned 64-bit seed without advancing global
+CPU/initialized-CUDA RNG. Forward supports batch dimensions and explicit model
+dtype/device conversion, rejecting incompatible shapes/dtypes/devices/nonfinite
+inputs. Model/encoding identities match the declared independent protocol.
+
+`training.connect_four.collect_connect_four_self_play` copies one current model
+to frozen CPU inference for both seats and resets the supplied Connect Four
+engine. Only detached filtered decision tensors reach inference. Private CPU
+sampling generators use the supplied unsigned 64-bit seeds directly; the v1
+training seed helper implements the protocol's SHA-256 namespace/index/stream
+schedule. Source weights, gradients and mixed child train/eval modes are retained,
+including when the source is on CUDA. The caller owns updates between games;
+future update-batch orchestration must freeze weights throughout collection.
+
+Complete games return `ConnectFourRollout` with separate `ConnectFourTrajectory`
+records: CPU float32 observations/log probabilities/values/own rewards, bool
+legal masks, int64 actions/global step indices and zero terminal bootstrap.
+Each seat's rewards accumulate through intervening opponent decisions and the
+terminal move. No terminal inference occurs. Live cutoffs (default 42 steps)
+raise instead of returning partial samples. An optional absolute monotonic
+deadline raises before reset or between decisions; later failures retain
+executed engine steps but return no partial training records. The collector
+neither optimizes nor writes artifacts. These records are a separate type;
+existing Tic-Tac-Toe PPO validation/checkpoints remain unchanged and reject
+Connect Four tensor dimensions.
+
+`training.connect_four_ppo` adds an explicit Connect Four batch builder, loss
+entry point and `ConnectFourPPOTrainer`. It computes each complete seat's GAE
+before concatenating owned detached samples. Step sequences, zero terminal
+bootstrap and `(6,6,7)`/seven-action shapes are validated. Defaults match the
+declared functional protocol (gamma=1, two epochs, minibatch 32). The adapter
+shares clipped loss, half-MSE, entropy, population-standard-deviation advantage
+normalization, private shuffling and Adam/gradient clipping with Tic-Tac-Toe;
+the old adapter retains its shapes/defaults and numerical update order.
+Connect Four seeds its private shuffle generator directly with the supplied
+unsigned 64-bit seed. Updates support an absolute monotonic deadline checked
+between minibatches. A failure after preflight invalidates that trainer's save
+boundary; reload a saved checkpoint before continuing. No partial update can
+be saved through the Connect Four writer. Records of optimizer/sample counts
+advance only at successful boundaries, except the actual optimizer-step counter
+also reflects successful minibatches before a failure.
+
+`training.connect_four_checkpoint` saves a separate schema identifying game,
+model, encoding and learner, with CPU-portable model/Adam, PPO configuration,
+mode, update/optimizer/sample counters and private shuffle state. Full identity,
+tensor, Adam (including step counts), counter and RNG validation precedes load
+into a fresh trainer or save publication. Existing destinations must be compatible
+Connect Four checkpoints no newer than the saved trainer. Same-directory atomic
+replacement preserves the old file on failure under a single-writer assumption.
+Restricted loading preserves global RNG; CPU continuation with the same future
+batches is exact, with separate same-device CUDA tests. Cross-device equality is
+not promised. No observations, gradients, seeds, engine data or global RNG are
+serialized. These are trainer-level checkpoints: run manifests/protocol identity,
+game/decision scheduling counters, elapsed budget, metrics recovery, immutable
+snapshots, evaluation and CLI/human play remain to be integrated in a run layer.
 
 ## Guildworks rules and transitions
 

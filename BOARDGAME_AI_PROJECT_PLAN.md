@@ -10,9 +10,15 @@ Phase 5 complete for the declared Guildworks rules, including recurrent memory/P
 Phase 7 has a public simulator, bounded search evaluation/diagnosis and functional
 CPU search-target learner; its phase-wide criterion is not met. Phases 6–8 retain
 unfinished tasks below.
-**Next milestone:** Freeze a bounded independent learning-quality comparison
-before Phase 6 shared-model work; see the [proposal](docs/reviews/2026-10-16-reliability-resolution.md#proposed-next-bounded-learning-experiment-not-executed).
-The Phase 6 multi-game evaluation protocol and game choices remain to be defined.
+**Next milestone:** Add the bounded Connect Four run layer: protocol provenance,
+absolute self-play schedule, metrics recovery, cumulative caps and isolated
+evaluation under the [functional protocol](docs/PHASE6_CONNECT_FOUR_PROTOCOL.md).
+Phase 6 observation/action adapters, policy/value model, self-play collector,
+PPO optimizer and trainer-level portable restore are implemented; the functional
+training run is unexecuted.
+Shared-model/transfer protocols and independent
+learning-quality evidence remain pending, including the separate search/PPO
+[comparison proposal](docs/reviews/2026-10-16-reliability-resolution.md#proposed-next-bounded-learning-experiment-not-executed).
 PPO and Tic-Tac-Toe search remain references; robust Tic-Tac-Toe play is not a gate.
 
 ## Goal and principles
@@ -204,13 +210,24 @@ select the Phase 6 evaluation protocol.
 
 The [proposed first bounded milestone](docs/PHASE6_MILESTONE.md) describes an
 independent Connect Four learning baseline and trained-checkpoint human play.
-It is a proposal, not a frozen evaluation protocol or a completed phase task.
+Its observation/fixed column-action encoders, independent policy/value model and
+complete-game self-play collector, PPO optimization and trainer-level checkpoint
+restore are implemented and tested. Run-level resume/provenance/metrics recovery,
+evaluation scheduling and checkpoint human play remain unimplemented. The
+[functional protocol](docs/PHASE6_CONNECT_FOUR_PROTOCOL.md) now specifies the
+independent model, self-play/evaluation budgets, seeds and resume contract;
+it is not a strength comparison or a frozen multi-game experiment. Fixed action
+indices do not implement general candidate-action scoring.
 
-- [ ] Add at least two more games using the same engine interface.
-- [ ] Implement game-specific observation encoders.
+- [x] Add at least two more games using the same engine interface: Guildworks and
+  Connect Four beyond the original Tic-Tac-Toe. A new held-out transfer game is
+  still required before testing adaptation.
+- [ ] Implement game-specific observation encoders (Connect Four now added alongside
+  Tic-Tac-Toe and Guildworks; future game selection/shared integration remain).
 - [ ] Implement candidate-action encoding and scoring.
 - [ ] Build a shared Transformer or recurrent backbone.
-- [ ] Implement game-specific policy/value adapters where necessary.
+- [ ] Implement game-specific policy/value adapters where necessary (independent
+  Connect Four heads available; shared-backbone integration remains).
 - [ ] Create a multi-game training sampler and normalize/track rewards carefully.
 - [ ] Compare separate models versus a shared model at matched compute budgets.
 - [ ] Test transfer: train on games A/B, then measure learning speed on game C.
@@ -263,8 +280,10 @@ The phase-wide acceptance criterion is not yet met.
 
 The Phase 4.5 review brought the first Phase 7 milestone forward. Public simulation,
 16/32 search evaluation and heuristic-O trace diagnosis are complete. Phase 5 is
-complete at its declared scope. A bounded independent learning-quality protocol
-is next, before Phase 6 shared-model comparisons; additional
+complete at its declared scope. Phase 6's independent Connect Four functional
+protocol has an implemented model/collector/PPO/trainer restore; bounded run-layer
+integration is next. Independent
+learning-quality evidence is still needed before shared-model comparisons; additional
 search tuning or solving Tic-Tac-Toe is not a prerequisite. Prior-concentration
 ablation is deferred optional research. The longer-term search sequence remains:
 
