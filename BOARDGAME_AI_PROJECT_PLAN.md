@@ -7,9 +7,18 @@ limitations and the next milestone belong in [progress](PROGRESS.md).
 **Status:** Phases 1–3 complete; Phase 4 complete under its original minimal
 criterion; Phase 4.5 complete at its declared bounded investigation scope;
 Phase 5 complete for the declared Guildworks rules, including recurrent memory/PPO.
-Only the brought-forward public simulator, bounded search evaluation and diagnosis
-milestone of Phase 7 is complete. Phases 6–8 retain unfinished tasks below.
-**Next milestone:** Define the bounded Phase 6 multi-game evaluation protocol and game choices.
+Phase 7 has a public simulator, bounded search evaluation/diagnosis and functional
+CPU search-target learner; its phase-wide criterion is not met. Phases 6–8 retain
+unfinished tasks below.
+**Next milestone:** Add the bounded Connect Four run layer: protocol provenance,
+absolute self-play schedule, metrics recovery, cumulative caps and isolated
+evaluation under the [functional protocol](docs/PHASE6_CONNECT_FOUR_PROTOCOL.md).
+Phase 6 observation/action adapters, policy/value model, self-play collector,
+PPO optimizer and trainer-level portable restore are implemented; the functional
+training run is unexecuted.
+Shared-model/transfer protocols and independent
+learning-quality evidence remain pending, including the separate search/PPO
+[comparison proposal](docs/reviews/2026-10-16-reliability-resolution.md#proposed-next-bounded-learning-experiment-not-executed).
 PPO and Tic-Tac-Toe search remain references; robust Tic-Tac-Toe play is not a gate.
 
 ## Goal and principles
@@ -201,13 +210,24 @@ select the Phase 6 evaluation protocol.
 
 The [proposed first bounded milestone](docs/PHASE6_MILESTONE.md) describes an
 independent Connect Four learning baseline and trained-checkpoint human play.
-It is a proposal, not a frozen evaluation protocol or a completed phase task.
+Its observation/fixed column-action encoders, independent policy/value model and
+complete-game self-play collector, PPO optimization and trainer-level checkpoint
+restore are implemented and tested. Run-level resume/provenance/metrics recovery,
+evaluation scheduling and checkpoint human play remain unimplemented. The
+[functional protocol](docs/PHASE6_CONNECT_FOUR_PROTOCOL.md) now specifies the
+independent model, self-play/evaluation budgets, seeds and resume contract;
+it is not a strength comparison or a frozen multi-game experiment. Fixed action
+indices do not implement general candidate-action scoring.
 
-- [ ] Add at least two more games using the same engine interface.
-- [ ] Implement game-specific observation encoders.
+- [x] Add at least two more games using the same engine interface: Guildworks and
+  Connect Four beyond the original Tic-Tac-Toe. A new held-out transfer game is
+  still required before testing adaptation.
+- [ ] Implement game-specific observation encoders (Connect Four now added alongside
+  Tic-Tac-Toe and Guildworks; future game selection/shared integration remain).
 - [ ] Implement candidate-action encoding and scoring.
 - [ ] Build a shared Transformer or recurrent backbone.
-- [ ] Implement game-specific policy/value adapters where necessary.
+- [ ] Implement game-specific policy/value adapters where necessary (independent
+  Connect Four heads available; shared-backbone integration remains).
 - [ ] Create a multi-game training sampler and normalize/track rewards carefully.
 - [ ] Compare separate models versus a shared model at matched compute budgets.
 - [ ] Test transfer: train on games A/B, then measure learning speed on game C.
@@ -221,7 +241,9 @@ It is a proposal, not a frozen evaluation protocol or a completed phase task.
 
 **Partial:** the public-rule Tic-Tac-Toe simulator, bounded search evaluation and
 diagnosis milestone is complete; [Phase 7 results](PHASE7_RESULTS.md) document its
-limited gains. The phase-wide acceptance criterion is not yet met.
+limited gains. A separate [bounded CPU search-target learner](docs/reviews/2026-10-16-search-target-implementation.md)
+is implemented and functionally tested; its learning-quality comparison is pending.
+The phase-wide acceptance criterion is not yet met.
 
 - [ ] Implement explicit or learned hidden-state belief estimates.
 - [ ] Validate belief estimates against known simulated outcomes without leaking them at inference.
@@ -231,7 +253,7 @@ limited gains. The phase-wide acceptance criterion is not yet met.
 - [ ] Add separate rollout comparison if warranted.
 - [ ] Compare heuristic, rollout, neural, and hybrid evaluation against fixed baselines.
 - [x] Integrate policy/value guidance into bounded public search.
-- [ ] Implement search-guided self-play with policy/value targets and sampled self-generated replay as a separate learner.
+- [x] Implement search-guided self-play with policy/value targets and sampled self-generated replay as a separate learner (bounded CPU Tic-Tac-Toe, K=0; strength comparison pending).
 - [ ] Implement MuZero-style learned representation, dynamics, and prediction as the long-term search-learning extension.
 - [ ] Test chance-event modeling and same-player search backups.
 - [ ] Benchmark planning strength versus computation and latency.
@@ -258,7 +280,10 @@ limited gains. The phase-wide acceptance criterion is not yet met.
 
 The Phase 4.5 review brought the first Phase 7 milestone forward. Public simulation,
 16/32 search evaluation and heuristic-O trace diagnosis are complete. Phase 5 is
-complete at its declared scope, and Phase 6 protocol design is next; additional
+complete at its declared scope. Phase 6's independent Connect Four functional
+protocol has an implemented model/collector/PPO/trainer restore; bounded run-layer
+integration is next. Independent
+learning-quality evidence is still needed before shared-model comparisons; additional
 search tuning or solving Tic-Tac-Toe is not a prerequisite. Prior-concentration
 ablation is deferred optional research. The longer-term search sequence remains:
 
@@ -267,8 +292,9 @@ ablation is deferred optional research. The longer-term search sequence remains:
 3. Add learned representation, dynamics, and prediction; compare against rule-based search.
 4. Extend explicitly for chance, hidden information, same-player actions, and multiple players.
 
-PPO remains a comparison baseline. Public-rule bounded search is implemented;
-search-target learning is not. A rules simulator
+PPO remains a comparison baseline. Public-rule bounded search and the separate
+CPU Tic-Tac-Toe search-target learner are implemented; empirical learning-quality
+comparison remains pending. A rules simulator
 provides transitions, not expert opponent decisions. Hidden-information planning
 must respect information sets; cloning true hidden state or searching sampled
 worlds as though their secrets were known is invalid.

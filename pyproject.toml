@@ -28,7 +28,7 @@ dev = [
 where = ["src"]
 
 [tool.setuptools.package-data]
-boardgame_ai = ["py.typed"]
+boardgame_ai = ["py.typed", "training/protocols/*.json", "training/protocols/*.md"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -3,6 +3,7 @@
 from argparse import Namespace
 from pathlib import Path
 
+from boardgame_ai.artifact_safety import validate_evaluation_destination
 from boardgame_ai.policy_evaluation import (
     FixedOpponentCase,
     evaluate_policy_checkpoint,
@@ -12,15 +13,7 @@ from boardgame_ai.policy_evaluation import (
 
 def evaluate_from_args(args: Namespace) -> None:
     source = Path(args.checkpoint).resolve()
-    output = Path(args.output).resolve()
-    if source == output or output.name in (
-        "latest.pt",
-        "training.json",
-        "updates.jsonl",
-    ):
-        raise ValueError("Evaluation output must not overwrite training artifacts")
-    if not output.parent.is_dir():
-        raise ValueError("Evaluation output parent directory must exist")
+    output = validate_evaluation_destination(args.output)
 
     def progress(case: FixedOpponentCase) -> None:
         summary = case.report.summary

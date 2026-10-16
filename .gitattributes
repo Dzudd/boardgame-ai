@@ -1,0 +1,4 @@
+# Protocol provenance is byte-addressed; preserve bytes on Windows checkouts.
+src/boardgame_ai/training/protocols/* -text
+# The frozen settings snapshot retains its original Windows line endings.
+src/boardgame_ai/training/protocols/phase45-v1.json whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol

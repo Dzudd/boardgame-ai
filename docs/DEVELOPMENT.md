@@ -299,6 +299,72 @@ Path("runs").mkdir(exist_ok=True)
 save_evaluation(report, "runs/evaluation.json")
 ```
 
+## Connect Four self-play
+
+This collects one complete game with the same frozen current policy in both
+seats. It performs no optimization, evaluation or artifact writes. Returned
+trajectories use Connect Four shapes; do not pass them to the existing
+Tic-Tac-Toe PPO batch builder. Use the dedicated Connect Four adapter below.
+
+```python
+from boardgame_ai.games.connect_four import ConnectFourEngine
+from boardgame_ai.models.connect_four import initial_connect_four_model
+from boardgame_ai.training.connect_four import (
+    collect_connect_four_self_play,
+    derive_connect_four_seed,
+)
+
+root, game_index = 100, 0
+model = initial_connect_four_model(
+    derive_connect_four_seed(root, 0, "initialization")
+)
+rollout = collect_connect_four_self_play(
+    ConnectFourEngine(), model,
+    engine_seed=derive_connect_four_seed(root, game_index, "engine"),
+    sampling_seeds=(
+        derive_connect_four_seed(root, game_index, "seat:0"),
+        derive_connect_four_seed(root, game_index, "seat:1"),
+    ),
+)
+assert 7 <= rollout.num_steps <= 42
+assert all(seat.bootstrap_value == 0 for seat in rollout.players)
+```
+
+Each seat owns detached CPU observations `(T,6,6,7)`, legal masks `(T,7)`,
+sampled indices, old log probabilities/values, own interval rewards and global
+step indices. A live step cutoff raises; an optional absolute `deadline` from
+`time.monotonic()` raises `TimeoutError` between decisions. Partial samples do
+not return. The model/collector preserve source parameters, gradients, modes and
+global RNG. See the [architecture](../ARCHITECTURE.md#connect-four) and
+[functional protocol](PHASE6_CONNECT_FOUR_PROTOCOL.md) for contracts and remaining
+run-layer work. The example seed is separate from the declared functional run.
+
+For a programmatic optimizer step on that current-policy rollout:
+
+```python
+from boardgame_ai.training.connect_four_ppo import (
+    ConnectFourPPOTrainer, prepare_connect_four_batch,
+)
+
+trainer = ConnectFourPPOTrainer(
+    model, shuffle_seed=derive_connect_four_seed(root, 0, "shuffle")
+)
+report = trainer.update(prepare_connect_four_batch(rollout.players, trainer.config))
+assert trainer.update_count == 1
+```
+
+`training.connect_four_checkpoint.save_connect_four_checkpoint(trainer, path)`
+requires an existing parent and a successful update boundary; an existing file
+must be a compatible Connect Four checkpoint. The corresponding
+`load_connect_four_checkpoint(path, device="cpu", expected_config=trainer.config)`
+returns a fresh trainer with model/Adam, counters, mode and shuffle state restored.
+Neither function writes or reads trajectories, run schedules or protocol
+manifests. A failed/expired update may have performed minibatches; reload a saved
+boundary rather than saving or continuing the partial trainer. Exact CPU
+continuation requires the same next batches/runtime. Run-level resume, cumulative
+elapsed caps, metrics recovery and evaluation still need a separate bounded
+runner; these helpers do not execute the declared functional campaign.
+
 ## Recording automated Tic-Tac-Toe matches
 
 Pass `TicTacToeRecorder().record` as the optional `on_step` callback to `run_match`

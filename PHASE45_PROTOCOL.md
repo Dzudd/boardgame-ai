@@ -3,6 +3,12 @@
 This document preserves the predeclared experiment budgets and decision criteria.
 Outcomes and limitations are recorded in [Phase 4.5 results](PHASE45_RESULTS.md).
 
+This explanatory document can be edited without changing machine identity.
+The immutable [phase45-entropy-v1 settings](src/boardgame_ai/training/protocols/phase45-v1.json)
+govern execution. New experiments retain settings and prose snapshots separately;
+historical provenance is preserved through an explicit verified mapping.
+See [protocol identity](ARCHITECTURE.md#experiment-protocol-identity).
+
 Declared before the new benchmarks and training runs. Original update-1000
 checkpoint, training manifest and logs are read-only. All new runs use separate
 directories under `runs/phase45`. Both seats always use the latest shared frozen

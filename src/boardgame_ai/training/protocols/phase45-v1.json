@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "seeds": [
+    42,
+    43,
+    44
+  ],
+  "updates": 200,
+  "games_per_update": 64,
+  "variants": {
+    "baseline": 0.01,
+    "entropy": 0.05
+  },
+  "monitoring": {
+    "interval": 50,
+    "retain": 3,
+    "games_per_seat": 128,
+    "self_play_games": 64,
+    "seed": 20261022
+  },
+  "final_seed": 20261029,
+  "final_games_per_seat": 512,
+  "device": "cpu",
+  "threads": 1,
+  "protocol_id": "phase45-entropy-v1",
+  "ppo": {
+    "learning_rate": 0.0003,
+    "gamma": 0.99,
+    "gae_lambda": 0.95,
+    "clip_ratio": 0.2,
+    "value_coefficient": 0.5,
+    "entropy_coefficient": 0.01,
+    "epochs": 4,
+    "minibatch_size": 64,
+    "max_grad_norm": 0.5,
+    "normalize_advantages": true
+  },
+  "training_schedule": "training-v1",
+  "evaluation_schedule": "fixed-opponents-v1+batch-v1",
+  "selection": "equal-case-random-heuristic-X-O-earliest-tie",
+  "mode": "sampled",
+  "paired_interval_multiplier": 4.303
+}

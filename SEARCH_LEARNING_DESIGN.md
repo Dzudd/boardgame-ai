@@ -4,8 +4,9 @@ This document retains the search/learner design rationale, prospective learning
 contracts and required tests. Implemented search details are identified separately;
 the shared [architecture](ARCHITECTURE.md) describes the current system.
 
-**Phase 4.5 design; bounded Phase 7 evaluation now implemented.** Search-target
-learning remains unimplemented, and Phase 7 as a whole remains incomplete.
+**Phase 4.5 design; bounded Phase 7 evaluation and CPU search-target learner implemented.**
+The learner's [functional evidence and limits](docs/reviews/2026-10-16-search-target-implementation.md)
+do not establish learning quality. Phase 7 as a whole remains incomplete.
 The first milestone is bounded policy/value-guided search for deterministic,
 fully public, two-seat, zero-sum Tic-Tac-Toe. PPO stays a comparison baseline.
 Hidden information, chance, general-sum games and learned dynamics require
@@ -112,7 +113,7 @@ log probability or tactical bonus belongs in this objective. Search selects move
 with a different behavior distribution; treating them as raw-policy PPO samples
 would give incorrect ratios. Preserve the old PPO learner and checkpoint IDs.
 
-Proposed first bounded replay configuration: FIFO last 10,000 completed self-play
+Implemented functional default replay configuration: FIFO last 10,000 completed self-play
 games, uniform game sampling followed by uniform valid decision sampling, batch
 256, four optimizer steps per 64 newly generated games. This deliberately weights
 games equally rather than all historical decisions equally; log the sampling
@@ -151,8 +152,9 @@ design's scope.
 
 **Implemented milestone:** public simulator and bounded search evaluation, with
 raw greedy policy versus 16/32 simulations. See the [Phase 7 protocol](PHASE7_PROTOCOL.md)
-and [results](PHASE7_RESULTS.md). Search-target replay learning remains a separate
-later task.
+and [results](PHASE7_RESULTS.md). Separate CPU search-target replay learning is
+implemented with `unroll_steps=0`, private replay RNG and exact tiny-run boundary
+resume; its frozen learning-quality comparison remains a later task.
 
 
 ## Implementation details
@@ -177,6 +179,7 @@ It initializes a private Random to derive 256 bits; search-v1 hashes those bits,
 seat, public occupied-cell count (real decision index), and purpose using SHA256.
 Noise and action sampling use independent private Random instances. Evaluation
 uses neither. Same-runtime replay is supported; cross-version RNG identity is not.
-Exploration is implemented for correctness probes only; no search data collector
-or learner is introduced. Generic same-actor backup arithmetic is tested, but the
+Exploration also serves the separate `training.search_learning` collector. Its
+root visits become targets; simulation diagnostic traces remain outside training.
+Generic same-actor backup arithmetic is tested, but the
 simulator deliberately supports only deterministic alternating Tic-Tac-Toe.
