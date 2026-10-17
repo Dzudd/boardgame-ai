@@ -1,5 +1,18 @@
 # Proposed first Phase 6 milestone
 
+**2026-10-18 results:** the later frozen shared-learning study is complete and
+[reviewed](phase6/MULTIGAME_RESULTS_V1.md), including negative findings and one
+uncertain cost measurement. The proposal/history below retains its original
+pre-execution context; its pending shared-study claims are superseded by those
+results and the current roadmap.
+
+**2026-10-17 continuation:** the separate [shared learning and unseen transfer
+protocol](phase6/MULTIGAME_PROTOCOL_V1.md) now has implemented models, adapters,
+sampling, bounded runs, adaptation and reporting tools. Its quantitative evidence
+awaits operator execution. This document preserves the original independent
+milestone's scope/history; its remaining shared-work proposals are superseded by
+that protocol and the current roadmap. Existing results and settings are intact.
+
 The scope below records the original bounded development proposal. Its learner,
 run layer and checkpoint play are now implemented; the user completed the
 [functional run](phase6/CONNECT_FOUR_FUNCTIONAL_RESULTS.md). The

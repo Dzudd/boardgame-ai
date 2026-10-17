@@ -11,8 +11,12 @@ import json
 import math
 import os
 import platform
+import re
+import shutil
 import subprocess
+import sys
 import tempfile
+from collections.abc import Callable
 from dataclasses import asdict
 from hashlib import sha256
 from pathlib import Path
@@ -37,6 +41,7 @@ from boardgame_ai.training.connect_four_ppo import (
     ConnectFourPPOTrainer,
     prepare_connect_four_batch,
 )
+from boardgame_ai.training.device import resolve_training_device
 from boardgame_ai.training.metrics_log import recover_metrics_log
 from boardgame_ai.training.monitoring import (
     _immutable_snapshot,
@@ -62,10 +67,17 @@ def read_settings(path: str | Path) -> tuple[bytes, dict[str, Any]]:
         ).read_bytes()
     )
     for section, mutable in (
-        (None, {"protocol_id", "training", "evaluation"}),
+        (None, {"protocol_id", "purpose", "training", "evaluation"}),
         (
             "training",
-            {"seed", "updates", "games_per_update", "wall_time_cap_seconds", "ppo"},
+            {
+                "seed",
+                "device",
+                "updates",
+                "games_per_update",
+                "wall_time_cap_seconds",
+                "ppo",
+            },
         ),
         (
             "evaluation",
@@ -93,6 +105,27 @@ def read_settings(path: str | Path) -> tuple[bytes, dict[str, Any]]:
         raise ValueError("Protocol needs an identity")
     if settings["protocol_id"] == template["protocol_id"] and settings != template:
         raise ValueError("Changed settings require a new protocol version")
+    cuda_template = json.loads(
+        (
+            Path(__file__).parent / "protocols/connect-four-cuda-100k-v1.json"
+        ).read_bytes()
+    )
+    if (
+        settings["protocol_id"] == cuda_template["protocol_id"]
+        and settings != cuda_template
+    ):
+        raise ValueError("Changed settings require a new protocol version")
+    # Device syntax is validated without requiring hardware when reading settings.
+    requested = settings["training"]["device"]
+    if not isinstance(requested, str) or not (
+        requested in ("cpu", "cuda")
+        or requested.startswith("cuda:")
+        and requested[5:].isascii()
+        and requested[5:].isdigit()
+    ):
+        raise ValueError("Training device must be cpu, cuda, or cuda:N")
+    if not isinstance(settings["purpose"], str) or not settings["purpose"]:
+        raise ValueError("Protocol needs a purpose")
     for section, names in (
         ("training", ("seed", "updates", "games_per_update")),
         (
@@ -174,6 +207,27 @@ def _source_digest() -> str:
     )
 
 
+def _compatible_source(saved: Any) -> bool:
+    current = _source_digest()
+    if saved == current:
+        return True
+    # One reviewed console-only transition; no general source-mismatch bypass.
+    mapping = json.loads(
+        (
+            Path(__file__).parent / "protocols/connect-four-console-compat-v1.json"
+        ).read_bytes()
+    )
+    return bool(
+        mapping.get("schema_version") == 1
+        and saved
+        in [
+            mapping.get("previous_source_sha256"),
+            *mapping.get("additional_previous_source_sha256", []),
+        ]
+        and current == mapping.get("source_sha256")
+    )
+
+
 def _budget(directory: Path, identity: str) -> dict[str, Any]:
     ledger = json.loads((directory / "budget.json").read_bytes())
     if (
@@ -193,7 +247,11 @@ def _budget(directory: Path, identity: str) -> dict[str, Any]:
 
 
 def load_run(
-    directory: Path, identity: str, settings: dict[str, Any]
+    directory: Path,
+    identity: str,
+    settings: dict[str, Any],
+    *,
+    device: str | torch.device = "cpu",
 ) -> tuple[ConnectFourPPOTrainer, dict[str, Any]]:
     payload = torch.load(directory / "latest.pt", map_location="cpu", weights_only=True)
     if (
@@ -206,7 +264,9 @@ def load_run(
     ):
         raise ValueError("Invalid Connect Four run checkpoint identity")
     trainer = trainer_from_connect_four_payload(
-        payload["trainer"], expected_config=PPOConfig(**settings["training"]["ppo"])
+        payload["trainer"],
+        device=device,
+        expected_config=PPOConfig(**settings["training"]["ppo"]),
     )
     games = payload["games"]
     elapsed = payload["elapsed_seconds"]
@@ -223,7 +283,11 @@ def load_run(
 
 
 def validate_run(
-    directory: Path, raw: bytes, settings: dict[str, Any]
+    directory: Path,
+    raw: bytes,
+    settings: dict[str, Any],
+    *,
+    device: str | torch.device = "cpu",
 ) -> tuple[ConnectFourPPOTrainer, dict[str, Any], dict[str, Any]]:
     identity = digest(raw)
     manifest = json.loads((directory / "training.json").read_bytes())
@@ -242,11 +306,11 @@ def validate_run(
         or type(manifest["schema_version"]) is not int
         or manifest["schema_version"] != 1
         or not isinstance(manifest["code"], dict)
-        or manifest["code"].get("source_sha256") != _source_digest()
+        or not _compatible_source(manifest["code"].get("source_sha256"))
         or not isinstance(manifest["runtime"], dict)
         or manifest["runtime"].get("python") != platform.python_version()
         or manifest["runtime"].get("torch") != str(torch.__version__)
-        or manifest["runtime"].get("device") != "cpu"
+        or manifest["runtime"].get("device") != settings["training"]["device"]
         or manifest["runtime"].get("threads") != 1
         or manifest["parameter_count"] != 20872
         or manifest["settings_sha256"] != identity
@@ -264,7 +328,7 @@ def validate_run(
     )
     if original.update_count != 0:
         raise ValueError("Initial snapshot is not initial")
-    trainer, payload = load_run(directory, identity, settings)
+    trainer, payload = load_run(directory, identity, settings, device=device)
     ledger = _budget(directory, identity)
     if ledger["training"] < payload["elapsed_seconds"]:
         raise ValueError("Budget precedes saved boundary")
@@ -282,6 +346,22 @@ def validate_run(
     if samples is not None and samples != trainer.samples_seen:
         raise ValueError("Metrics samples disagree with checkpoint")
     return trainer, payload, ledger
+
+
+def synchronize_device(device: torch.device) -> None:
+    """Charge queued CUDA work at timing/publication/settlement boundaries."""
+    if device.type == "cuda":
+        torch.cuda.synchronize(device)
+
+
+def device_details(device: torch.device) -> dict[str, Any]:
+    return {
+        "resolved_device": str(device),
+        "cuda_runtime": torch.version.cuda if device.type == "cuda" else None,
+        "device_name": torch.cuda.get_device_name(device)
+        if device.type == "cuda"
+        else platform.processor(),
+    }
 
 
 def _target_updates(settings: dict[str, Any], stop_after: int | None) -> int:
@@ -326,6 +406,8 @@ def check_connect_four_run(
         raise ValueError("Evaluation cannot combine with resume or a stop boundary")
     raw, settings = read_settings(settings_path)
     t, e = settings["training"], settings["evaluation"]
+    # Evaluation is intentionally portable CPU inference, even for CUDA runs.
+    device = resolve_training_device("cpu" if evaluate else t["device"])
     target = _target_updates(settings, stop_after)
     directory = Path(output)
     completed = decisions = optimizer_steps = 0
@@ -382,6 +464,10 @@ def check_connect_four_run(
             "torch": str(torch.__version__),
         },
         "device": t["device"],
+        "execution_device": str(device),
+        **device_details(device),
+        "collection_device": "cpu",
+        "evaluation_device": "cpu",
         "threads": t["threads"],
         "parameter_count": 20872,
         "completed_updates": completed,
@@ -410,24 +496,45 @@ def run_connect_four(
     protocol_path: str | Path,
     resume: bool = False,
     stop_after: int | None = None,
+    progress: Callable[[str], None] | None = None,
 ) -> ConnectFourPPOTrainer:
     """Run only a declared schedule. stop_after pauses at an absolute boundary.
 
-    CPU/one-thread protocol only. No implicit evaluation. Settings bytes, rather
-    than current prose or Git state, define resume identity. Runtime is recorded;
+    Explicit CPU/CUDA optimization, CPU collection. No implicit evaluation.
+    Settings bytes, rather than current prose or Git state, define resume identity;
     exact continuation requires the same runtime and source implementation.
     """
     raw, settings = read_settings(settings_path)
     t = settings["training"]
+    device = resolve_training_device(t["device"])
     target = _target_updates(settings, stop_after)
     directory, identity = Path(output), digest(raw)
+
+    def announce(message: str) -> None:
+        if progress is not None:
+            progress(message)
+
+    announce(
+        f"{'Resuming' if resume else 'Starting'} {settings['protocol_id']} "
+        f"on {device}; "
+        f"target update {target}/{t['updates']}, "
+        f"scheduled games {t['updates'] * t['games_per_update']}. "
+        "Collection uses CPU; optimization uses the declared device."
+    )
     old_threads = torch.get_num_threads()
     with isolated_rng():
         torch.set_num_threads(t["threads"])
         try:
             preflight_start = monotonic()
             if resume:
-                trainer, payload, ledger = validate_run(directory, raw, settings)
+                announce(
+                    "Validating saved checkpoint, provenance, metrics "
+                    "and cumulative budget..."
+                )
+                trainer, payload, ledger = validate_run(
+                    directory, raw, settings, device=device
+                )
+                synchronize_device(device)
                 if target < trainer.update_count:
                     raise ValueError("Stop boundary precedes checkpoint")
                 recover_metrics_log(directory / "updates.jsonl", trainer.update_count)
@@ -436,14 +543,19 @@ def run_connect_four(
                         _immutable_snapshot(
                             directory / "final.pt", _encode(payload["trainer"])
                         )
+                    announce(
+                        f"Already at target update {target}; no training required."
+                    )
                     return trainer
                 if ledger["training"] >= t["wall_time_cap_seconds"]:
+                    announce("Cumulative training cap exhausted; no training started.")
                     return trainer
             else:
                 _check_new_output(directory)
                 # Read both provenance inputs before creating any output.
                 prose = Path(protocol_path).read_bytes()
                 code_identity = _code_identity()
+                announce("Initializing model, optimizer and initial checkpoint...")
                 directory.mkdir(parents=True, exist_ok=True)
                 ledger = {
                     "settings_sha256": identity,
@@ -457,7 +569,7 @@ def run_connect_four(
                 trainer = ConnectFourPPOTrainer(
                     initial_connect_four_model(
                         derive_connect_four_seed(t["seed"], 0, "initialization")
-                    ),
+                    ).to(device),
                     PPOConfig(**t["ppo"]),
                     shuffle_seed=derive_connect_four_seed(t["seed"], 0, "shuffle"),
                 )
@@ -481,7 +593,10 @@ def run_connect_four(
                             "torch": str(torch.__version__),
                             "platform": platform.platform(),
                             "processor": platform.processor(),
-                            "device": "cpu",
+                            "device": t["device"],
+                            **device_details(device),
+                            "collection_device": "cpu",
+                            "evaluation_device": "cpu",
                             "threads": t["threads"],
                         },
                         "parameter_count": sum(
@@ -490,11 +605,18 @@ def run_connect_four(
                     },
                 )
                 _save_boundary(directory, trainer, identity, 0, 0.0)
+                synchronize_device(device)
                 ledger["training"] = monotonic() - preflight_start
                 atomic_json(directory / "budget.json", ledger)
                 preflight_start = monotonic()
             start, used = preflight_start, ledger["training"]
             deadline = start + t["wall_time_cap_seconds"] - used
+            announce(
+                f"Saved update {trainer.update_count}/{t['updates']}; "
+                f"games {trainer.update_count * t['games_per_update']}; "
+                f"cumulative elapsed {used:.1f}s, "
+                f"remaining {max(0.0, deadline - monotonic()):.1f}s."
+            )
             # An unsettled reservation consumes the cap after abrupt termination.
             ledger["training"] = max(used, t["wall_time_cap_seconds"])
             atomic_json(directory / "budget.json", ledger)
@@ -502,10 +624,15 @@ def run_connect_four(
             discarded_games = discarded_decisions = 0
             try:
                 for update in range(trainer.update_count, target):
+                    synchronize_device(device)
                     if monotonic() >= deadline:
                         stop_reason = "time_cap"
                         break
                     collection_start = monotonic()
+                    announce(
+                        f"Update {update + 1}/{t['updates']} (target {target}): "
+                        f"collecting {t['games_per_update']} self-play games..."
+                    )
                     rollouts = []
                     for local in range(t["games_per_update"]):
                         index = update * t["games_per_update"] + local
@@ -529,13 +656,21 @@ def run_connect_four(
                         )
                         discarded_games = len(rollouts)
                         discarded_decisions = sum(r.num_steps for r in rollouts)
+                    synchronize_device(device)
                     collection_seconds = monotonic() - collection_start
                     batch = prepare_connect_four_batch(
                         tuple(p for r in rollouts for p in r.players), trainer.config
                     )
                     optimization_start = monotonic()
+                    announce(
+                        f"Update {update + 1}: collected {len(rollouts)} games / "
+                        f"{len(batch.actions)} decisions in {collection_seconds:.2f}s; "
+                        f"optimizing on {device}..."
+                    )
                     ppo = trainer.update(batch, deadline=deadline)
+                    synchronize_device(device)
                     optimization_seconds = monotonic() - optimization_start
+                    announce(f"Update {trainer.update_count}: publishing checkpoint...")
                     if monotonic() >= deadline:
                         raise TimeoutError("Deadline before checkpoint publication")
                     save_start = monotonic()
@@ -543,6 +678,7 @@ def run_connect_four(
                     _save_boundary(
                         directory, trainer, identity, games, used + monotonic() - start
                     )
+                    synchronize_device(device)
                     discarded_games = discarded_decisions = 0
                     checkpoint_seconds = monotonic() - save_start
                     row = {
@@ -581,10 +717,23 @@ def run_connect_four(
                             directory / "final.pt",
                             _encode(connect_four_payload(trainer)),
                         )
+                    announce(
+                        f"Saved update {trainer.update_count}/{t['updates']} "
+                        f"(target {target}); "
+                        f"games {games}/{t['updates'] * t['games_per_update']}; "
+                        f"decisions {trainer.samples_seen}; "
+                        f"collection {collection_seconds:.2f}s, "
+                        f"PPO {optimization_seconds:.2f}s, "
+                        f"checkpoint {checkpoint_seconds:.2f}s; "
+                        f"elapsed {used + monotonic() - start:.1f}s, "
+                        f"remaining {max(0.0, deadline - monotonic()):.1f}s; "
+                        f"loss {ppo.total_loss:.5f}, entropy {ppo.entropy:.5f}."
+                    )
             except TimeoutError:
                 stop_reason = "time_cap"
                 # Return the saved boundary after a timeout during partial work.
-                trainer, _ = load_run(directory, identity, settings)
+                synchronize_device(device)
+                trainer, _ = load_run(directory, identity, settings, device=device)
             except KeyboardInterrupt:
                 stop_reason = "KeyboardInterrupt"
                 raise
@@ -592,6 +741,8 @@ def run_connect_four(
                 stop_reason = type(error).__name__
                 raise
             finally:
+                # If synchronization itself fails, retain the conservative reservation.
+                synchronize_device(device)
                 ledger["training"] = used + monotonic() - start
                 saved, _ = load_run(directory, identity, settings)
                 atomic_json(
@@ -610,10 +761,18 @@ def run_connect_four(
                         "discarded_complete_games": discarded_games,
                         "discarded_complete_game_decisions": discarded_decisions,
                         "partial_game_decisions": "unknown on collector failure",
+                        "execution_source_sha256": _source_digest(),
                     },
                 )
                 ledger["training"] = used + monotonic() - start
                 atomic_json(directory / "budget.json", ledger)
+                announce(
+                    f"Stopped: {stop_reason}; "
+                    f"saved update {saved.update_count}/{t['updates']}, "
+                    f"games {saved.update_count * t['games_per_update']}; "
+                    f"complete={saved.update_count == t['updates']}; "
+                    f"cumulative elapsed {ledger['training']:.1f}s."
+                )
             return trainer
         finally:
             torch.set_num_threads(old_threads)
@@ -640,6 +799,67 @@ def _save_boundary(
     )
 
 
+class _ConsoleProgress:
+    """One bounded-width terminal line, at most four refreshes per second."""
+
+    def __init__(self) -> None:
+        self.last = float("-inf")
+        self.updates = self.total = 0
+        self.remaining = ""
+        self.phase = "starting"
+
+    def __call__(self, message: str) -> None:
+        boundary = re.search(r"[Ss]aved update (\d+)/(\d+)", message)
+        if boundary:
+            self.updates, self.total = map(int, boundary.groups())
+        target = re.search(r"target update \d+/(\d+)", message)
+        if target:
+            self.total = int(target[1])
+        already = re.search(r"Already at target update (\d+)", message)
+        if already:
+            self.updates = int(already[1])
+        remaining = re.search(r"remaining ([\d.]+)s", message)
+        if remaining:
+            self.remaining = f" | cap {float(remaining[1]):.0f}s"
+        for text, phase in (
+            ("Validating", "checking"),
+            ("Initializing", "setup"),
+            ("collecting", "self-play"),
+            ("optimizing", "PPO"),
+            ("publishing", "saving"),
+            ("Saved update", "saved"),
+        ):
+            if text in message:
+                self.phase = phase
+        final = message.startswith(
+            ("Stopped:", "Already at target", "Cumulative training cap")
+        )
+        if final:
+            self.phase = message.split(";", 1)[0]
+        now = monotonic()
+        terminal = sys.stderr.isatty()
+        if not final and now - self.last < (0.25 if terminal else 30.0):
+            return
+        self.last = now
+        fraction = self.updates / self.total if self.total else 0.0
+        filled = int(12 * fraction)
+        line = (
+            f"[{'#' * filled}{'-' * (12 - filled)}] {fraction:6.1%} "
+            f"{self.updates}/{self.total} | "
+            f"{self.phase}{self.remaining}"
+        )
+        if terminal:
+            width = max(1, shutil.get_terminal_size().columns - 1)
+            print(
+                "\r" + line[:width].ljust(width),
+                file=sys.stderr,
+                end="\n" if final else "",
+                flush=True,
+            )
+        else:
+            print(line, file=sys.stderr, flush=True)
+
+
 def main() -> None:
     from pickle import UnpicklingError
 
@@ -650,6 +870,9 @@ def main() -> None:
     operation = parser.add_mutually_exclusive_group()
     operation.add_argument("--resume", action="store_true")
     parser.add_argument("--stop-after", type=int)
+    parser.add_argument(
+        "--quiet", action="store_true", help="Suppress live progress on stderr"
+    )
     operation.add_argument(
         "--evaluate",
         action="store_true",
@@ -692,6 +915,7 @@ def main() -> None:
                 protocol_path=args.protocol,
                 resume=args.resume,
                 stop_after=args.stop_after,
+                progress=None if args.quiet else _ConsoleProgress(),
             )
             raw, settings = read_settings(args.settings)
             ledger = _budget(args.output, digest(raw))
@@ -701,6 +925,12 @@ def main() -> None:
                 json.dumps(
                     {
                         "updates": trainer.update_count,
+                        "device": settings["training"]["device"],
+                        "resolved_device": str(trainer.device),
+                        "games": trainer.update_count
+                        * settings["training"]["games_per_update"],
+                        "scheduled_games": settings["training"]["updates"]
+                        * settings["training"]["games_per_update"],
                         "decisions": trainer.samples_seen,
                         "target_updates": target,
                         "scheduled_updates": settings["training"]["updates"],

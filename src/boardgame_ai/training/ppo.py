@@ -325,9 +325,12 @@ class _PPOTrainer[Model: (TicTacToeActorCritic, ConnectFourActorCritic)]:
     def _validate_batch(self, batch: PPOBatch) -> None:
         validate_ppo_batch(batch)
 
+    def _check_update_deadline(self, deadline: float | None) -> None:
+        _check_deadline(deadline)
+
     def update(self, batch: PPOBatch, *, deadline: float | None = None) -> PPOUpdate:
         self._validate_batch(batch)
-        _check_deadline(deadline)
+        self._check_update_deadline(deadline)
         # Snapshot input samples and freeze targets across all update epochs.
         batch = PPOBatch(
             **{f.name: getattr(batch, f.name).detach().clone() for f in fields(batch)}
@@ -352,10 +355,10 @@ class _PPOTrainer[Model: (TicTacToeActorCritic, ConnectFourActorCritic)]:
         n = len(batch.actions)
         steps = 0
         for _ in range(self.config.epochs):
-            _check_deadline(deadline)
+            self._check_update_deadline(deadline)
             order = torch.randperm(n, generator=self.generator, device="cpu")
             for start in range(0, n, self.config.minibatch_size):
-                _check_deadline(deadline)
+                self._check_update_deadline(deadline)
                 indices = order[start : start + self.config.minibatch_size]
                 part = batch.subset(indices.to(self.device))
                 logits, values = self.model.forward(part.observations)

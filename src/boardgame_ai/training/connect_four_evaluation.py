@@ -191,6 +191,8 @@ def evaluate_connect_four_run(
     report: dict[str, Any] = {
         "schema_version": 1,
         "settings_sha256": digest(raw),
+        "device": "cpu",
+        "training_device": settings["training"]["device"],
         "cases": {"initial": [], "final": [], "control": []},
         "checkpoint_sha256": {},
         "complete": False,

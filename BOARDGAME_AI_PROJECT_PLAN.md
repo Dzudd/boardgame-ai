@@ -8,18 +8,22 @@ limitations and the next milestone belong in [progress](PROGRESS.md).
 criterion; Phase 4.5 complete at its declared bounded investigation scope;
 Phase 5 complete for the declared Guildworks rules, including recurrent memory/PPO.
 Phase 7 has a public simulator, bounded search evaluation/diagnosis and functional
-CPU search-target learner; its phase-wide criterion is not met. Phases 6–8 retain
-unfinished tasks below.
-**Next milestone:** predeclare the next independent Connect Four learning-quality
-study with fresh roots and multiple training seeds, after bounded throughput
-measurements. GPU experiments require run-layer integration first. The user runs
-campaigns in their own console. The bounded CPU
+CPU search-target learner; its phase-wide criterion is not met. Phase 6 is complete
+at the frozen v1 comparison scope, with mixed/negative findings and an uncertain
+recovered wall-cost measurement. Phases 7–8 retain unfinished tasks below.
+**Current milestone:** all 36 operator jobs/evaluations in the three-seed
+[shared/separate and unseen-transfer study](docs/phase6/MULTIGAME_PROTOCOL_V1.md)
+are complete and [reviewed](docs/phase6/MULTIGAME_RESULTS_V1.md). Quantitative
+strength/cost/adaptation comparisons are available; positive transfer is unproven.
+The separate [CUDA 100,000-game schedule](docs/phase6/CONNECT_FOUR_CUDA_100K_V1.md)
+and overnight attempts remain preserved and resumable under their original caps.
+The user runs campaigns in their own console. The bounded CPU
 [functional run](docs/phase6/CONNECT_FOUR_FUNCTIONAL_RESULTS.md) is complete;
 portable-checkpoint human play is implemented and tested. A single tiny run does
 not establish robust strength or the Phase 6 multi-game criteria.
-Shared-model/transfer protocols and independent
-learning-quality evidence remain pending, including the separate search/PPO
-[comparison proposal](docs/reviews/2026-10-16-reliability-resolution.md#proposed-next-bounded-learning-experiment-not-executed).
+Shared-model/transfer evidence is now published. The separate search/PPO
+[comparison proposal](docs/reviews/2026-10-16-reliability-resolution.md#proposed-next-bounded-learning-experiment-not-executed)
+still awaits its own operator evidence.
 PPO and Tic-Tac-Toe search remain references; robust Tic-Tac-Toe play is not a gate.
 
 ## Goal and principles
@@ -209,6 +213,13 @@ select the Phase 6 evaluation protocol.
 
 **Deliverable:** independent and shared agents trained on multiple games.
 
+**Complete at frozen v1 comparison scope (2026-10-18).** All 36 operator training
+jobs and evaluations were reviewed. The [results](docs/phase6/MULTIGAME_RESULTS_V1.md)
+quantify per-game strength, cost differences, unseen adaptation and forgetting,
+including negative findings. Exact wall matching is verified for two seed pairs;
+the recovered third pair's timing remains uncertain. Successful positive transfer
+and robust stronger-opponent play are not completion claims.
+
 The [proposed first bounded milestone](docs/PHASE6_MILESTONE.md) describes an
 independent Connect Four learning baseline and trained-checkpoint human play.
 Its observation/fixed column-action encoders, independent policy/value model and
@@ -224,21 +235,41 @@ indices do not implement general candidate-action scoring.
 
 - [x] Validate the bounded independent Connect Four functional learner: 32 self-play
   games plus 192 fixed evaluation/control games. This does not complete shared learning.
+- [x] Add explicit CUDA run-layer support and a separate fixed 100,000-game
+  training/play configuration; tested support, separate original campaign incomplete.
 - [x] Add at least two more games using the same engine interface: Guildworks and
-  Connect Four beyond the original Tic-Tac-Toe. A new held-out transfer game is
-  still required before testing adaptation.
-- [ ] Implement game-specific observation encoders (Connect Four now added alongside
-  Tic-Tac-Toe and Guildworks; future game selection/shared integration remain).
-- [ ] Implement candidate-action encoding and scoring.
-- [ ] Build a shared Transformer or recurrent backbone.
-- [ ] Implement game-specific policy/value adapters where necessary (independent
-  Connect Four heads available; shared-backbone integration remains).
-- [ ] Create a multi-game training sampler and normalize/track rewards carefully.
-- [ ] Compare separate models versus a shared model at matched compute budgets.
-- [ ] Test transfer: train on games A/B, then measure learning speed on game C.
-- [ ] Check for negative transfer and catastrophic forgetting.
+  Connect Four beyond the original Tic-Tac-Toe. Additional unseen Breakthrough
+  is frozen and has reviewed adaptation measurements.
+- [x] Implement game-specific shared observation encoders: public boards and
+  Guildworks visible streams, including the held-out Breakthrough adapter.
+- [x] Implement supplied candidate-action encoding and permutation-equivariant scoring.
+- [x] Build a shared recurrent GRU backbone with independent seat/episode memory.
+- [x] Implement per-game observation, candidate/query and own-return value adapters.
+- [x] Create a complete-game multi-game sampler, fixed reward/value divisors,
+  equal-game PPO losses and separate raw/per-game metrics.
+- [x] Prepare frozen separate/shared wall-budget and decision-ceiling comparisons,
+  three seeds, cumulative caps, portable atomic checkpoints and isolated evaluation.
+- [x] Freeze unseen Breakthrough 5x5 v1 before fitting and implement paired
+  pretrained/fresh adaptation with identical fresh C adapters/reset Adam.
+- [x] Implement negative-transfer, forgetting, cost and censored-adaptation reports.
+- [x] Compare separate models versus a shared model at matched compute budgets:
+  wall and near-matched decision ceilings; report all realized differences and
+  the recovered wall seed's failed exact timing measurement.
+- [x] Test transfer: train on development games, then measure learning speed on
+  unseen Breakthrough; full curves/target costs reviewed, consistent speedup failed.
+- [x] Check for negative transfer and catastrophic forgetting: Guildworks sample
+  penalty measured; retention uncertainty preserved for two game/regime cases.
 
 **Acceptance criteria:** quantitative comparison of per-game strength, training cost, and adaptation speed on a held-out game.
+
+The [frozen protocol](docs/phase6/MULTIGAME_PROTOCOL_V1.md) is now executed;
+[machine-readable evidence](docs/phase6/multigame-v1-operator-results.json) and the
+results document preserve the full quantitative comparison and its failures.
+Acceptance is evidence of comparison, not proof that all performance hypotheses
+passed. No scheduled evidence remains missing. The timing uncertainty, limited
+opponents/seeds, coarse adaptation checkpoints and unresolved positive-transfer/
+noninferiority questions remain explicit limitations. Further studies need a new
+declaration, fresh output and fresh final roots; none was launched here.
 
 ### Phase 7 — Advanced search and research
 
@@ -290,8 +321,8 @@ The Phase 4.5 review brought the first Phase 7 milestone forward. Public simulat
 complete at its declared scope. Phase 6's independent Connect Four functional
 protocol has an implemented model/collector/PPO/trainer restore and bounded
 run/resume/evaluation layer; its bounded CPU functional run is complete. Independent
-learning-quality evidence is still needed before shared-model comparisons; additional
-search tuning or solving Tic-Tac-Toe is not a prerequisite. Prior-concentration
+learning-quality evidence is now published in the shared-model comparison results;
+additional search tuning or solving Tic-Tac-Toe was not a prerequisite. Prior-concentration
 ablation is deferred optional research. The longer-term search sequence remains:
 
 1. Validate bounded policy/value-guided search with permitted rule-based simulation.

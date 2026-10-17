@@ -125,6 +125,11 @@ class ConnectFourPPOTrainer(_PPOTrainer[ConnectFourActorCritic]):
     def _validate_batch(self, batch: PPOBatch) -> None:
         validate_connect_four_batch(batch)
 
+    def _check_update_deadline(self, deadline: float | None) -> None:
+        if deadline is not None and self.device.type == "cuda":
+            torch.cuda.synchronize(self.device)
+        super()._check_update_deadline(deadline)
+
     def update(self, batch: PPOBatch, *, deadline: float | None = None) -> PPOUpdate:
         if not self.at_update_boundary:
             raise ValueError("Reload a saved boundary after a failed PPO update")

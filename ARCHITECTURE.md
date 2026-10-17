@@ -7,6 +7,10 @@ are normative for every engine, agent, model, and future planner.
 
 ## Package and dependencies
 
+Phase 6 now also has a separate shared recurrent learning path, described under
+[Shared multi-game learning](#shared-multi-game-learning). Existing independent
+learner/checkpoint contracts remain available.
+
 Python 3.12 is the development baseline; package metadata permits newer versions.
 The package uses the src/boardgame_ai namespace, setuptools, venv/pip, NumPy 2.x
 and PyTorch 2.x (minimum 2.6). Dependency ranges are not a lockfile or cross-version
@@ -147,8 +151,8 @@ Restricted loading preserves global RNG; CPU continuation with the same future
 batches is exact, with separate same-device CUDA tests. Cross-device equality is
 not promised. No observations, gradients, seeds, engine data or global RNG are
 serialized. These remain trainer-level checkpoints; `training.connect_four_run`
-embeds their validated payload in a separate versioned atomic run envelope. The CPU/one-thread
-runner persists absolute update/game scheduling, settings/prose hashes and copies,
+embeds their validated payload in a separate versioned atomic run envelope.
+The explicit CPU/CUDA runner uses one CPU thread and persists absolute update/game scheduling, settings/prose hashes and copies,
 source/runtime identity, game/decision/optimizer counters and checkpoint elapsed
 time. A separate budget ledger charges cumulative attempts, including failed
 work, with conservative outstanding reservations after hard process termination.
@@ -165,6 +169,37 @@ restricted checkpoint validation. RNG, threads and cumulative ledgers are
 preserved. CLI summaries distinguish a reached pause boundary from a complete
 run, return nonzero on incomplete work, and report Ctrl+C separately. This
 readiness check is not a file reservation or a guarantee of permissions or timing.
+Training CLI progress is a single bounded-width, carriage-return stderr bar,
+throttled to four refreshes/second. It displays the saved-update percentage/count,
+phase and remaining cap, ending with one newline. Redirected stderr logs at most
+once every 30 seconds plus the final state. `--quiet` suppresses the bar; final
+stdout JSON remains separate. An optional programmatic `progress`
+callback receives text at startup, phase boundaries, durable updates and stopping.
+Collection/optimization messages do not claim a saved update. Only after checkpoint
+and metrics publication does the saved-count summary advance. Console output adds
+wall cost but does not change seeds, samples, shuffle order or PPO arithmetic.
+
+A byte-pinned [source compatibility map](src/boardgame_ai/training/protocols/connect-four-console-compat-v1.json)
+permits the original CUDA runner and its verbose-console successor to resume
+with the progress bar and an additive
+`execution_source_sha256` status field. The predecessor and current full source digests must match the
+reviewed mapping; other source/runtime/settings mismatches still reject. Saved
+manifest/protocol/checkpoint identities are not rewritten. This is a specific
+compatibility mapping, not an option to ignore source changes.
+
+
+Run settings select `cpu`, `cuda`, or `cuda:N`; unavailable hardware rejects
+before new outputs or resume repair. Initialization stays privately seeded on CPU,
+then transfers to the configured device before Adam construction; resume restores
+portable Adam moments to that device. Manifests/preflight/console summaries record
+requested/resolved placement and hardware/runtime details. Connect Four CUDA
+synchronizes before bounded minibatch deadline checks and at collection,
+optimization, checkpoint and budget-settlement boundaries. An expired synchronized
+update cannot publish; failed synchronization retains the outstanding reservation.
+Cross-device numerical identity and throughput improvements are not promised.
+The separate [100,000-game protocol](docs/phase6/CONNECT_FOUR_CUDA_100K_V1.md)
+fixes a fresh identity, seeds, output and cumulative caps; it has not been executed.
+Portable CPU evaluation and human inference remain independent of training hardware.
 
 `training.connect_four_evaluation` reads fixed initial/final snapshots into fresh
 CPU models, uses separate per-game engine/policy/opponent streams and runs a paired
@@ -743,3 +778,77 @@ It is diagnostic only and does not change selection; callback exceptions propaga
 independently reconstructs N/W/rewards, and exports public trees and leaf predictions.
 Post-decision one-step probes are separate from search calls; no diagnostic labels
 or baseline trajectories enter training. The destination must not exist.
+
+## Shared multi-game learning
+
+The [operator v1 results](docs/phase6/MULTIGAME_RESULTS_V1.md), reviewed 2026-10-18,
+now quantify independent/shared strength, costs, unseen adaptation and retention.
+All 36 evaluations completed; sharing/transfer benefits are mixed or unproven,
+and one recovered wall-cost measurement remains uncertain. Implementation
+contracts below are unchanged; phase completion refers to that declared comparison.
+
+`models.multigame` projects each game's visible observation stream into one
+GRU(32,32). Per-game candidate and query projections score every supplied legal
+candidate; per-game scalar heads predict scaled own returns. Candidate order is
+preserved and logits permute with it. There is no fixed common action vocabulary,
+padding, engine reference or candidate legality inference. Empty candidates
+remain empty. Board adapters reuse observer-relative encoders; Guildworks uses
+new visible history events plus snapshot, with an independent cursor/memory per
+seat. Breakthrough rotates seat 1's board and source/target coordinates.
+
+`games.breakthrough` adds the frozen, public deterministic 5x5 transfer engine.
+Two home ranks/seat, straight empty or diagonal empty/enemy advances, far-rank or
+immobilization win, +1/-1 terminal rewards, no shaping/chance/draw. Rules and
+observation records are Torch-independent. No C games enter shared pretraining.
+
+`training.multigame` freezes latest weights for both self-play seats, collects
+complete own-seat episodes, accumulates interval rewards across repeated actors
+and opponent termination, and recomputes full BPTT from zero on each PPO epoch.
+Gamma=1/lambda=.95 and zero terminal bootstrap retain own-decision semantics.
+Guildworks rewards/values divide own points by 36; others divide by 1. Advantages
+normalize per game; equal-game mean losses accumulate into two Adam steps/update.
+Separate comparison models have independent identical-capacity backbones/adapters.
+Adaptation copies weights only, pairs untouched C adapters, resets Adam in both
+arms, updates on C only and preserves original old-game adapters for retention.
+
+`training.multigame_run` exposes frozen named jobs through a separate module CLI.
+The exact Connect Four source-compatibility map also records the seven additive
+Phase 6 Python modules; prior Connect Four implementation bytes remain unchanged.
+Existing run provenance is preserved, with no general mismatch override.
+The [protocol](docs/phase6/MULTIGAME_PROTOCOL_V1.md) defines all seeds, allocations,
+scales, success thresholds and cumulative caps. `--all` runs in dependency order;
+`--all --resume` validates/skips completed boundaries and starts absent jobs.
+`--check-only` is read-only. Wall jobs share 900 total seconds versus 3x300 for
+separate models; decision-ceiling jobs separately cap each game's accepted samples
+and report realized differences. Complete-game overflow is discarded and logged.
+`environment.jsonl` records completed attempts before PPO, including unsaved work;
+partial-game costs remain explicitly unknown. Per-game metrics track raw returns,
+losses, entropy/KL/clipping, games, decisions and presentations.
+
+Immutable settings/prose/initial/curve snapshots and deterministic source archives
+record dirty-source/runtime/device provenance. Restricted CPU-portable model/Adam
+restore validates identities, tensor shapes/finiteness, moments and counters.
+Atomic `latest.pt` precedes metrics append; torn tails back up before repair and
+missing rows remain unknown. Private acting randomness derives from absolute
+per-game schedules; deterministic whole-episode updates use no shuffle RNG.
+Conservative cumulative reservations survive hard kills. Partial optimizer work
+cannot publish; initialization crashes can leave unresumable directories. This
+is a single-writer design. Existing throttled progress rendering is reused.
+
+`training.multigame_evaluation` separately restores immutable CPU snapshots,
+evaluates both seats against random plus a paired control, and tests all old
+games before/after C adaptation with reset memories. Reports publish exclusively,
+retain partial results and never feed training. `training.multigame_report`
+validates source reports, emits per-seat/per-game strength and realized costs,
+seed-level paired transfer/forgetting intervals, complete adaptation curves and
+censored target costs. It reports missing evidence and never marks Phase 6 done.
+Random-opponent performance does not certify robust play against stronger agents.
+
+Windows atomic publication in the shared path now retries access/sharing/lock
+errors (5/32/33) six times with bounded backoff; other failures propagate.
+Explicit `--finalize-capped` is restricted to nonzero saved wall checkpoints
+within min(5 seconds, 1%) of a spent cap. It backs up the original run envelope,
+preserves trainer/ledger/provenance bytes, and adds p100 plus an immutable receipt.
+Timing is marked uncertain and cannot establish matched wall cost. No games or
+optimizer work run during this recovery. An exact source-digest map permits only
+the reviewed preceding version; arbitrary changes still reject resume.

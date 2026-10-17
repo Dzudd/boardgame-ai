@@ -512,3 +512,28 @@ prints the chosen public column. Neither human nor policy receives checkpoint
 optimizer state, engine/state, rewards, seeds from the manifest, or run diagnostics.
 Private sampling resets per match; human games never enter training or protocol
 evaluation. Checkpoint and run artifacts remain read-only during play.
+
+## Shared Phase 6 recurrent learning
+
+Game adapters consume only the filtered player observation and supplied legal
+tuple. Candidate scores receive visible candidate parameters and the same private
+recurrent context as the value head. Empty tuples stay empty; no fallback or
+authoritative legality reconstruction exists. Game identity selects a declared
+adapter, not hidden state. Guildworks tokens retain the existing visible-event
+filter and independent seat cursor. Public Breakthrough views include no private
+data. Neither reward targets nor another seat's memory become model features.
+
+Trusted collection alone owns engines, step rewards, absolute seeds and episode
+assembly. Both seats act from latest frozen weights; GAE uses own-seat intervals
+and zero terminal bootstrap. Fixed scaling changes reward/value units without
+adding rewards or critic information. Full BPTT resets per episode, never across
+seats. Checkpoints exclude observations/history/hidden states/engines/global RNG.
+Source archives and reconstructive run metadata are trusted training artifacts.
+
+Held-out Breakthrough samples are excluded from development-game fitting. C
+adaptation uses C self-play only, paired untouched C adapters and fresh optimizers;
+old-game evaluations measure retention without rehearsal. Random opponents and
+their outcomes exist only in isolated frozen evaluation, whose reports cannot be
+submitted as PPO records. Evaluation reports include aggregate/public outcomes,
+costs and trusted seeds, not private Guildworks hands or full events. These
+contracts do not certify arbitrary caller-created records' self-play provenance.

@@ -1,5 +1,9 @@
 # Connect Four functional run: console runbook
 
+For the separate, unexecuted CUDA 100,000-game schedule, use the
+[Windows CMD runbook](CONNECT_FOUR_CUDA_100K_V1.md). This document retains the
+original CPU functional commands and historical output locations.
+
 Status: the user completed the declared CPU training/evaluation run through a
 two-update pause/resume. [Recorded results](CONNECT_FOUR_FUNCTIONAL_RESULTS.md)
 include a preceding Git startup failure and all successful-run counts/outcomes.

@@ -10,6 +10,20 @@ package without test-only import path overrides.
 ownership requirements. This guide illustrates those contracts, not an additional
 specification. The roadmap retains the future task of a complete new-game guide.
 
+## Phase 6 shared learner
+
+The separate `boardgame_ai.training.multigame_run` module runs the frozen
+multi-game study without changing original learner CLI/checkpoint formats. Use
+its [CMD runbook](phase6/MULTIGAME_RUNBOOK_V1.md) for read-only checks, named jobs,
+dependency-ordered execution, cumulative resume, isolated evaluation and reporting.
+The [implementation audit](phase6/MULTIGAME_STATUS_V1.md) distinguishes functional
+validation from experimental evidence; its pre-execution snapshot is superseded
+by the [reviewed comparison results](phase6/MULTIGAME_RESULTS_V1.md).
+Lower-level development APIs
+are `models.multigame.initial_multigame_model`, `training.multigame.collect_game`
+and `MultiGameTrainer`; arbitrary caller-created rollouts cannot establish trusted
+self-play provenance. Use disposable outputs for tests, never recorded campaigns.
+
 ## Engine lifecycle
 
 Implement the generic `GameEngine[ObservationData]` and `Agent[ObservationData]`
@@ -381,6 +395,12 @@ observations, rewards, or authoritative snapshots.
 
 
 ## Connect Four bounded runs
+
+The separate [CUDA 100,000-game protocol and CMD runbook](phase6/CONNECT_FOUR_CUDA_100K_V1.md)
+provides device-aware preflight, fresh settings/roots and fixed cumulative caps.
+It is unexecuted; the user runs campaigns. The original CPU examples below remain
+the functional protocol, not a command to reuse consumed evaluation roots.
+
 
 The independent CPU runner consumes an explicit versioned numeric protocol and
 saves its bytes/hash, a prose copy/hash, code/runtime identity and immutable

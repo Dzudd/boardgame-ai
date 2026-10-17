@@ -152,6 +152,18 @@ The independent bounded PPO run/resume/evaluation layer is available through a
 declared functional protocol is complete; [results](docs/phase6/CONNECT_FOUR_FUNCTIONAL_RESULTS.md)
 record a final balanced score of .65625 against random in one tiny run. Shared
 learning and robust strength evidence remain pending.
+CUDA optimization is available with explicit device-aware preflight/restore and
+synchronized cumulative timing. Training CLI commands show one in-place progress bar
+on stderr with saved-update percentage/count, current phase and remaining cap.
+Refresh is limited to four times/second; redirected output logs at most once every
+30 seconds plus a final summary. The final JSON stays on stdout; `--quiet`
+suppresses progress.
+The separate
+[100,000-game settings and Windows CMD runbook](docs/phase6/CONNECT_FOUR_CUDA_100K_V1.md)
+provide fresh seeds/output, six-hour training and ten-minute evaluation caps, and
+exact preflight/start/resume/evaluate/play commands. The operator has paused that campaign after 2,984 saved games;
+training and final evaluation are not complete. CPU inference remains sequential; GPU speedup and reliable
+strength from one run are not promised.
 Human checkpoint play is available with `--checkpoint`.
 Use the [console runbook](docs/phase6/CONNECT_FOUR_CONSOLE_RUNBOOK.md) for a
 read-only `--check-only` preflight and the train/resume/evaluate commands to run
@@ -467,3 +479,24 @@ saved snapshots. Unknown schemas/games, invalid actors/cells, post-terminal move
 and inconsistent status reject. No seeds, private events, or authoritative state
 are exported. [Programmatic recording](docs/DEVELOPMENT.md#recording-automated-tic-tac-toe-matches)
 uses the same public adapter; other games require separate replay support.
+
+## Phase 6 shared learning study
+
+Shared recurrent candidate-scoring PPO now supports Tic-Tac-Toe, Guildworks and
+Connect Four, with frozen unseen Breakthrough 5x5 adaptation. Independent learners
+remain available. All 36 operator jobs/evaluations are now
+[reviewed](docs/phase6/MULTIGAME_RESULTS_V1.md). Phase 6's declared comparison is
+complete with mixed/negative results: consistent transfer speedup is unproven,
+Guildworks has a sample-matched sharing penalty, and one recovered wall cost is
+uncertain. This does not certify stronger-opponent play or universal noninferiority.
+
+The [frozen protocol](docs/phase6/MULTIGAME_PROTOCOL_V1.md) defines three seeds,
+wall-time and decision-ceiling arms, reward/value scales and success criteria.
+The [Windows CMD runbook](docs/phase6/MULTIGAME_RUNBOOK_V1.md) provides one-line
+preflight/train/resume/evaluate/report commands and the historical fixed caps.
+Preserve the completed outputs; do not restart/overwrite this evaluated study.
+Inspect its recorded evidence read-only:
+
+```bat
+.\.venv\Scripts\python.exe -m boardgame_ai.training.multigame_run runs/phase6-multigame-v1 --settings docs/phase6/multigame-v1.json --report
+```

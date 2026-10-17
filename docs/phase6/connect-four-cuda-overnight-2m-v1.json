@@ -1,0 +1,60 @@
+{
+  "protocol_id": "connect-four-cuda-overnight-2m-v1",
+  "schema_version": 1,
+  "purpose": "single-seed-training-and-play-not-robust-strength",
+  "game_id": "connect_four",
+  "model_id": "connect-four-mlp64x64-actions7-v1",
+  "encoding_id": "connect-four-relative-6x6x7-v1",
+  "observation_shape": [
+    6,
+    6,
+    7
+  ],
+  "action_count": 7,
+  "hidden_sizes": [
+    64,
+    64
+  ],
+  "activation": "tanh",
+  "training": {
+    "seed": 633001,
+    "device": "cuda:0",
+    "threads": 1,
+    "updates": 250000,
+    "games_per_update": 8,
+    "starting_player": 0,
+    "max_steps_per_game": 42,
+    "collection": "complete-latest-policy-self-play",
+    "sampling": "masked-categorical",
+    "seed_namespace": "boardgame-ai/connect-four/ppo/v1",
+    "wall_time_cap_seconds": 32400,
+    "ppo": {
+      "learning_rate": 0.0003,
+      "gamma": 1.0,
+      "gae_lambda": 0.95,
+      "clip_ratio": 0.2,
+      "value_coefficient": 0.5,
+      "entropy_coefficient": 0.01,
+      "epochs": 2,
+      "minibatch_size": 32,
+      "max_grad_norm": 0.5,
+      "normalize_advantages": true
+    }
+  },
+  "evaluation": {
+    "seed": 633002,
+    "control_seed": 633003,
+    "seed_namespace": "boardgame-ai/connect-four/evaluation/v1",
+    "opponent": "uniform-supplied-legal-random-v1",
+    "mode": "sampled",
+    "games_per_seat": 256,
+    "checkpoints": [
+      "initial",
+      "update-250000"
+    ],
+    "selection": "fixed-last-update",
+    "control": "random-versus-random",
+    "control_games_per_seat": 256,
+    "wall_time_cap_seconds": 600
+  }
+}

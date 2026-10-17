@@ -1,0 +1,38 @@
+{
+  "protocol_id": "phase6-multigame-v1",
+  "model_id": "multigame-visible-gru-candidates-v1",
+  "development_games": ["tic_tac_toe", "guildworks", "connect_four"],
+  "transfer_game": "breakthrough",
+  "training_seeds": [661101, 661102, 661103],
+  "evaluation_roots": [662101, 662102, 662103],
+  "device": "cuda",
+  "threads": 1,
+  "regimes": {
+    "wall": {
+      "pretrain_shared_seconds": 900,
+      "pretrain_separate_seconds": 300,
+      "pretrain_decisions_per_game": 10000000,
+      "adapt_seconds": 300,
+      "adapt_decisions": 10000000
+    },
+    "samples": {
+      "pretrain_shared_seconds": 1800,
+      "pretrain_separate_seconds": 600,
+      "pretrain_decisions_per_game": 10000,
+      "adapt_seconds": 600,
+      "adapt_decisions": 5000
+    }
+  },
+  "evaluation_games_per_seat": 64,
+  "evaluation_seconds_per_job": 900,
+  "curve_fractions": [0.0, 0.25, 0.5, 0.75, 1.0],
+  "reward_divisors": {"tic_tac_toe": 1.0, "guildworks": 36.0, "connect_four": 1.0, "breakthrough": 1.0},
+  "success": {
+    "negative_transfer_margin": 0.05,
+    "forgetting_margin": 0.05,
+    "adaptation_score_target": 0.60,
+    "minimum_adaptation_speedup": 1.20,
+    "minimum_balanced_score": 0.55,
+    "seed_interval_multiplier": 4.303
+  }
+}

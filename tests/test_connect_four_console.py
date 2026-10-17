@@ -240,7 +240,9 @@ def test_cli_incomplete_exit_one_without_training(
     monkeypatch.setattr(
         run,
         "run_connect_four",
-        lambda *args, **kwargs: SimpleNamespace(update_count=0, samples_seen=0),
+        lambda *args, **kwargs: SimpleNamespace(
+            update_count=0, samples_seen=0, device="cpu"
+        ),
     )
     with pytest.raises(SystemExit) as error:
         cli(monkeypatch, saved_boundary, "--resume")
@@ -256,7 +258,9 @@ def test_cli_pause_success_without_training(
     monkeypatch.setattr(
         run,
         "run_connect_four",
-        lambda *args, **kwargs: SimpleNamespace(update_count=2, samples_seen=100),
+        lambda *args, **kwargs: SimpleNamespace(
+            update_count=2, samples_seen=100, device="cpu"
+        ),
     )
     cli(monkeypatch, saved_boundary, "--resume", "--stop-after", "2")
     report = json.loads(capsys.readouterr().out)
