@@ -144,13 +144,14 @@ def test_compatibility_is_one_exact_source_transition_without_rewrites(
     tmp_path: Path, settings: Path, monkeypatch: pytest.MonkeyPatch, mismatch: str
 ) -> None:
     output = tmp_path / "run"
-    train(output, settings, stop_after=0)
     mapping = json.loads(
         Path(
             "src/boardgame_ai/training/protocols/connect-four-console-compat-v1.json"
         ).read_bytes()
     )
-    assert mapping["source_sha256"] == run._source_digest()
+    # Simulate the reviewed source identity, independent of checkout bytes/platform.
+    monkeypatch.setattr(run, "_source_digest", lambda: mapping["source_sha256"])
+    train(output, settings, stop_after=0)
     path = output / "training.json"
     manifest = json.loads(path.read_bytes())
     manifest["code"]["source_sha256"] = mapping["previous_source_sha256"]

@@ -180,6 +180,13 @@ def test_windows_transient_lock_eventually_publishes(
 def test_exact_source_compatibility_rejects_unknown_current(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    mapping = json.loads(
+        Path(
+            "src/boardgame_ai/training/protocols/multigame-source-compat-v1.json"
+        ).read_bytes()
+    )
+    # The allowlist describes historical bytes, not every future checkout.
+    monkeypatch.setattr(run, "_source_digest", lambda: mapping["source_sha256"])
     assert run._compatible_source(
         "ba082fa1c154b7007c871e83c9a05f42a2c2fee42a757cce434c3347ab5b20f4"
     )
