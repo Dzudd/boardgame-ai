@@ -2,11 +2,12 @@
 
 from dataclasses import dataclass, fields
 from math import isfinite
+from time import monotonic
 
 import torch
 
 from boardgame_ai.core import create_rng
-from boardgame_ai.models import TicTacToeActorCritic
+from boardgame_ai.models import ConnectFourActorCritic, TicTacToeActorCritic
 from boardgame_ai.models.masking import mask_action_logits
 from boardgame_ai.training.advantages import generalized_advantage_estimation
 from boardgame_ai.training.rollout import PlayerTrajectory
@@ -87,10 +88,16 @@ class PPOBatch:
 
 
 def validate_ppo_batch(batch: PPOBatch) -> None:
+    _validate_ppo_batch(batch, (6, 3, 3), 9)
+
+
+def _validate_ppo_batch(
+    batch: PPOBatch, observation_shape: tuple[int, ...], action_count: int
+) -> None:
     n = batch.actions.numel()
     shapes = {
-        "observations": (n, 6, 3, 3),
-        "legal_masks": (n, 9),
+        "observations": (n, *observation_shape),
+        "legal_masks": (n, action_count),
         "actions": (n,),
         "old_log_probs": (n,),
         "advantages": (n,),
@@ -117,7 +124,7 @@ def validate_ppo_batch(batch: PPOBatch) -> None:
             finite_checks.append(torch.isfinite(tensor).all())
     if not torch.stack(finite_checks).all().item():
         raise ValueError("PPO samples must be finite")
-    if not ((batch.actions >= 0) & (batch.actions < 9)).all().item():
+    if not ((batch.actions >= 0) & (batch.actions < action_count)).all().item():
         raise ValueError("PPO action indices must be in range")
     if not batch.legal_masks.gather(1, batch.actions[:, None]).all().item():
         raise ValueError("PPO recorded actions must be legal")
@@ -271,7 +278,20 @@ class PPOUpdate:
     clip_fraction: float
 
 
-class PPOTrainer:
+def _check_deadline(deadline: float | None) -> None:
+    if deadline is None:
+        return
+    if (
+        isinstance(deadline, bool)
+        or not isinstance(deadline, (int, float))
+        or not isfinite(deadline)
+    ):
+        raise ValueError("Deadline must be a finite monotonic-clock time")
+    if monotonic() >= deadline:
+        raise TimeoutError("PPO optimization deadline reached")
+
+
+class _PPOTrainer[Model: (TicTacToeActorCritic, ConnectFourActorCritic)]:
     """Own Adam and shuffle RNG; update one supplied on-policy batch.
 
     No rollout scheduling, game access, opponent selection, or training experiment.
@@ -280,7 +300,7 @@ class PPOTrainer:
 
     def __init__(
         self,
-        model: TicTacToeActorCritic,
+        model: Model,
         config: PPOConfig = _DEFAULT_CONFIG,
         *,
         shuffle_seed: int | None = None,
@@ -293,7 +313,7 @@ class PPOTrainer:
                 "PPO trainer requires CPU float32 or CUDA float32 parameters"
             )
         self.device = device
-        self.model = model
+        self.model: Model = model
         self.config = config
         self.generator = torch.Generator(device="cpu").manual_seed(
             create_rng(shuffle_seed).getrandbits(64)
@@ -302,8 +322,15 @@ class PPOTrainer:
         self.update_count = 0
         self.optimizer_steps = 0
 
-    def update(self, batch: PPOBatch) -> PPOUpdate:
+    def _validate_batch(self, batch: PPOBatch) -> None:
         validate_ppo_batch(batch)
+
+    def _check_update_deadline(self, deadline: float | None) -> None:
+        _check_deadline(deadline)
+
+    def update(self, batch: PPOBatch, *, deadline: float | None = None) -> PPOUpdate:
+        self._validate_batch(batch)
+        self._check_update_deadline(deadline)
         # Snapshot input samples and freeze targets across all update epochs.
         batch = PPOBatch(
             **{f.name: getattr(batch, f.name).detach().clone() for f in fields(batch)}
@@ -328,8 +355,10 @@ class PPOTrainer:
         n = len(batch.actions)
         steps = 0
         for _ in range(self.config.epochs):
+            self._check_update_deadline(deadline)
             order = torch.randperm(n, generator=self.generator, device="cpu")
             for start in range(0, n, self.config.minibatch_size):
+                self._check_update_deadline(deadline)
                 indices = order[start : start + self.config.minibatch_size]
                 part = batch.subset(indices.to(self.device))
                 logits, values = self.model.forward(part.observations)
@@ -366,3 +395,7 @@ class PPOTrainer:
             approximate_kl=means[4],
             clip_fraction=means[5],
         )
+
+
+class PPOTrainer(_PPOTrainer[TicTacToeActorCritic]):
+    """Tic-Tac-Toe PPO adapter; original shapes, defaults and arithmetic."""

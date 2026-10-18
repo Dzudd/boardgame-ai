@@ -4,8 +4,8 @@ This report records monitoring validation, throughput measurements, the controll
 self-play comparison and the resulting bounded-scope decision.
 
 Protocol: [predeclared budgets and criteria](PHASE45_PROTOCOL.md).
-Diagnosis: [Task 1](POLICY_DIAGNOSIS.md). Search milestone:
-[Task 5 design](SEARCH_LEARNING_DESIGN.md).
+Diagnosis: [Task 1](docs/archive/POLICY_DIAGNOSIS.md). Search milestone:
+[Task 5 design](docs/reference/SEARCH_LEARNING_DESIGN.md).
 
 ## Monitoring and isolation
 
@@ -190,7 +190,7 @@ These differences reinforce the need to report seats and opponents separately.
 Raw evidence: `runs/phase45/entropy-comparison/experiment.json`, all training
 manifests/logs, 24 development reports, `selections.json`, six final reports and
 `results.json`. The original update-1000 checkpoint, configuration and log retain
-exactly the three SHA-256 identities in [POLICY_DIAGNOSIS.md](POLICY_DIAGNOSIS.md).
+exactly the three SHA-256 identities in [POLICY_DIAGNOSIS.md](docs/archive/POLICY_DIAGNOSIS.md).
 The original run was never resumed or overwritten. Final seed 20261029 is now consumed; reserve
 new final seeds for future tuning or milestone assessment.
 

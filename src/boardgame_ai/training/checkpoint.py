@@ -9,9 +9,9 @@ from typing import Any
 
 import torch
 
-from boardgame_ai.models import TicTacToeActorCritic
+from boardgame_ai.models import ConnectFourActorCritic, TicTacToeActorCritic
 from boardgame_ai.training.device import resolve_training_device
-from boardgame_ai.training.ppo import PPOConfig, PPOTrainer
+from boardgame_ai.training.ppo import PPOConfig, PPOTrainer, _PPOTrainer
 
 _KEYS = {
     "schema_version",
@@ -27,7 +27,13 @@ _KEYS = {
 }
 
 
-def _validate_payload(payload: Any, trainer: PPOTrainer) -> None:
+def _validate_payload(
+    payload: Any,
+    trainer: _PPOTrainer[TicTacToeActorCritic] | _PPOTrainer[ConnectFourActorCritic],
+    *,
+    game_id: str = "tic_tac_toe",
+    model_id: str = "ttt-actor-critic-obs6-actions9-v1",
+) -> None:
     if not isinstance(payload, dict) or set(payload) != _KEYS:
         raise ValueError("Unsupported PPO checkpoint fields")
     if not isinstance(payload["config"], dict) or payload["config"] != asdict(
@@ -37,8 +43,8 @@ def _validate_payload(payload: Any, trainer: PPOTrainer) -> None:
     if (
         type(payload["schema_version"]) is not int
         or payload["schema_version"] != 1
-        or payload["game_id"] != "tic_tac_toe"
-        or payload["model_id"] != "ttt-actor-critic-obs6-actions9-v1"
+        or payload["game_id"] != game_id
+        or payload["model_id"] != model_id
     ):
         raise ValueError("Unsupported PPO checkpoint version/game/model")
     if type(payload["model_training"]) is not bool:
@@ -126,6 +132,10 @@ def save_ppo_checkpoint(trainer: PPOTrainer, path: str | Path) -> None:
     shuffle RNG at an update boundary. No games, observations, sampling seeds,
     gradients, or global RNG state. This is not a mid-update/episode checkpoint.
     """
+    if not isinstance(trainer, PPOTrainer) or not isinstance(
+        trainer.model, TicTacToeActorCritic
+    ):
+        raise ValueError("Expected a Tic-Tac-Toe PPO trainer")
     payload: dict[str, Any] = {
         "schema_version": 1,
         "game_id": "tic_tac_toe",

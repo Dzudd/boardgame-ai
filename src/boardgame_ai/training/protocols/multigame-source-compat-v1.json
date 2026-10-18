@@ -1,0 +1,8 @@
+{
+  "schema_version": 1,
+  "previous_source_sha256": [
+    "ba082fa1c154b7007c871e83c9a05f42a2c2fee42a757cce434c3347ab5b20f4"
+  ],
+  "source_sha256": "9fba8b1fabcc694ddf361f4fc5dacf3fe25f830846e40cf3b4c23da2f548a135",
+  "scope": "Bounded Windows atomic-publication retries, explicit no-training near-cap finalization, and timing-uncertainty reporting only; model, PPO arithmetic, sampling and numeric budgets unchanged."
+}

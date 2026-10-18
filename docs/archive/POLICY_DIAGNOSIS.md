@@ -146,7 +146,7 @@ The source bytes were identical before/after. SHA-256 identities:
 | updates.jsonl | `245efcedd211074160eea4536507d719d9ff689db3cb6b8b8b55a866f5d49687` |
 
 Raw evidence: `runs/phase45-task1.json` (ignored local artifact). Reproduce with
-the [audit command](README.md#frozen-policy-tactical-and-learning-signal-audit) and
+the [audit command](../../README.md#frozen-policy-tactical-and-learning-signal-audit) and
 a new output filename. The report cannot overwrite an existing file or write into
 the checkpoint's directory. The audit requires the
 training process to be stopped; it does not lock files against concurrent writers.
@@ -164,6 +164,6 @@ these hypotheses without distinguishing them. One checkpoint, one training seed
 and a bounded diagnostic cannot establish general correctness or robust strength.
 
 Task 1 is complete. Subsequent monitoring, throughput evidence and controlled
-comparisons are in [Phase 4.5 results](PHASE45_RESULTS.md); the current milestone is
-maintained in [PROGRESS.md](PROGRESS.md).
+comparisons are in [Phase 4.5 results](../../PHASE45_RESULTS.md); the current milestone is
+maintained in [PROGRESS.md](../../PROGRESS.md).
 The measurements above describe the preserved source policy, not later runs.

@@ -1,0 +1,126 @@
+{
+  "schema_version": 1,
+  "jobs": [
+    {
+      "arm": "ppo",
+      "repetition": 1,
+      "checkpoint_sha256": "90b345c0534e4935bd97e15f04d620e6e9db9046dac0fcd147729fe2782558dc",
+      "report_sha256": "11580eec27ebe4008d7fdda0f67d891bb49f69858bfe1458fc013e75b327df85",
+      "elapsed_seconds": 3.1089999999967404,
+      "costs": {
+        "collected_games": 8,
+        "collected_decisions": 65,
+        "search_simulations": 0,
+        "evaluator_calls": 65,
+        "optimizer_steps": 8,
+        "sampled_positions": 260,
+        "accepted_games_per_end_to_end_second": 2.5731746542323535,
+        "accepted_decisions_per_end_to_end_second": 20.907044065637873,
+        "sample_presentations_per_accepted_decision": 4.0,
+        "timing_scope": "child startup, initialization, collection, optimizer, checkpoint/report publication and supervisor; excludes parent setup/final aggregation; no warmup subtraction",
+        "attempted_costs": "accepted-boundary lower bounds; interrupted work unknown"
+      }
+    },
+    {
+      "arm": "ppo",
+      "repetition": 2,
+      "checkpoint_sha256": "90b345c0534e4935bd97e15f04d620e6e9db9046dac0fcd147729fe2782558dc",
+      "report_sha256": "39a03ab12ad671c92a2e58feff4d90562f19d5eac31679280c25cbc6307f9c95",
+      "elapsed_seconds": 3.1410000000032596,
+      "costs": {
+        "collected_games": 8,
+        "collected_decisions": 65,
+        "search_simulations": 0,
+        "evaluator_calls": 65,
+        "optimizer_steps": 8,
+        "sampled_positions": 260,
+        "accepted_games_per_end_to_end_second": 2.5469595670142304,
+        "accepted_decisions_per_end_to_end_second": 20.694046481990622,
+        "sample_presentations_per_accepted_decision": 4.0,
+        "timing_scope": "child startup, initialization, collection, optimizer, checkpoint/report publication and supervisor; excludes parent setup/final aggregation; no warmup subtraction",
+        "attempted_costs": "accepted-boundary lower bounds; interrupted work unknown"
+      }
+    },
+    {
+      "arm": "ppo",
+      "repetition": 3,
+      "checkpoint_sha256": "90b345c0534e4935bd97e15f04d620e6e9db9046dac0fcd147729fe2782558dc",
+      "report_sha256": "83920edbfa0de6b0dc9b06ee6a4a4967baa3e91fdddcf535cdde0b1e9d50f20c",
+      "elapsed_seconds": 3.2180000000080327,
+      "costs": {
+        "collected_games": 8,
+        "collected_decisions": 65,
+        "search_simulations": 0,
+        "evaluator_calls": 65,
+        "optimizer_steps": 8,
+        "sampled_positions": 260,
+        "accepted_games_per_end_to_end_second": 2.4860161590988286,
+        "accepted_decisions_per_end_to_end_second": 20.19888129267798,
+        "sample_presentations_per_accepted_decision": 4.0,
+        "timing_scope": "child startup, initialization, collection, optimizer, checkpoint/report publication and supervisor; excludes parent setup/final aggregation; no warmup subtraction",
+        "attempted_costs": "accepted-boundary lower bounds; interrupted work unknown"
+      }
+    },
+    {
+      "arm": "search",
+      "repetition": 1,
+      "checkpoint_sha256": "cd94d4530d4f2cf314dd986fd0404dc63c894693c17786a866a9c37868645ca2",
+      "report_sha256": "d32d93ee180826f06720d9d90ce99a5367b3bd73676f1a2b604c50615372abc0",
+      "elapsed_seconds": 3.8910000000032596,
+      "costs": {
+        "collected_games": 8,
+        "collected_decisions": 56,
+        "search_simulations": 1792,
+        "evaluator_calls": 1347,
+        "optimizer_steps": 8,
+        "sampled_positions": 2048,
+        "accepted_games_per_end_to_end_second": 2.056026728345746,
+        "accepted_decisions_per_end_to_end_second": 14.392187098420223,
+        "sample_presentations_per_accepted_decision": 36.57142857142857,
+        "timing_scope": "child startup, initialization, collection, optimizer, checkpoint/report publication and supervisor; excludes parent setup/final aggregation; no warmup subtraction",
+        "attempted_costs": "accepted-boundary lower bounds; interrupted work unknown"
+      }
+    },
+    {
+      "arm": "search",
+      "repetition": 2,
+      "checkpoint_sha256": "cd94d4530d4f2cf314dd986fd0404dc63c894693c17786a866a9c37868645ca2",
+      "report_sha256": "44c6dc09b0d852aa158545a82f0ae5fd4f59c81d4aacd3c1d75d3cbb74c0faa8",
+      "elapsed_seconds": 3.8909999999887077,
+      "costs": {
+        "collected_games": 8,
+        "collected_decisions": 56,
+        "search_simulations": 1792,
+        "evaluator_calls": 1347,
+        "optimizer_steps": 8,
+        "sampled_positions": 2048,
+        "accepted_games_per_end_to_end_second": 2.0560267283534355,
+        "accepted_decisions_per_end_to_end_second": 14.392187098474048,
+        "sample_presentations_per_accepted_decision": 36.57142857142857,
+        "timing_scope": "child startup, initialization, collection, optimizer, checkpoint/report publication and supervisor; excludes parent setup/final aggregation; no warmup subtraction",
+        "attempted_costs": "accepted-boundary lower bounds; interrupted work unknown"
+      }
+    },
+    {
+      "arm": "search",
+      "repetition": 3,
+      "checkpoint_sha256": "cd94d4530d4f2cf314dd986fd0404dc63c894693c17786a866a9c37868645ca2",
+      "report_sha256": "57bc409d69a04236a722b9d3290dee4b26db8645b898cc0bd878ad547a12de3e",
+      "elapsed_seconds": 3.9840000000112923,
+      "costs": {
+        "collected_games": 8,
+        "collected_decisions": 56,
+        "search_simulations": 1792,
+        "evaluator_calls": 1347,
+        "optimizer_steps": 8,
+        "sampled_positions": 2048,
+        "accepted_games_per_end_to_end_second": 2.0080321285083644,
+        "accepted_decisions_per_end_to_end_second": 14.056224899558552,
+        "sample_presentations_per_accepted_decision": 36.57142857142857,
+        "timing_scope": "child startup, initialization, collection, optimizer, checkpoint/report publication and supervisor; excludes parent setup/final aggregation; no warmup subtraction",
+        "attempted_costs": "accepted-boundary lower bounds; interrupted work unknown"
+      }
+    }
+  ],
+  "interpretation": "short startup-inclusive calibration; not strength or steady-state throughput"
+}

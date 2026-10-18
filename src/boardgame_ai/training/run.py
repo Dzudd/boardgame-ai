@@ -14,6 +14,7 @@ from boardgame_ai.games.tic_tac_toe import TicTacToeEngine
 from boardgame_ai.models import TicTacToeActorCritic
 from boardgame_ai.training.checkpoint import load_ppo_checkpoint, save_ppo_checkpoint
 from boardgame_ai.training.device import resolve_training_device
+from boardgame_ai.training.metrics_log import recover_metrics_log
 from boardgame_ai.training.monitoring import (
     MonitoringConfig,
     configure_monitoring,
@@ -119,23 +120,9 @@ def run_self_play_training(
         )
         save_ppo_checkpoint(trainer, checkpoint)
 
-    samples_seen: int | None = 0
-    log_path = directory / "updates.jsonl"
-    if trainer.update_count:
-        rows = (
-            [
-                json.loads(line)
-                for line in log_path.read_text(encoding="utf-8").splitlines()
-            ]
-            if log_path.exists()
-            else []
-        )
-        samples_seen = (
-            sum(row["ppo"]["num_samples"] for row in rows)
-            if [row["update"] for row in rows]
-            == list(range(1, trainer.update_count + 1))
-            else None
-        )
+    samples_seen = recover_metrics_log(
+        directory / "updates.jsonl", trainer.update_count
+    )
     if monitoring is not None and trainer.update_count % monitoring.interval == 0:
         monitor_checkpoint(
             directory,

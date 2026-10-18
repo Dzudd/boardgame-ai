@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "previous_source_sha256": "7d4ce0938c2c01911c8ace58d84cc0903aa330c1eb3bc11f720fe65739295251",
+  "source_sha256": "9fba8b1fabcc694ddf361f4fc5dacf3fe25f830846e40cf3b4c23da2f548a135",
+  "scope": "Retains reviewed console transitions and adds isolated Phase 6 multigame modules. Existing Connect Four learner, schedule, arithmetic, checkpoint and run code are byte-unchanged by the shared-learning increment.",
+  "changed_files": {
+    "training\\connect_four_run.py": {
+      "previous_sha256": "108a37b501de5c9c30797b959e59a5428d68306bcd60e355f5a0c0f87c3bfb28",
+      "sha256": "93eb7f4775cb8467821b28273feabe3b0d9bc1449fa78721de6269e28f781cb1"
+    }
+  },
+  "additional_previous_source_sha256": [
+    "d89badd236ad947f06dfd569972c07827c768867a67dce79a2604496e324ed02",
+    "e36f513e3b678b0e7414994e209ced32ad9d5b17f4eee0151f6e1ab2869f86a1",
+    "ba082fa1c154b7007c871e83c9a05f42a2c2fee42a757cce434c3347ab5b20f4"
+  ],
+  "phase6_added_files": {
+    "games\\breakthrough.py": "29eba545ac706a1c7c02cabaaf7f64c17e238f27bd86689db954419220756af4",
+    "games\\breakthrough_observation.py": "26d6ed2e9ee548f2fd21fca722d12ca0cd14d1723ede463336dbf4cce95e21d0",
+    "models\\multigame.py": "3c6ad5c940e3f2e12a6ea2d6866a4dc62108b40abbbccfae9420db065dee73ed",
+    "training\\multigame.py": "79317e72cede9f7d6dc6bf0e70f87a0e40337b5f9851683a09b9e199738e9769",
+    "training\\multigame_evaluation.py": "07ac154b4a22895614120f536a35f4457b5580a367d674984ad52ab0c1346a7c",
+    "training\\multigame_report.py": "fc3c5ac026b55e646c3be6b4d8c077578bc5920c5002da6cbb9b0e3f81d6fca2",
+    "training\\multigame_run.py": "6cb7d44985622e1d867cb2b220cfab6c3a3b74c3990c95c15797e6aa8cc85157"
+  },
+  "recovery_scope": "Bounded Windows atomic-publication retries, explicit no-training near-cap finalization, and timing-uncertainty reporting only; model, PPO arithmetic, sampling and numeric budgets unchanged."
+}

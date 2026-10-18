@@ -1,0 +1,15 @@
+# Protocol provenance is byte-addressed; preserve bytes on Windows checkouts.
+src/boardgame_ai/training/protocols/* -text
+# The frozen settings snapshot retains its original Windows line endings.
+src/boardgame_ai/training/protocols/phase45-v1.json whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+# Keep the recorded Connect Four settings and packaged snapshot byte-identical.
+docs/phase6/connect-four-functional-v1.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+src/boardgame_ai/training/protocols/connect-four-functional-v1.json whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+
+# Separate CUDA campaign settings are byte-addressed and packaged identically.
+docs/phase6/connect-four-cuda-100k-v1.json -text
+# Shared-study settings and published evidence must retain their recorded bytes.
+docs/phase6/*.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+src/boardgame_ai/training/protocols/*.json whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+# Phase 7 preparation settings and reserved study declarations are byte-addressed.
+docs/phase7/*.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol

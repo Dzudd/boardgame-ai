@@ -1,0 +1,100 @@
+{
+  "schema_version": 1,
+  "scope": "offline in-sample fit on retained public self-play replay; no new games, no baseline/solver labels, no optimizer calls",
+  "interpretation": "fit and coverage describe the saved recipe; they do not prove the cause of held-out failure or justify budget extension",
+  "seeds": [
+    {
+      "seed": 771101,
+      "games": 256,
+      "positions": 1604,
+      "distinct_public_board_actor_pairs": 548,
+      "max_visits_to_one_public_board_actor": 256,
+      "policy_versions": 64,
+      "weighting": "uniform game, then uniform position; same marginal weighting as replay sampling",
+      "target_entropy": 1.3034491539001465,
+      "target_max_visit_mass": 0.5102875232696533,
+      "fit": {
+        "initial": {
+          "visit_cross_entropy": 1.7638838291168213,
+          "target_to_policy_kl": 0.4604346454143524,
+          "policy_entropy": 1.7724449634552002,
+          "half_outcome_mse": 0.5293362736701965,
+          "target_argmax_agreement": 0.27444973587989807,
+          "value_min": -0.42283380031585693,
+          "value_max": -0.10435563325881958
+        },
+        "final": {
+          "visit_cross_entropy": 1.568706750869751,
+          "target_to_policy_kl": 0.26525774598121643,
+          "policy_entropy": 1.6064127683639526,
+          "half_outcome_mse": 0.3323454260826111,
+          "target_argmax_agreement": 0.6224377155303955,
+          "value_min": -1.2156296968460083,
+          "value_max": 1.134134292602539
+        }
+      }
+    },
+    {
+      "seed": 771102,
+      "games": 256,
+      "positions": 1680,
+      "distinct_public_board_actor_pairs": 696,
+      "max_visits_to_one_public_board_actor": 256,
+      "policy_versions": 64,
+      "weighting": "uniform game, then uniform position; same marginal weighting as replay sampling",
+      "target_entropy": 1.3854036331176758,
+      "target_max_visit_mass": 0.47083649039268494,
+      "fit": {
+        "initial": {
+          "visit_cross_entropy": 1.7709360122680664,
+          "target_to_policy_kl": 0.3855323791503906,
+          "policy_entropy": 1.7442541122436523,
+          "half_outcome_mse": 0.43250772356987,
+          "target_argmax_agreement": 0.16739521920681,
+          "value_min": 0.03420368954539299,
+          "value_max": 0.2771872282028198
+        },
+        "final": {
+          "visit_cross_entropy": 1.6478968858718872,
+          "target_to_policy_kl": 0.2624932825565338,
+          "policy_entropy": 1.658351182937622,
+          "half_outcome_mse": 0.3770158886909485,
+          "target_argmax_agreement": 0.48966240882873535,
+          "value_min": -0.7098249793052673,
+          "value_max": 1.071162462234497
+        }
+      }
+    },
+    {
+      "seed": 771103,
+      "games": 256,
+      "positions": 1634,
+      "distinct_public_board_actor_pairs": 570,
+      "max_visits_to_one_public_board_actor": 256,
+      "policy_versions": 64,
+      "weighting": "uniform game, then uniform position; same marginal weighting as replay sampling",
+      "target_entropy": 1.2801810503005981,
+      "target_max_visit_mass": 0.5246339440345764,
+      "fit": {
+        "initial": {
+          "visit_cross_entropy": 1.7427167892456055,
+          "target_to_policy_kl": 0.4625357389450073,
+          "policy_entropy": 1.7642501592636108,
+          "half_outcome_mse": 0.42967724800109863,
+          "target_argmax_agreement": 0.38481059670448303,
+          "value_min": 0.0022103823721408844,
+          "value_max": 0.28642791509628296
+        },
+        "final": {
+          "visit_cross_entropy": 1.555095911026001,
+          "target_to_policy_kl": 0.27491480112075806,
+          "policy_entropy": 1.581825613975525,
+          "half_outcome_mse": 0.3447723984718323,
+          "target_argmax_agreement": 0.6139292120933533,
+          "value_min": -0.9147233963012695,
+          "value_max": 1.1553560495376587
+        }
+      }
+    }
+  ]
+}

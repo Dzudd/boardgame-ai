@@ -1,23 +1,23 @@
 # Board Game AI — Roadmap
 
-This document owns phase goals, tasks, completion status and acceptance criteria.
-Implemented contracts belong in [architecture](ARCHITECTURE.md); current evidence,
-limitations and the next milestone belong in [progress](PROGRESS.md).
+Build a reusable platform: add a new game through a documented plugin, then train
+and play a substantial self-taught model on the user's GPU without rewriting the
+training system. Tiny CPU models are development fixtures, not the final product.
 
-**Status:** Phases 1–3 complete; Phase 4 complete under its original minimal
-criterion; Phase 4.5 complete at its declared bounded investigation scope;
-Phase 5 complete for the declared Guildworks rules, including recurrent memory/PPO.
-Only the brought-forward public simulator, bounded search evaluation and diagnosis
-milestone of Phase 7 is complete. Phases 6–8 retain unfinished tasks below.
-**Next milestone:** Define the bounded Phase 6 multi-game evaluation protocol and game choices.
-PPO and Tic-Tac-Toe search remain references; robust Tic-Tac-Toe play is not a gate.
+**Status: unfinished.** Existing engines and bounded experiments are a foundation;
+large-model GPU training and new-game extensibility remain required deliverables.
+Read [PROGRESS.md](PROGRESS.md) for the one next task. Read only the milestone relevant
+to your work below. [Historical phases and evidence](docs/archive/README.md) are optional references.
 
 ## Goal and principles
 
-Build a reusable board-game learning platform, progressing from the implemented
-PPO baseline toward MuZero-style search learning, then hidden-information and
-multi-game learning. Eventually test transfer to new games, not just strength
-on known games.
+Build a reusable engine and GPU-oriented self-play learning platform for new board
+games supplied after development. Adding a game requires a rules plugin and declared
+observation/action/reward representations, not a new training stack.
+The model learns its policy/value estimates from its own games and game-defined
+outcomes, starting from random initialization; the rules engine supplies legal
+transitions, not expert decisions. General transfer and MuZero are later research
+options, not prerequisites for delivering this capability.
 
 - Train exclusively through latest-policy self-play. Both seats share frozen
   weights during collection. No external teachers, expert/solver labels,
@@ -30,271 +30,171 @@ on known games.
   not prove every move was good/bad; heuristic bonuses are not a diagnosis.
 - Measure learning quality and throughput separately, with explicit budgets,
   reproducible seeds, and honest limitations.
+- Treat large-model GPU training as a required engineering deliverable. CUDA
+  optimizer support alone, a longer tiny-model run, or a completed experiment does
+  not satisfy it. CPU rule execution is allowed; policy inference and optimization
+  must have a working batched GPU path.
+- Preserve completed protocols/results and their negative findings. New model
+  architectures and collection methods use new configurations and output roots.
+- Size the model against actual GPU memory and end-to-end throughput. More
+  parameters do not guarantee stronger play; both capacity and learning must be
+  measured. Do not silently substitute a tiny CPU configuration for the GPU goal.
 
 Technical contracts: [architecture](ARCHITECTURE.md) and
 [information boundaries](INFORMATION_BOUNDARIES.md). Usage: [README](README.md).
 Current evidence and concerns: [progress](PROGRESS.md).
 
-## Completed phases
+## Mandatory delivery track — reusable new-game training on GPU
 
-### Phase 1 — Project foundation
+This track defines project completion. Historical phases below retain their original
+scope and evidence; their checkmarks do not complete these milestones. Implementation
+can overlap where dependencies permit, but sustained target-game training depends on
+validated rules, representations and the GPU pipeline.
 
-**Complete:** typed package, shared engine/agent contracts, numerical dependencies,
-visibility rules, deterministic RNG, illegal-action policy, tests, and CI.
+**Meaning of any new game:** support new games through extension contracts rather
+than a hard-coded game list. Explicitly define the supported mechanics, player
+counts and reward semantics. Unsupported mechanics must fail clearly or require a
+general contract extension. Supplying prose rules alone is not assumed to generate
+a correct engine automatically, and strength cannot be guaranteed for every game.
+Below, "target game" means a game integrated through this reusable workflow, not
+one particular game around which the platform is built.
 
-- [x] Package/dependencies, CLI foundation, lint/format/type checks, and CI.
-- [x] GameState, Observation, Action, StepResult, GameSpec, and Agent/GameEngine.
-- [x] Visibility, seed isolation, rejection invariants, and contract tests.
+### A — Finish the reusable game integration contract
 
-**Acceptance met:** a test game completes through the shared interface.
+- [ ] Define versioned game-plugin contracts for rules, player count, scoring,
+  phases, legal actions, chance, hidden observations and per-player rewards.
+- [ ] Provide registration and a plugin scaffold so new games can be added without
+  editing the learner or a hard-coded list of training games.
+- [ ] Validate complete scripted/random games, edge cases, reproducible chance,
+  illegal-action rejection, rewards and player-visible information boundaries.
+- [ ] Define pluggable observation/action encodings, history and recurrent memory;
+  support variable legal actions and declare dimensions through plugin metadata.
+- [ ] Provide reusable conformance tests and a generic human/debug interface.
+- [ ] Route mechanically different existing games through the same training entry
+  point using their plugins and configurations, including hidden information,
+  chance and repeated actors. Document the supported player/reward envelope.
 
-### Phase 2 — First deterministic game
+**Acceptance:** multiple mechanically different games run through one learning
+entry point without game-specific learner branches. The documented contract covers
+rules, validated learning inputs, per-player outcomes and onboarding. Milestone D
+must additionally prove extensibility using a newly added game.
 
-**Complete:** Tic-Tac-Toe engine, public observations, rendering, and cloning.
+### B — Define the large model and GPU capacity envelope
 
-- [x] Reset, legal moves, transitions, actor selection, wins/draws, and rewards.
-- [x] Player observations, text board, independent cloning, and rule tests.
+- [ ] Inventory the installed GPU, available VRAM, driver/runtime and host resources.
+  Earlier measurements used an RTX 4070 Ti; verify the current hardware rather than
+  assuming its usable memory or performance.
+- [ ] Replace fixed tiny-network assumptions with configurable architecture,
+  width/depth, memory capacity and versioned checkpoint reconstruction metadata.
+  Select a suitable board/history encoder and policy/value heads for the target game.
+- [ ] Benchmark a capacity ladder with approximately 1M, 10M and 30M trainable
+  parameters where memory permits, then select and freeze the production size.
+  These are engineering probe sizes, not claims of an optimal architecture.
+- [ ] Target at least 10M trainable parameters for the first substantial production
+  model. Record exact count, precision, inference/learner batch sizes, sequence
+  lengths, peak VRAM and memory headroom. If that target is infeasible at useful
+  throughput, document the measured constraint and agree a revised target; do not
+  declare this milestone complete using the existing 64×64 networks.
+- [ ] Include weights, gradients, optimizer state, activations, inference snapshots
+  and buffers in memory accounting; verify full training steps, not just model load.
 
-**Acceptance met:** all 5,478 reachable X-first boards pass the rule audit.
+**Acceptance:** a reproducible target-game forward/backward/optimizer benchmark
+demonstrates the declared large model fits the user's GPU with memory headroom.
+This establishes capacity, not learning or sustained pipeline performance.
 
-### Phase 3 — Simulation and baselines
+### C — Build and optimize the end-to-end GPU self-play pipeline
 
-**Complete:** automated matches, human CLI play, and public replays.
+- [ ] Run many active game environments and batch their policy/value inference on
+  the GPU. Tune environment concurrency and CPU worker count to supply that batch;
+  preserve per-game/per-seat RNG, legal masks and independent recurrent memory.
+- [ ] Keep collection weights frozen for each declared collection generation and
+  publish new weights at explicit boundaries. Preserve latest-policy self-play;
+  do not accidentally mix stale trajectories into on-policy PPO updates.
+- [ ] Separate CPU rule simulation, encoding, batched inference, trajectory storage,
+  target construction and GPU optimization with bounded queues and backpressure.
+- [ ] Batch recurrent sequences/candidate actions correctly, including padding,
+  masking, episode boundaries and same-player consecutive decisions.
+- [ ] Minimize per-decision host/device transfers and scalar synchronization;
+  profile data preparation, transfer, inference, simulation and optimization.
+- [ ] Evaluate mixed precision, pinned staging buffers, compilation and transfer
+  overlap where supported. Adopt only measured improvements with finite losses,
+  valid distributions and acceptable numerical/learning behavior.
+- [ ] Measure warmed-up end-to-end decisions/second, games/hour, optimizer/sample
+  throughput, stage times and peak VRAM across repeated runs. Compare batch and
+  concurrency settings at the same model and learning workload; GPU utilization
+  alone is not acceptance. Freeze numerical throughput targets from these results.
+- [ ] Implement reliable atomic checkpoints, portable inference export, optimizer/
+  RNG/counter recovery and interruption/resume for the large GPU configuration.
+  State the actual reproducibility guarantees; do not promise cross-device bitwise
+  identity or silently discard pending trajectories on resume.
 
-- [x] RandomAgent and tactical heuristic agent.
-- [x] Bounded game loop, match runner, and reproducible seeded batches.
-- [x] Wins/draws/scores/errors/length metrics and JSON reports.
-- [x] Human-versus-baseline CLI and save/inspect public move logs.
+**Acceptance:** the declared large model completes collection and optimization
+through the real game pipeline on the GPU, meets the frozen throughput and memory
+targets, and survives a tested interruption/resume. No hidden CPU inference fallback.
+Tiny CPU tests remain useful for correctness but cannot satisfy this acceptance.
 
-**Acceptance met:** thousands of valid games reproduce; replay logs validate.
-Measurements: [baseline benchmarks](BASELINE_BENCHMARKS.md).
+### D — Demonstrate sustained learning on a newly added game
 
-### Phase 4 — First learning agent
+- [ ] After the contracts are stable, add an acceptance game not used to develop
+  the training system. Integrate it using only plugin files, registration and
+  configuration. Required learner changes reopen the extensibility milestone.
+- [ ] Freeze a runnable production configuration: game/model versions, device,
+  precision, concurrency, batches, learning objective, schedules, seeds, evaluation
+  roots, checkpoint cadence and wall/sample budgets.
+- [ ] Run a minimum two-hour integrated GPU stability trial or the full declared
+  campaign if shorter; measure memory stability, throughput drift and checkpoint
+  overhead. This trial alone does not establish playing strength.
+- [ ] Train from random initialization using only self-play and game rewards.
+  Choose PPO or a separately correct search-target learner based on the game's
+  requirements. Search is optional; if selected, its inference must also be batched
+  on GPU and its simulation must obey information boundaries.
+- [ ] Track policy/value learning, action diversity, game outcomes, illegal actions,
+  per-seat behavior and held-out strength over checkpoints. Use fixed opponents
+  only for evaluation; prevent evaluation information from entering training.
+- [ ] Predeclare target-game strength criteria and compare initial, trained and
+  smaller reference models using held-out games and at least three training seeds
+  for the learning claim. Report uncertainty, regressions and actual compute costs.
+- [ ] Diagnose failed learning or throughput before increasing the campaign length;
+  revise and version the experiment without rewriting completed results.
 
-**Complete under the original minimal criterion:** a reproducible trained policy
-improves over random; tactical robustness remains unresolved.
+**Acceptance:** a sustained, resumable large-model GPU campaign is demonstrated,
+and multi-seed evaluation meets the declared target-game improvement criterion.
+Successful execution, larger parameter count and lower training loss are insufficient
+on their own. If learning fails, this milestone stays open with the evidence retained.
 
-- [x] Observation/action tensors, legal masking, and actor-critic network.
-- [x] Per-player rollouts/GAE, PPO, optimization, and portable checkpoints.
-- [x] CPU/CUDA latest-policy self-play and update-boundary resume.
-- [x] Fixed evaluation, held-out seeds, matched controls, and training curves.
-- [x] Observation audit across all reachable boards and both seat perspectives.
+### E — Play the trained model and reuse the platform
 
-**Acceptance met:** the recorded 64,000-game run improves balanced score against
-random by +0.3160 (approximate 95% interval [+0.2644, +0.3676]). It loses nearly
-every heuristic matchup. This is one training seed, not robust or optimal play.
-Evidence: [Phase 4 results](PHASE4_RESULTS.md).
+- [ ] Load the trained target-game checkpoint in human play, including correct
+  legal-action handling and per-seat memory; finish games without manual state edits.
+- [ ] Measure and expose practical inference latency and optional search budgets.
+- [ ] Document the complete workflow: add rules/encoders, select model capacity,
+  calibrate GPU settings, train/resume, evaluate and play.
 
-## Milestone review and remaining work
+**Acceptance:** after development, the user can add a new game plugin without
+rewriting the learning system, train the declared large model
+through GPU self-play, resume it, evaluate learning and play the trained checkpoint
+using documented commands. A graphical interface is optional.
 
-### Phase 4.5 — Self-play diagnosis and learning reliability (complete)
+**Next task:** audit and finish the general game-plugin/training contract and
+establish the hardware/model-capacity envelope (A and B). Then implement batched
+GPU collection (C).
+Do not default to another tiny Tic-Tac-Toe study as the next delivery milestone.
 
-**Deliverable:** a diagnosed, measurable self-play learning process before
-expanding to harder games. Phase 4 retains its original completion status;
-this phase investigated its unresolved policy weakness. All six tasks are complete
-at the stated bounded scope. [Results and decision](PHASE45_RESULTS.md): no robust
-entropy-setting improvement was established; prioritize public-observation search
-evaluation. [Design](SEARCH_LEARNING_DESIGN.md); [protocol](PHASE45_PROTOCOL.md).
+## Historical work and later research
 
-1. [x] **Diagnose the frozen policy.** Add a read-only public-observation audit of
-   immediate wins and required blocks, with action probabilities, sample counts,
-   and separate X/O results. Trace representative winning/losing trajectories
-   through per-seat rewards, GAE, value targets, and PPO updates. Distinguish
-   incorrect learning signals from exploration/optimization hypotheses. No solver
-   teacher, perfect-play opponent, training labels, or source weight changes.
-   Disposable-copy update checks found no demonstrated signal defect; census
-   tactics remain weak outside narrow self-play paths.
-2. [x] **Add checkpoint monitoring.** Retain periodic immutable checkpoints with
-   hashes/counters and bounded retention. Run reproducible, isolated development
-   evaluations at configured intervals, preserving model/optimizer/global and
-   training-sampling RNG state. Report both seats, tactics, entropy, coverage,
-   outcomes, and optimizer/sample counts. Keep the resume checkpoint separate
-   from the checkpoint chosen by a declared development metric. Preserve exact
-   update-boundary resume; reserve fresh final-test seeds for final assessment.
-3. [x] **Profile and optimize training throughput.** Add a reproducible bounded
-   CPU/CUDA benchmark with warm-up, repeated measurements, explicit CPU thread
-   count, and CUDA synchronization at timing boundaries. Separate collection,
-   inference, GAE/batch preparation, optimization, and checkpoint costs; report
-   games/decisions per second and end-to-end time at equal learning budgets.
-   First reduce repeated CUDA scalar reads, redundant validation, and diagnostic
-   synchronization while retaining input/nonfinite failure checks. Then assess
-   inference batched across games, preserving player-visible inputs, frozen
-   collection weights, per-game/per-seat RNG ownership, targets, and resume.
-   Benchmark CPU as a valid device for small models; GPU utilization alone is
-   not success. Treat larger minibatches, collection sizes, or changed sampling
-   order as learning-protocol experiments, not transparent speed optimizations.
-   Test semantic equivalence and deterministic resume where promised; document
-   numerical differences. No speedup claim without repeated end-to-end evidence.
-4. [x] **Test self-play improvements.** After diagnosis, compare one change at a
-   time to the unchanged PPO baseline: exploration/entropy settings, collection
-   size, or optimizer settings as evidence warrants. Record distinct positions
-   and action diversity; keep latest-policy self-play, game rewards, and both-seat
-   training. Predeclare game and optimizer budgets, development criteria, and at
-   least three training seeds; report every run and both-seat uncertainty. Fix
-   proven defects before tuning. More randomness or more games alone is not a fix.
-5. [x] **Define the search-learning bridge.** Specify bounded policy/value-guided
-   MCTS using simulation constructed only from the permitted public observation,
-   player-relative backups, terminal handling, and seeded exploration. Then
-   specify a separate search-target learner: self-play search visit distributions,
-   game outcomes, and configurable replay position/sequence sampling. Keep PPO
-   as a comparison; do not insert search-chosen actions into PPO with incorrect
-   behavior probabilities. This task is a design, not implementation of MCTS or
-   MuZero. Learned representation/dynamics/prediction follow in the search track.
-6. [x] **Review the evidence and next milestone.** Publish the diagnosis, all
-   bounded experiment results, and an explicit decision to retain PPO or prioritize
-   search-guided self-play. Do not require PPO to solve Tic-Tac-Toe indefinitely
-   before progressing, and do not treat X dominance or low loss as agent strength.
-   Decision: retain default PPO as reference; implement public simulation and
-   bounded search evaluation next. The six-run entropy comparison did not establish
-   improvement; no search-strength claim is made.
+Existing engines, PPO learners, recurrent multi-game learning and CPU public search
+remain available. Earlier completion labels apply only to their bounded studies.
+Their full task lists, results, limitations and unfinished research are preserved
+in the [previous roadmap](docs/archive/2026-10-18-BOARDGAME_AI_PROJECT_PLAN.md).
 
-**Acceptance criteria:** traced learning signals are correct (or defects fixed
-and tested); monitoring is reproducible and isolated; repeated CPU/CUDA timing
-and correctness/resume checks substantiate any throughput change; controlled multi-seed
-self-play comparisons and seat-specific diagnostics are reported; and a documented
-decision identifies the next implementation task. No external training opponents
-or teacher targets enter any run. Report failure to improve honestly; this phase
-does not promise perfect play. Search implementation belongs to the prioritized
-Phase 7 track, which can be brought forward after this review before Phase 5.
+MuZero, learned beliefs, information-set search, transfer, broader tournaments and
+web UI are optional later work. They do not displace milestones A–E. Failed learning
+and transfer findings remain evidence; they are not successful capability claims.
 
-### Phase 5 — Complex mechanics and partial observability (complete)
+## Maintaining this plan
 
-**Deliverable:** a small custom card/worker-placement test game.
-
-Start with one minimal playable engine through the shared interfaces: explicit
-phases, consecutive same-player decisions, public worker placement, hidden hands,
-public deck/discard counts and engine-resolved draws. Validate complete scripted/
-random games and indistinguishable-world observations/actions before adding
-encoders, recurrent memory or PPO. Keep the search milestone frozen as a reference;
-additional Tic-Tac-Toe tuning is optional, not a prerequisite.
-
-- [x] Implement multiple atomic decisions within one turn.
-- [x] Add explicit decision phases and turn/round transitions.
-- [x] Implement hidden hands, deck, discard pile and public card counts.
-- [x] Implement drawing cards and other chance events.
-- [x] Implement filtered observations and player-specific history.
-- [x] Add game-specific hidden-world equivalence and visibility tests.
-- [x] Add recurrent agent memory and recurrent PPO training.
-- [x] Test empty/partial decks, forced passes and repeated actors at round boundaries;
-  reject unsupported skip/interrupt/extra-turn actions atomically. These mechanics
-  are outside the declared game rules rather than unimplemented live phases.
-
-The declared Guildworks engine, filtered human CLI, full visible-history GRU memory
-and complete-episode recurrent PPO are implemented. The 256-game functional run
-and isolated initial/final random evaluation completed; see
-[Phase 5 results](PHASE5_RESULTS.md) for evidence and
-[architecture](ARCHITECTURE.md#guildworks-rules-and-transitions) for the rules.
-This establishes functioning training, not robust strength, balance or a measured
-benefit from memory. Interrupts, extra turns and skipped decision phases remain
-outside the declared rules.
-
-**Acceptance criteria:** the agent can play complete partially observed games; no action reveals an unresolved random outcome; same-player consecutive actions work.
-
-Connect Four is additionally available as a standalone shared-interface engine
-and human-versus-random CLI, with public observations/history and rule tests.
-This adds another playable game; it does not establish multi-game learning or
-select the Phase 6 evaluation protocol.
-
-### Phase 6 — Multi-game learning
-
-**Deliverable:** independent and shared agents trained on multiple games.
-
-The [proposed first bounded milestone](docs/PHASE6_MILESTONE.md) describes an
-independent Connect Four learning baseline and trained-checkpoint human play.
-It is a proposal, not a frozen evaluation protocol or a completed phase task.
-
-- [ ] Add at least two more games using the same engine interface.
-- [ ] Implement game-specific observation encoders.
-- [ ] Implement candidate-action encoding and scoring.
-- [ ] Build a shared Transformer or recurrent backbone.
-- [ ] Implement game-specific policy/value adapters where necessary.
-- [ ] Create a multi-game training sampler and normalize/track rewards carefully.
-- [ ] Compare separate models versus a shared model at matched compute budgets.
-- [ ] Test transfer: train on games A/B, then measure learning speed on game C.
-- [ ] Check for negative transfer and catastrophic forgetting.
-
-**Acceptance criteria:** quantitative comparison of per-game strength, training cost, and adaptation speed on a held-out game.
-
-### Phase 7 — Advanced search and research
-
-**Deliverable:** experimentally validated planning enhancements.
-
-**Partial:** the public-rule Tic-Tac-Toe simulator, bounded search evaluation and
-diagnosis milestone is complete; [Phase 7 results](PHASE7_RESULTS.md) document its
-limited gains. The phase-wide acceptance criterion is not yet met.
-
-- [ ] Implement explicit or learned hidden-state belief estimates.
-- [ ] Validate belief estimates against known simulated outcomes without leaking them at inference.
-- [ ] Implement information-set-aware search baseline.
-- [x] Define evaluator perspective and return semantics separately from action selection.
-- [x] Add bounded policy/value PUCT on public-rule Tic-Tac-Toe simulation (no authoritative clone).
-- [ ] Add separate rollout comparison if warranted.
-- [ ] Compare heuristic, rollout, neural, and hybrid evaluation against fixed baselines.
-- [x] Integrate policy/value guidance into bounded public search.
-- [ ] Implement search-guided self-play with policy/value targets and sampled self-generated replay as a separate learner.
-- [ ] Implement MuZero-style learned representation, dynamics, and prediction as the long-term search-learning extension.
-- [ ] Test chance-event modeling and same-player search backups.
-- [ ] Benchmark planning strength versus computation and latency.
-
-**Acceptance criteria:** advanced methods improve defined metrics relative to a simpler baseline under comparable budgets.
-
-### Phase 8 — Productization and human play
-
-**Deliverable:** reliable human-versus-AI experience and tournament tools.
-
-- [x] Provide CLI human play for Tic-Tac-Toe against random/heuristic agents.
-- [x] Provide filtered Guildworks human CLI play against RandomAgent.
-- [ ] Add human play against trained checkpoints and a web UI if needed.
-- [ ] Add selectable games, agents and difficulty levels.
-- [x] Save and inspect public Tic-Tac-Toe move replays.
-- [ ] Save/load resumable games and extend replay support to other games.
-- [ ] Add tournament runner and ratings or matchup statistics.
-- [ ] Profile inference latency and search budgets.
-- [ ] Document how to add a new game.
-
-**Acceptance criteria:** a user can select a supported game, play against a trained agent, and finish a game without manual state edits.
-
-## Search direction
-
-The Phase 4.5 review brought the first Phase 7 milestone forward. Public simulation,
-16/32 search evaluation and heuristic-O trace diagnosis are complete. Phase 5 is
-complete at its declared scope, and Phase 6 protocol design is next; additional
-search tuning or solving Tic-Tac-Toe is not a prerequisite. Prior-concentration
-ablation is deferred optional research. The longer-term search sequence remains:
-
-1. Validate bounded policy/value-guided search with permitted rule-based simulation.
-2. Train from self-play search policies and outcomes using budgeted replay sampling.
-3. Add learned representation, dynamics, and prediction; compare against rule-based search.
-4. Extend explicitly for chance, hidden information, same-player actions, and multiple players.
-
-PPO remains a comparison baseline. Public-rule bounded search is implemented;
-search-target learning is not. A rules simulator
-provides transitions, not expert opponent decisions. Hidden-information planning
-must respect information sets; cloning true hidden state or searching sampled
-worlds as though their secrets were known is invalid.
-
-## Concerns for later phases
-
-- Variable action spaces and game structures need explicit per-game adapters;
-  imagined-state legality is not automatically supplied by real-engine masks.
-- Hidden information/chance require beliefs, history, and information-set-aware
-  planning; ordinary deterministic MuZero does not solve them automatically.
-- Same-player decisions and multiplayer/general-sum outcomes need explicit
-  perspective, duration/discount, and backup semantics.
-- Shared models may suffer negative transfer/forgetting. Compare separate models
-  at matched compute; define whether the goal is fixed-game strength or faster
-  adaptation to unseen games. Scaling to many games is a long-term research goal.
-- Sample efficiency, wall-clock cost, hardware utilization, strength uncertainty,
-  and inference/search latency must be measured independently.
-- ISMCTS, CFR/ReBeL-style approaches, learned beliefs, and stochastic learned
-  dynamics remain research options, not implemented guarantees.
-- Implement game rules/assets only where permitted by their rights/licenses.
-
-## Maintaining these documents
-
-Update existing status/checklists when work completes; remove superseded pending
-statements. Keep only current concerns and one next task in PROGRESS.md. Put
-technical contracts in ARCHITECTURE.md, visibility rules in INFORMATION_BOUNDARIES.md,
-commands in README.md, and measured protocols/results in dedicated reports.
-Git history preserves task chronology; do not append per-task completion essays
-or duplicate the roadmap in another file.
+Keep only active requirements here. Update checkboxes rather than appending session
+narratives. Current state and one next task belong in PROGRESS.md; implemented
+contracts in ARCHITECTURE.md; commands in README.md and its reference. Preserve
+completed experiment protocols and results without applying their frozen settings
+to unrelated new development.

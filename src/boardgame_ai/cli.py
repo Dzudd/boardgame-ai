@@ -36,6 +36,14 @@ def main(argv: Sequence[str] | None = None) -> None:
     play.add_argument(
         "--save-replay", metavar="PATH", help="Save a public Tic-Tac-Toe game log"
     )
+    play.add_argument(
+        "--checkpoint", metavar="PATH", help="Connect Four portable trainer snapshot"
+    )
+    play.add_argument(
+        "--policy-mode",
+        choices=("sampled", "greedy"),
+        help="Checkpoint action selection (default: sampled)",
+    )
     replay = commands.add_parser("replay", help="Validate and inspect a saved game log")
     replay.add_argument("path")
     train = commands.add_parser("train", help="Run Tic-Tac-Toe PPO self-play training")
@@ -115,18 +123,36 @@ def main(argv: Sequence[str] | None = None) -> None:
         print(f"PyTorch: {torch.__version__}")
         print(f"CUDA available: {torch.cuda.is_available()}")
     elif args.command == "play":
+        if args.checkpoint is not None:
+            if args.game != "connect-four":
+                parser.error("Checkpoint play currently supports Connect Four only")
+            if args.opponent is not None:
+                parser.error("Choose either --checkpoint or --opponent")
+        elif args.policy_mode is not None:
+            parser.error("--policy-mode requires --checkpoint")
         if args.game == "connect-four":
             if args.opponent not in (None, "random"):
                 parser.error("Connect Four supports only the random opponent")
             if args.save_replay is not None:
                 parser.error("Connect Four replay saving is not supported")
+            from pickle import UnpicklingError
+
             from boardgame_ai.cli_connect_four import play_connect_four
 
-            play_connect_four(
-                starts=args.starts,
-                engine_seed=args.engine_seed,
-                agent_seed=args.agent_seed,
-            )
+            try:
+                play_connect_four(
+                    starts=args.starts,
+                    engine_seed=args.engine_seed,
+                    agent_seed=args.agent_seed,
+                    checkpoint=args.checkpoint,
+                    policy_mode=args.policy_mode,
+                )
+            except (OSError, ValueError, RuntimeError, UnpicklingError, EOFError):
+                parser.error(
+                    "Cannot load or use Connect Four opponent; --checkpoint requires "
+                    "a valid portable trainer snapshot (initial.pt/final.pt), "
+                    "and a policy seed must be unsigned 64-bit"
+                )
             return
         if args.game == "guildworks":
             if args.opponent not in (None, "random"):

@@ -28,7 +28,7 @@ state, and resume behavior; evaluation reports remain trusted outputs.
 
 ## Frozen policy diagnostic boundary
 
-The [frozen policy audit](POLICY_DIAGNOSIS.md) accepts only a public acting-seat
+The [frozen policy audit](docs/archive/POLICY_DIAGNOSIS.md) accepts only a public acting-seat
 observation and its supplied legal actions. Public X-first board enumeration and one-ply checks are
 measurement only; no solver labels, tactical rewards or teacher actions enter PPO.
 Seeded trajectories come exclusively from the unchanged latest shared policy.
@@ -59,7 +59,7 @@ clone reaches a search agent. Search visit distributions/outcomes need a separat
 learner; they cannot masquerade as raw-policy PPO samples. Self-generated replay
 is distinct from an opponent pool. Hidden/chance simulations, privileged critics
 and private-world reconstruction remain unsupported. See the
-[search-learning design](SEARCH_LEARNING_DESIGN.md).
+[search-learning design](docs/reference/SEARCH_LEARNING_DESIGN.md).
 
 ## Ownership and player inputs
 
@@ -422,6 +422,31 @@ reconstructive seed metadata and belong in trusted output directories. Public
 figure copies contain aggregate diagnostics/results only, no observations,
 private events, engine snapshots, or model weights. Source files are read-only.
 
+## Public search-target replay and learning
+
+The bounded CPU Tic-Tac-Toe search learner collects only latest-policy self-play
+from engine-filtered actor views and supplied choices. Both seats use the same
+frozen evaluator during each collection batch. Only normalized root visits and
+complete own-seat outcomes supervise the learner; no baseline trajectories,
+tactical categories, solver outputs, PPO probabilities or privileged critics enter
+its batch. Public rule reconstruction verifies replay legality, rewards and
+outcome perspective. Schema validation cannot prove arbitrary caller data origin;
+the production trainer populates replay exclusively through its own collector.
+
+Older completed self-generated target games may be sampled from FIFO replay;
+acting opponents always use the latest frozen evaluator. This is replay of
+learning targets, not a historical opponent pool or a change to PPO's on-policy
+contract. Each sample contains one permitted actor observation, never the other
+seat's view or authoritative state. Targets/rewards stay trusted learning signals
+and never become policy features. Public-rule training supports Tic-Tac-Toe only.
+
+Unlike PPO checkpoints, which exclude observations, the separate search format
+intentionally stores trusted public replay observations/actions/targets and
+reconstructive configuration. Those files are training artifacts, not generic
+public exports or player inputs. Restore validates permitted public trajectories;
+no hidden game support or terminal private revelations are added. No evaluation
+data are collected by this training runner.
+
 ## Public search inputs
 
 The search agent and simulator import no authoritative engine. The constructor
@@ -443,3 +468,72 @@ choices. The human renderer consumes the same observation, with 1–7 column lab
 translated at the UI boundary. AI agents receive structured observations and
 supplied actions, never rendered text or authoritative clones. There are no
 private events or random outcomes in this deterministic game.
+
+Connect Four tensor encoding consumes only the filtered observation wrapper and
+public board. Redundant move history is not a tensor feature. Both seats use
+observer-relative features with explicit actor/terminal planes. The action encoder
+uses supplied choices only; it never infers availability from empty board cells.
+Inactive and terminal masks are empty even when the board has space. Encoding
+and decoding consume no RNG, query no engine and retain no shared tensor storage.
+
+The Connect Four policy and value heads both consume only these encoded visible
+features. Complete-game self-play uses one frozen CPU policy copy for both seats
+with separate private sampling generators; no engine/state/reward/seed reaches
+forward. The collector is trusted orchestration and stores each seat's own
+interval rewards, including a loss delivered on the opponent's terminal move.
+Seat trajectories own their detached tensors; no histories or other-seat views
+become policy features. Terminal bootstrap is zero without terminal inference.
+Cutoffs/deadlines fail without returning incomplete learning samples. No baseline
+evaluation, replay or optimizer is part of this collector.
+
+The Connect Four PPO adapter computes GAE independently for complete own-seat
+sequences, then combines only detached permitted samples. Rewards, advantages,
+returns and behavior probabilities remain learning signals, never extra policy
+or value features. Callers must supply only current-policy self-play provenance;
+schema validation cannot prove the origin of arbitrary caller-created tensors.
+Separate Connect Four checkpoints hold weights/Adam, configuration, counters and
+private shuffle RNG only. Run seeds, observations, histories and global RNG are
+excluded; loading never changes an existing trainer. Evaluation and baseline
+data are not collected by this optimizer/checkpoint layer.
+
+The bounded Connect Four run layer owns self-play provenance: every update uses
+only complete games from the same latest policy in both seats. Absolute game
+seeds, manifest hashes, cumulative timing, outcomes and action/position diagnostics
+are trusted orchestration metadata, never model inputs. The run checkpoint wraps
+only validated trainer state and scalar run metadata; no rollout is serialized.
+Separate fixed-snapshot evaluation uses its own namespace and fresh private
+sampling/opponent generators. Baseline/control decisions and evaluation outcomes
+never enter PPO, initialization, shuffle state or the future self-play schedule.
+
+Connect Four checkpoint human play loads trusted portable trainer state in CLI
+orchestration, then passes only a frozen model copy to the acting policy. The
+reporting wrapper forwards only detached observation/supplied legal actions and
+prints the chosen public column. Neither human nor policy receives checkpoint
+optimizer state, engine/state, rewards, seeds from the manifest, or run diagnostics.
+Private sampling resets per match; human games never enter training or protocol
+evaluation. Checkpoint and run artifacts remain read-only during play.
+
+## Shared Phase 6 recurrent learning
+
+Game adapters consume only the filtered player observation and supplied legal
+tuple. Candidate scores receive visible candidate parameters and the same private
+recurrent context as the value head. Empty tuples stay empty; no fallback or
+authoritative legality reconstruction exists. Game identity selects a declared
+adapter, not hidden state. Guildworks tokens retain the existing visible-event
+filter and independent seat cursor. Public Breakthrough views include no private
+data. Neither reward targets nor another seat's memory become model features.
+
+Trusted collection alone owns engines, step rewards, absolute seeds and episode
+assembly. Both seats act from latest frozen weights; GAE uses own-seat intervals
+and zero terminal bootstrap. Fixed scaling changes reward/value units without
+adding rewards or critic information. Full BPTT resets per episode, never across
+seats. Checkpoints exclude observations/history/hidden states/engines/global RNG.
+Source archives and reconstructive run metadata are trusted training artifacts.
+
+Held-out Breakthrough samples are excluded from development-game fitting. C
+adaptation uses C self-play only, paired untouched C adapters and fresh optimizers;
+old-game evaluations measure retention without rehearsal. Random opponents and
+their outcomes exist only in isolated frozen evaluation, whose reports cannot be
+submitted as PPO records. Evaluation reports include aggregate/public outcomes,
+costs and trusted seeds, not private Guildworks hands or full events. These
+contracts do not certify arbitrary caller-created records' self-play provenance.
