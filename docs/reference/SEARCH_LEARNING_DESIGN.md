@@ -2,10 +2,10 @@
 
 This document retains the search/learner design rationale, prospective learning
 contracts and required tests. Implemented search details are identified separately;
-the shared [architecture](ARCHITECTURE.md) describes the current system.
+the shared [architecture](../../ARCHITECTURE.md) describes the current system.
 
 **Phase 4.5 design; bounded Phase 7 evaluation and CPU search-target learner implemented.**
-The learner's [functional evidence and limits](docs/reviews/2026-10-16-search-target-implementation.md)
+The learner's [functional evidence and limits](../reviews/2026-10-16-search-target-implementation.md)
 do not establish learning quality. Phase 7 as a whole remains incomplete.
 The first milestone is bounded policy/value-guided search for deterministic,
 fully public, two-seat, zero-sum Tic-Tac-Toe. PPO stays a comparison baseline.
@@ -151,8 +151,8 @@ design's scope.
    Checkpoint replay/RNG/optimizer resume must match an uninterrupted tiny run.
 
 **Implemented milestone:** public simulator and bounded search evaluation, with
-raw greedy policy versus 16/32 simulations. See the [Phase 7 protocol](PHASE7_PROTOCOL.md)
-and [results](PHASE7_RESULTS.md). Separate CPU search-target replay learning is
+raw greedy policy versus 16/32 simulations. See the [Phase 7 protocol](../../PHASE7_PROTOCOL.md)
+and [results](../../PHASE7_RESULTS.md). Separate CPU search-target replay learning is
 implemented with `unroll_steps=0`, private replay RNG and exact tiny-run boundary
 resume; its frozen learning-quality comparison remains a later task.
 

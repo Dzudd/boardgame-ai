@@ -1,854 +1,92 @@
 # Architecture
 
-Current implemented contracts and design decisions. Task status belongs in the
-[roadmap](BOARDGAME_AI_PROJECT_PLAN.md); evidence and concerns belong in
-[progress](PROGRESS.md). [Information boundaries](INFORMATION_BOUNDARIES.md)
-are normative for every engine, agent, model, and future planner.
+This is a routing map for implemented contracts, not a required full reference read.
+Read the section relevant to the task in [detailed contracts](docs/reference/ARCHITECTURE_DETAILS.md).
+The [roadmap](BOARDGAME_AI_PROJECT_PLAN.md) describes planned capabilities; it does
+not imply they already exist. [Information boundaries](INFORMATION_BOUNDARIES.md)
+remain normative for observations, hidden state and learning/evaluation separation.
+
+The engine core is independent of PyTorch. Engines own rules, chance and filtered
+observations; agents receive visible observations and supplied legal actions.
+Independent and shared learners currently coexist with distinct checkpoint formats.
+Generic plugin-driven GPU learning remains unfinished.
 
 ## Package and dependencies
 
-Phase 6 now also has a separate shared recurrent learning path, described under
-[Shared multi-game learning](#shared-multi-game-learning). Existing independent
-learner/checkpoint contracts remain available.
-
-Python 3.12 is the development baseline; package metadata permits newer versions.
-The package uses the src/boardgame_ai namespace, setuptools, venv/pip, NumPy 2.x
-and PyTorch 2.x (minimum 2.6). Dependency ranges are not a lockfile or cross-version
-determinism guarantee. It ships py.typed and uses strict mypy, Ruff, pytest, and
-Windows/Linux CI.
-The core engine layer uses the standard library and stays independent of PyTorch.
-Numerical imports are deferred where possible so package imports/CLI help stay light.
-Hardware-specific Torch wheel selection is an environment choice.
+[Read this contract](docs/reference/ARCHITECTURE_DETAILS.md#package-and-dependencies).
 
 ## Engine, records, and lifecycle
 
-GameEngine and Agent are generic abstract interfaces. Core records are frozen,
-keyword-only dataclasses with game-specific typed payloads; freezing is shallow.
-Engines own copying/filtering. No full-state accessor is part of the interface.
-
-| Contract | Meaning |
-|---|---|
-| GameSpec | Stable game ID/name and supported player counts, including solo games |
-| GameState | Authoritative state; never an agent input |
-| Observation | Observer seat, actor, phase, and independently constructed filtered data |
-| Action | Kind and named scalar parameters; no unresolved chance outcome |
-| StepResult | Next actor, termination, incremental seat-indexed rewards, and events |
-| GameEvent | Public recipients=None; private tuple of seats; empty tuple internal |
-| Agent | select_action(observation, legal_actions), optional reset(seed) |
-
-Action parameters reject duplicate names and nonfinite floats. StepResult enforces
-finite rewards and consistent terminal/actor metadata. These schema checks cannot
-certify game rules, reachability, or correct filtering.
-
-- Reset before gameplay queries, steps, or cloning; otherwise GameNotReadyError.
-  Metadata is available before reset. Validate configuration before resetting state.
-- Player seats are zero-based integers; booleans/invalid IDs raise InvalidPlayerError.
-- step executes one atomic decision and resolves required chance before returning.
-  The next actor may be the same player. At termination the actor is None.
-- Every live actor has legal choices; inactive/terminal seats have an empty tuple.
-  Any valid seat can observe/render after termination. Queries do not consume RNG.
-- get_rewards returns the most recent step's incremental rewards, zero at reset.
-  Rewards are neither cumulative scores nor generic winner/draw classifications.
-- Reject malformed Action construction with ValueError; well-formed illegal moves
-  raise IllegalActionError, post-terminal steps GameOverError. Rejection preserves
-  state, phase, rewards, history/events, and RNG; no silent replacement or penalty.
-- decision_for deep-copies observation/actions before agent delivery. Copying
-  prevents mutable aliasing, not secrets incorrectly included by an engine.
-- clone preserves concrete type and copies mutable/RNG state independently without
-  drawing or reseeding. Tic-Tac-Toe implements this with deepcopy.
-
-Use create_rng(seed) for a private random.Random. Integers restart its sequence;
-None uses system entropy. Engine and agent RNG are separate from global Python,
-NumPy, and Torch randomness. Reproducibility also requires fixed runtime, code,
-action ordering, configuration, reset behavior, and call sequence.
+[Read this contract](docs/reference/ARCHITECTURE_DETAILS.md#engine-records-and-lifecycle).
 
 ## Connect Four
 
-`games.connect_four` implements a deterministic 7×6 gravity board through the
-shared GameEngine contract. Each atomic `drop(column)` fills the lowest free
-cell; turns alternate from configurable starting_player (default 0). Four in
-any straight direction wins immediately, including on the last cell; otherwise
-42 filled cells draw. Win rewards are +1/−1, all other steps zero. No chance,
-pass or pop-out mechanics exist. Reset validates the seed before mutation.
-
-Immutable public observations expose the top-to-bottom row-major board and
-executed column history for active, inactive and terminal seats. Supplied legal
-columns are 0–6 left to right, empty for inactive/terminal seats. Human CLI labels
-and input are 1–7; its renderer draws the board above the labels. The random
-opponent receives the same structured contract. Outcome adaptation reads only
-the terminal public board; cloning is independent. Search/replay integration
-remains future work. Rule and CLI tests include shared engine conformance.
-
-`models.encoders` provides Connect Four observation and fixed column-action
-encoders. Observations become fresh contiguous CPU float32 tensors `(6, 6, 7)`:
-own discs, opponent discs, empty cells, own turn, opponent turn, terminal.
-Coordinates stay top-to-bottom/left-to-right for both seats. Turn/terminal planes
-are constant; terminal views retain the board with zero turn planes. Public move
-history is omitted because board and actor suffice for this deterministic game.
-Schema validation rejects invalid seats, cells and phase/actor combinations; it
-does not certify reachability, gravity or history consistency.
-
-`drop(column)` maps to indices 0 through 6. Fresh CPU bool masks `(7,)` derive
-exclusively from supplied choices, including all-false inactive/terminal masks.
-Decoding returns the supplied object; malformed/duplicate/unavailable choices
-reject. The existing logit masker supports seven-column masks and rejects empty
-choices. This fixed mapping is not general candidate-action encoding/scoring.
-
-`models.connect_four.ConnectFourActorCritic` has a 252-to-64-to-64 tanh body,
-seven raw policy logits and one unbounded observer-return value, with 20,872
-parameters. Both heads receive the same visible tensor; terminal outputs are
-predictions, not permission to act. CPU float32 initialization is explicit;
-`initial_connect_four_model` uses an unsigned 64-bit seed without advancing global
-CPU/initialized-CUDA RNG. Forward supports batch dimensions and explicit model
-dtype/device conversion, rejecting incompatible shapes/dtypes/devices/nonfinite
-inputs. Model/encoding identities match the declared independent protocol.
-
-`training.connect_four.collect_connect_four_self_play` copies one current model
-to frozen CPU inference for both seats and resets the supplied Connect Four
-engine. Only detached filtered decision tensors reach inference. Private CPU
-sampling generators use the supplied unsigned 64-bit seeds directly; the v1
-training seed helper implements the protocol's SHA-256 namespace/index/stream
-schedule. Source weights, gradients and mixed child train/eval modes are retained,
-including when the source is on CUDA. The caller owns updates between games;
-the run layer freezes weights throughout each update collection batch.
-
-Complete games return `ConnectFourRollout` with separate `ConnectFourTrajectory`
-records: CPU float32 observations/log probabilities/values/own rewards, bool
-legal masks, int64 actions/global step indices and zero terminal bootstrap.
-Each seat's rewards accumulate through intervening opponent decisions and the
-terminal move. No terminal inference occurs. Live cutoffs (default 42 steps)
-raise instead of returning partial samples. An optional absolute monotonic
-deadline raises before reset or between decisions; later failures retain
-executed engine steps but return no partial training records. The collector
-neither optimizes nor writes artifacts. These records are a separate type;
-existing Tic-Tac-Toe PPO validation/checkpoints remain unchanged and reject
-Connect Four tensor dimensions.
-
-`training.connect_four_ppo` adds an explicit Connect Four batch builder, loss
-entry point and `ConnectFourPPOTrainer`. It computes each complete seat's GAE
-before concatenating owned detached samples. Step sequences, zero terminal
-bootstrap and `(6,6,7)`/seven-action shapes are validated. Defaults match the
-declared functional protocol (gamma=1, two epochs, minibatch 32). The adapter
-shares clipped loss, half-MSE, entropy, population-standard-deviation advantage
-normalization, private shuffling and Adam/gradient clipping with Tic-Tac-Toe;
-the old adapter retains its shapes/defaults and numerical update order.
-Connect Four seeds its private shuffle generator directly with the supplied
-unsigned 64-bit seed. Updates support an absolute monotonic deadline checked
-between minibatches. A failure after preflight invalidates that trainer's save
-boundary; reload a saved checkpoint before continuing. No partial update can
-be saved through the Connect Four writer. Records of optimizer/sample counts
-advance only at successful boundaries, except the actual optimizer-step counter
-also reflects successful minibatches before a failure.
-
-`training.connect_four_checkpoint` saves a separate schema identifying game,
-model, encoding and learner, with CPU-portable model/Adam, PPO configuration,
-mode, update/optimizer/sample counters and private shuffle state. Full identity,
-tensor, Adam (including step counts), counter and RNG validation precedes load
-into a fresh trainer or save publication. Existing destinations must be compatible
-Connect Four checkpoints no newer than the saved trainer. Same-directory atomic
-replacement preserves the old file on failure under a single-writer assumption.
-Restricted loading preserves global RNG; CPU continuation with the same future
-batches is exact, with separate same-device CUDA tests. Cross-device equality is
-not promised. No observations, gradients, seeds, engine data or global RNG are
-serialized. These remain trainer-level checkpoints; `training.connect_four_run`
-embeds their validated payload in a separate versioned atomic run envelope.
-The explicit CPU/CUDA runner uses one CPU thread and persists absolute update/game scheduling, settings/prose hashes and copies,
-source/runtime identity, game/decision/optimizer counters and checkpoint elapsed
-time. A separate budget ledger charges cumulative attempts, including failed
-work, with conservative outstanding reservations after hard process termination.
-Immutable initial/final trainer snapshots support separately requested evaluation.
-Checkpoint publication precedes JSONL metrics; validated tail backup/repair never
-invents rows. Source/runtime/settings mismatch and corrupt counters reject before
-metrics repair. Healthy completed resumes preserve bytes; missing final snapshots
-can be restored from the final boundary. `training-status.json` records incomplete
-counts and overruns. This is a single-writer runner with no mid-update restore.
-The run module's `--check-only` validates new-run paths/settings or existing
-resume/evaluation state without starting games, optimizing, repairing metrics or
-publishing artifacts. New checks construct no trainer; existing checks use
-restricted checkpoint validation. RNG, threads and cumulative ledgers are
-preserved. CLI summaries distinguish a reached pause boundary from a complete
-run, return nonzero on incomplete work, and report Ctrl+C separately. This
-readiness check is not a file reservation or a guarantee of permissions or timing.
-Training CLI progress is a single bounded-width, carriage-return stderr bar,
-throttled to four refreshes/second. It displays the saved-update percentage/count,
-phase and remaining cap, ending with one newline. Redirected stderr logs at most
-once every 30 seconds plus the final state. `--quiet` suppresses the bar; final
-stdout JSON remains separate. An optional programmatic `progress`
-callback receives text at startup, phase boundaries, durable updates and stopping.
-Collection/optimization messages do not claim a saved update. Only after checkpoint
-and metrics publication does the saved-count summary advance. Console output adds
-wall cost but does not change seeds, samples, shuffle order or PPO arithmetic.
-
-A byte-pinned [source compatibility map](src/boardgame_ai/training/protocols/connect-four-console-compat-v1.json)
-permits the original CUDA runner and its verbose-console successor to resume
-with the progress bar and an additive
-`execution_source_sha256` status field. The predecessor and current full source digests must match the
-reviewed mapping; other source/runtime/settings mismatches still reject. Saved
-manifest/protocol/checkpoint identities are not rewritten. This is a specific
-compatibility mapping, not an option to ignore source changes.
-
-
-Run settings select `cpu`, `cuda`, or `cuda:N`; unavailable hardware rejects
-before new outputs or resume repair. Initialization stays privately seeded on CPU,
-then transfers to the configured device before Adam construction; resume restores
-portable Adam moments to that device. Manifests/preflight/console summaries record
-requested/resolved placement and hardware/runtime details. Connect Four CUDA
-synchronizes before bounded minibatch deadline checks and at collection,
-optimization, checkpoint and budget-settlement boundaries. An expired synchronized
-update cannot publish; failed synchronization retains the outstanding reservation.
-Cross-device numerical identity and throughput improvements are not promised.
-The separate [100,000-game protocol](docs/phase6/CONNECT_FOUR_CUDA_100K_V1.md)
-fixes a fresh identity, seeds, output and cumulative caps; it has not been executed.
-Portable CPU evaluation and human inference remain independent of training hardware.
-
-`training.connect_four_evaluation` reads fixed initial/final snapshots into fresh
-CPU models, uses separate per-game engine/policy/opponent streams and runs a paired
-random control. Its exclusive report preserves raw outcomes, per-seat scores and
-lengths, errors/truncations, approximate paired effects and partial counts. It
-never feeds PPO or changes training artifacts other than its separate evaluation
-budget. A partial report is preserved; evaluation does not resume mid-schedule.
-The [protocol](docs/PHASE6_CONNECT_FOUR_PROTOCOL.md) describes conservative crash
-accounting and initialization recovery limits.
-
-`agents.connect_four_policy.ConnectFourPolicyAgent` owns a frozen CPU copy of a
-finite CPU/CUDA float32 source model, preserving source gradients and child modes.
-It masks supplied choices, samples with a private directly seeded unsigned 64-bit
-CPU generator or selects the highest legal logit (lowest-column ties). It accepts
-only observation/actions and rejects inactive/terminal selection. Global RNG is
-preserved. This adapter does not change the declared evaluation schedule or mode.
-
-`play --game connect-four --checkpoint PATH` validates a portable trainer snapshot
-on CPU before prompting and wraps this policy in the existing reporting agent.
-`--policy-mode sampled|greedy` defaults to sampled; `--agent-seed` controls private
-sampling. Random play remains the default. Baseline/checkpoint options conflict,
-and unsupported games, replays, foreign/corrupt checkpoints and run-level latest
-envelopes reject. Initial/final snapshots are accepted; no optimizer is retained
-by the acting policy and no checkpoint/run file is written. Tests cover complete
-both-seat play and an optimized disposable checkpoint; no strength is asserted.
+[Read this contract](docs/reference/ARCHITECTURE_DETAILS.md#connect-four).
 
 ## Guildworks rules and transitions
 
-`games.guildworks.GuildworksEngine` is a standard-library, two-seat engine.
-Four rounds each contain four turns (two workers per seat); round r starts with
-seat (r-1)%2 and turns alternate. Each turn is `place` then `craft`, with the
-same actor for both decisions. After crafting/passing, advance to the opponent,
-or clear placements/refill workers at the next round. The fourth round ends
-after its fourth craft/pass: exactly 32 decisions, phase `finished`, actor None.
-
-Setup shuffles twelve cards (four each of values 1, 2, 3) with a private seeded
-Random, then deals two to seat 0 and two to seat 1. Both start with two ink and
-zero points. Cards have no identity beyond value; hands are unordered multisets.
-Each public space accepts one worker per round:
-
-| Space | Immediate engine-resolved effect |
-|---|---|
-| inkwell | Gain two ink |
-| archive | Draw up to two remaining cards privately |
-| festival | Gain one point |
-| lottery | Uniformly gain one, two or three ink |
-
-Craft one owned card: pay ink equal to its value, gain value+1 points, and reveal
-it in the ordered public discard. Passing is always available in `craft`, even
-with affordable cards. No hand limit, reshuffle, income, interrupts or extra turns.
-Empty draws take zero cards and still proceed to craft; a partial draw takes the
-remaining cards. No placement is offered on an occupied space. Worker counts
-guarantee a free space at every live placement decision.
-
-Actions are `place(space: str)`, `craft(card: int)`, or parameterless `pass`.
-Placement ordering follows the table; crafting lists distinct affordable own
-values ascending, then pass. No action identifies a future chance outcome.
-Incremental rewards are each seat's points gained on that decision, zero for
-other effects; there is no terminal reward bonus or loser penalty. Summed episode
-rewards equal final public scores. Higher score wins; equal scores draw with no
-tie-breaker. `guildworks_outcome` returns actual scores and this classification.
-`render_guildworks` consumes only a filtered observation; engine rendering delegates
-to it. Existing runner/batch/evaluation interfaces need no changes.
-
-`cli_guildworks` adds human-versus-random terminal play via the existing runner.
-Human agents select numbered supplied actions; AI reporting exposes only public
-chosen actions. Round starts still follow the engine; `--starts` assigns the human
-to seat 0 or 1. Default opponents are game-specific (Tic-Tac-Toe heuristic,
-Guildworks random). Guildworks rejects heuristic opponents and replay saving.
+[Read this contract](docs/reference/ARCHITECTURE_DETAILS.md#guildworks-rules-and-transitions).
 
 ## Guildworks recurrent learning
 
-`models.guildworks` defines `guildworks-visible-sequence-v1`: each seat starts
-from zero memory, consumes newly visible history events in order, then one current
-snapshot on each own decision. No events are consumed twice; there is no history
-truncation. Two seats have independent cursors and GRU state, including consecutive
-decisions and repeated actors across round boundaries. Reset clears both memory
-and history; changing seat or replacing a consumed history prefix rejects.
-
-Every float32 token has 52 fields: two token-kind flags, 34 snapshot fields and
-16 event fields, with the unused block zero. Snapshot fields, in order, are round
-(/4), place/craft/finished one-hot, actor free/self/other one-hot, four placements
-in space order (each free/self/other), own/other workers (/2), ink (/32), scores
-(/36), own counts of values 1/2/3 (/4), own/other hand counts (/12), deck count
-(/12), and discard value counts (/4). Discard order is retained by craft history.
-Event fields are draw/card/place/points/ink/craft/pass/round one-hot, owner
-free/self/other one-hot, numeric value (/4, zero for a string), and space one-hot.
-Private card receipts imply the observer as owner. All scales are fixed, with
-no clipping or normalization using hidden state. Inactive/terminal snapshots
-encode normally, but are never selected for action or terminal value bootstrap.
-
-Indices 0–3 place at inkwell/archive/festival/lottery, 4–6 craft values 1/2/3,
-and 7 passes. Masks encode only supplied legal actions; decoding returns the
-supplied object. Empty choices produce an all-false mask; sampling them rejects.
-This small fixed mapping is game-specific, not Phase 6 candidate-action scoring.
-
-`GuildworksRecurrentPolicy` is GRU(52,32), a linear eight-logit policy head and
-an unbounded own-points value head. No dropout or privileged critic. The frozen
-CPU `RecurrentGuildworksAgent` implements the existing Agent contract with a
-private sampling generator. Forward inference carries detached hidden state;
-models receive only visible tokens and that state. `initial_model` seeds CPU
-initialization inside fork_rng and preserves global RNG. Rule modules remain
-independent of Torch; the observation record has its own framework-free module.
-
-`training.guildworks` collects complete 32-decision games, 16 decisions per seat,
-with one latest frozen policy shared by both seats. Own incremental rewards
-accumulate until the next own decision, even if actors repeat. GAE uses a player
-decision clock (default gamma=1, lambda=.95) and terminal bootstrap=0. Rewards
-target own public point return; they are neither zero-sum nor win-probability
-targets. Episode records contain only that seat's tokens, decision positions,
-supplied masks, sampled indices, behavior log probabilities/values and own rewards.
-
-Recurrent PPO uses whole seat episodes as minibatch units (default eight, two
-epochs). Every episode is recomputed from zero with current weights on every
-epoch; gradients flow through the full visible stream and losses apply only at
-own decision positions. There are no stored hidden-state shortcuts, episode
-concatenation, padding, truncated BPTT, replay or burn-in. Full-batch advantage
-normalization and clipped PPO/value/entropy losses match the existing conventions.
-Behavior checks use a current CPU copy matching collection; CPU/CUDA arithmetic
-can differ during optimization. Exact CPU update-boundary continuation is tested;
-cross-device numerical identity and speed are not promised.
-
-`training.guildworks_run` provides a separate bounded CPU/CUDA command, preserving
-the Tic-Tac-Toe train command and checkpoint schema. Its SHA-256 seed text is
-`boardgame-ai/guildworks/v1:{root}:{index}:{stream}` (first eight bytes). Streams
-are initialization/shuffle at index zero, engine/seat:0/seat:1 at absolute game
-index, and evaluation at seat index; evaluation has a separate declared root.
-Portable atomic checkpoints identify game/model/encoding and validate CPU model,
-Adam, configuration, counters, mode and private shuffle RNG. They exclude episodes,
-hidden states, history, engines and global RNG. New output must be absent/empty;
-resume requires identical seed, games/update and PPO config. Latest checkpoint
-is authoritative; interrupted work restarts from its update boundary. Metrics are
-saved after the checkpoint, so a crash may leave a missing metrics row. There is
-no mid-episode/update resume. Frozen initial/final random evaluations are separate
-from PPO; manifests and metrics are trusted outputs. See
-[Phase 5 results](PHASE5_RESULTS.md).
+[Read this contract](docs/reference/ARCHITECTURE_DETAILS.md#guildworks-recurrent-learning).
 
 ## Tic-Tac-Toe and baseline agents
 
-The board is a nine-cell row-major tuple of None or seat IDs. Seat 0 is X and
-starts by default; starting_player=1 permits O-first and persists through reset
-and clone. Placements have kind place and one integer cell parameter in 0–8.
-Terminal wins reward winner +1 and loser -1; draws and live steps reward zero.
-Both seats see the public board; returned observations remain stable after moves.
-Rendering uses the same public views and has no print side effect.
-
-RandomAgent samples uniformly over supplied tuple entries with a private seeded
-RNG, ignores observation data, and rejects empty choices without advancing RNG.
-Invalid reset seeds preserve the existing generator. Use a separate agent per seat.
-TicTacToeHeuristicAgent deterministically prioritizes win, block, center, corners,
-then edges; ties use row-major/lowest indices. It has no memory or RNG and does
-not guarantee optimal play or fork defense. Both return supplied legal actions;
-the engine still validates execution.
+[Read this contract](docs/reference/ARCHITECTURE_DETAILS.md#tic-tac-toe-and-baseline-agents).
 
 ## Simulation, metrics, human play, and replays
 
-run_match resets the engine and distinct per-seat agents with separate lifecycle
-seeds; play_game continues initialized state. Both follow engine actors and pass
-only decision_for inputs. max_steps is a required nonnegative atomic-decision
-budget: zero executes nothing, live cutoff is truncation, and termination on the
-last allowed step takes precedence. MatchResult stores steps, summed executed
-rewards, and termination/truncation, without observations/events. Exceptions
-propagate without retry; configuration is checked before resets, but custom
-reset failures and executed steps are not transactional across a whole match.
-
-run_batch resets fixed seats each match, returns immutable SeededMatchResult
-records, and fails at the first exception without returning a partial tuple.
-Zero matches leaves instances untouched; a subrange reproduces matching absolute
-indices. evaluate_batch instead records ordinary failures and resets the next
-match; interrupts propagate. An explicit game outcome adapter maps terminal games
-to finite seat scores, winners, and draw status, supporting ties/cooperative games.
-Tic-Tac-Toe classification uses the terminal public board and +1/-1/0 scores.
-
-Evaluation records use fixed illegal_action/match_failed/outcome_failed categories,
-never exception text/types/tracebacks. Reset/play failure leaves length/rewards
-unknown; outcome failure retains the runner result. Only completed/classified
-matches contribute to outcome/length means; undefined means/extrema are None.
-Errors/truncations are not draws. Explicit version-1 JSON exports require existing
-parents and overwrite chosen files; labels and reconstructive seeds are trusted data.
-
-CLI play chooses human or AI starter; starter is X. It displays the board beside
-available cell numbers, retries invalid human input without a step, and cancels
-cleanly on quit/EOF/Ctrl+C. Baseline opponents are random/heuristic. Trained-policy
-human play is not implemented. Final presentation uses the human's public view.
-
-Opt-in version-1 Tic-Tac-Toe replay logs contain starting seat, successful public
-actor/cell placements, and completed/cancelled/truncated status. Cancelled prefixes
-are valid. Validation reconstructs through an engine before displaying anything;
-unknown schemas/games, illegal actors/cells, post-terminal moves, and inconsistent
-status reject. No seeds, snapshots, rewards, or private events are exported.
-The optional on_step callback is trusted orchestration, not proof that other
-games' actions are public. A recorder belongs to one game. Replays do not resume
-saved games or simulate hidden chance; other games need their own adapter.
+[Read this contract](docs/reference/ARCHITECTURE_DETAILS.md#simulation-metrics-human-play-and-replays).
 
 ## Observation, actions, and network
 
-| Tensor | Shape | dtype / placement |
-|---|---|---|
-| Observation | (6, 3, 3) | Fresh contiguous CPU float32, no autograd history |
-| Legal mask | (9,) | Fresh CPU bool |
-| Policy/value input | (..., 6, 3, 3) | Nonempty floating tensor matching model dtype/device |
-| Raw policy output | (..., 9) | Same model dtype/device |
-| Raw value output | (...) | Unbounded observer-relative estimate |
-
-Observation channels: own marks, opponent marks, empty cells, own turn, opponent
-turn, terminal. All binary; last three are constant planes. The observing seat
-sets perspective, even if inactive. Coordinates never rotate: cell i maps to
-(i // 3, i % 3). Live phase play requires actor 0/1; finished requires None.
-Terminal views retain the board, clear both turn planes, and fill terminal with
-ones. No reward/result channel. Encoding consumes only the observation, never
-engine/state/actions/rewards/seeds/RNG, and shares no mutable output storage.
-Schema/phase/seat/cell failures reject with sanitized ValueError; schema checking
-is not reachability checking. Stack/transfer explicitly for batching/device changes.
-
-Action encoding maps placements to indices 0–8; decoding returns the supplied
-matching Action. Duplicate indices, invalid parameters/indices, and unavailable
-choices reject. The legal encoder consumes supplied actions without querying rules.
-Empty terminal/inactive tuples encode all-false, including boards with empty cells.
-
-mask_action_logits requires finite floating logits and bool masks of identical
-nonempty shape/device, with at least one legal entry per row. No broadcasting or
-automatic transfer. Illegal entries become -inf, with zero softmax probability
-and zero logit gradient; legal gradients remain connected. Inputs are unchanged.
-Filter terminal/inactive rows before selecting actions; no fallback move.
-
-TicTacToeActorCritic flattens 54 features into shared 64→64 tanh layers and separate
-linear nine-logit/scalar-value heads. Both heads use the same permitted features.
-There is no recurrence, dropout, running statistics, convolution, or privileged
-critic. Arbitrary leading batch dimensions and noncontiguous inputs are supported.
-Initialization uses caller-controlled Torch randomness and explicit CPU float32;
-forward consumes no RNG and validates shape/finiteness/dtype/device. Use explicit
-.to and no_grad/inference_mode for inference. Terminal predictions stay raw;
-collectors independently impose zero terminal bootstrap. Masking/sampling are separate.
+[Read this contract](docs/reference/ARCHITECTURE_DETAILS.md#observation-actions-and-network).
 
 ## Collection, credit assignment, and PPO
 
-Training experience comes only from latest-policy self-play, without external
-teachers, expert/solver labels, baseline training opponents, or a historical
-opponent pool. Historical self-generated replay is implemented only in the
-separate public search-target learner; it never enters PPO.
-Fixed baselines measure strength outside training; their samples never enter PPO.
-No perfect solver is required. Public tactical audits are diagnostics, not labels.
-
-Defaults: collect 64 complete empty-board X-first games using one frozen CPU
-snapshot for both seats. No weights change during collection. Each player's
-categorical legal-action sampling has a private CPU generator seeded with
-create_rng(sampling_seed).getrandbits(64). No epsilon-random exploration exists.
-Per-game model inference preserves weights, modes, and existing gradients.
-
-PlayerTrajectory stores detached observations (T,6,3,3), bool masks (T,9), int64
-actions/global step indices (T,), float32 old log probabilities/values/rewards (T,),
-and scalar bootstrap. Empty segments retain these shapes. Interval rewards sum
-own incremental rewards after a player's action until their next action/end,
-including opponent steps; both seats receive terminal rewards. Rewards before
-the first decision enter rollout totals only. Records own mutable tensors and
-remain trusted learning data, not public exports.
-
-Discount advances per player's decision, not per global atomic step. Intervening
-rewards sum without internal discounting. GAE uses delta=r+gamma*next_value-value,
-A=delta+gamma*lambda*A_next, returns=A+value. Never interleave seats or cross episode
-boundaries. Matching finite 1-D floating inputs produce detached same-dtype/device
-outputs; empty segments work and invalid coefficients/overflow reject.
-Gamma and GAE lambda must each be in [0, 1].
-True termination bootstraps zero without a model call; live cutoffs bootstrap
-from that player's filtered observation, including inactive views. Empty segments
-bootstrap zero. Collection resets every call; it does not resume a partial rollout.
-Time-duration discounting needs an explicit future contract.
-
-Prepare per-seat GAE before combining all on-policy decisions. Clone/detach
-inputs/targets; reject empty batches, nonfinite data, positive old log probabilities,
-or actions outside their saved legal masks. CPU storage transfers explicitly to
-colocated CPU/CUDA float32 parameters for optimization. Old targets stay frozen.
-Train on every decision in shuffled minibatches each epoch; batching is not
-subsampling one or two moves per game. Longer games contribute more decisions.
-
-| PPO setting | Default |
-|---|---:|
-| Adam learning rate | 0.0003 |
-| Gamma / GAE lambda | 0.99 / 0.95 |
-| Policy clip | 0.2 |
-| Value / entropy coefficient | 0.5 / 0.01 |
-| Epochs / minibatch decisions | 4 / 64 |
-| Gradient norm limit | 0.5 |
-| Advantage normalization | Full-batch population std, floor 1e-8 |
-
-Policy loss is -mean(min(r*A, clamp(r,1-epsilon,1+epsilon)*A)), with
-r=exp(new_log_prob-old_log_prob). Value loss is half-MSE to detached returns, with
-no value clipping. Total combines policy + weighted value - legal entropy bonus;
-illegal log terms are zeroed before entropy multiplication to avoid 0 * -inf.
-Singleton/constant advantages normalize to zero. Private CPU randperm shuffles
-minibatches, including partial final batches. Gradient clipping rejects nonfinite
-norms; failed later minibatches do not roll back successful earlier updates.
-Diagnostics are sample-weighted means of pre-step losses, legal entropy,
-approximate KL mean((r-1)-log(r)), clip fraction, and sample/optimizer counts.
-There is no KL early stop or learning-rate schedule. These are not strength metrics.
+[Read this contract](docs/reference/ARCHITECTURE_DETAILS.md#collection-credit-assignment-and-ppo).
 
 ## Seeds, checkpoints, and resume
 
-All schedules hash UTF-8 decimal fields using SHA-256 and decode big-endian integers.
-They avoid Python hash() and do not consume gameplay RNG.
-
-| Schedule | Hashed text | Bytes used |
-|---|---|---|
-| Batch | boardgame-ai/batch/v1:{seed}:{index}:{stream} | All 32 |
-| Training | boardgame-ai/training/v1:{seed}:{index}:{stream} | First 8 |
-| Evaluation case | boardgame-ai/evaluation/v1:{root}:{opponent}:{learner_seat} | All 32 |
-
-Batch streams are engine and agent:{seat}. Training initialization/shuffle use
-index zero; game index is update_index*games_per_update+i, with engine and
-seat:0/seat:1 sampling streams. Evaluation derives case seeds before the batch
-schedule. Initialization uses fork_rng to preserve global CPU/CUDA state.
-
-Version-1 PPO checkpoints fix game/model/encoding identity and store CPU model
-weights, Adam state/configuration, model mode, update/step counters, and private
-shuffle RNG. No engine, rollout, gradients, global RNG, or engine/sampling seeds.
-Save validates then atomically replaces a temporary sibling in an existing
-parent. Load uses restricted weights_only loading/strict schema validation on
-CPU and restores a fresh trainer on explicit CPU/CUDA hardware, preserving global
-RNG. Adam moments follow parameters; scalar step bookkeeping may stay CPU.
-
-A new run requires absent/empty output. training.json fixes seed, collection size,
-and PPO configuration; latest.pt is authoritative resume state. Save each complete
-update before appending updates.jsonl/progress callback. Crashes can leave missing
-log rows; resume restarts unsaved work and derives future game seeds from absolute
-indices. Total requested updates cannot precede the saved count. Seed, collection
-size, and PPO config must match; device changes are allowed without numerical
-identity promises. Same-runtime/device uninterrupted-versus-resumed state is tested.
-No partial-minibatch/episode resume exists. Optional checkpoint monitoring adds
-immutable bounded snapshots and isolated development evaluation at update boundaries. CUDA is CLI default and fails if unavailable;
-there is no silent CPU fallback. CPU execution must be requested explicitly.
-
-Tic-Tac-Toe resume validates the metrics log against the authoritative checkpoint
-before further updates or monitoring. Only a final unterminated record that is a
-valid unfinished JSON object prefix is recoverable. All earlier or LF-terminated
-malformed records, invalid update/sample schemas, duplicate/non-increasing updates
-and history ahead of the checkpoint reject before log writes. Metrics emitted by
-the writer are ASCII JSON; invalid UTF-8 is corruption, not a torn emitted token.
-Complete rows and gaps are retained. Missing rows make cumulative samples unknown.
-An exclusively published `updates.jsonl.recovery-SHA256.bak` preserves all original
-bytes before atomic replacement removes a torn tail or adds a missing final LF.
-Retries reuse only an identical backup. No checkpoint/model/Adam/shuffle changes
-or synthetic rows occur during recovery. Single-writer ownership remains required.
-This recovery contract applies to the Tic-Tac-Toe runner; the separate Guildworks
-runner is unchanged.
+[Read this contract](docs/reference/ARCHITECTURE_DETAILS.md#seeds-checkpoints-and-resume).
 
 ## Evaluation and analysis
 
-TicTacToePolicyAgent snapshots a frozen CPU float32 model and owns sampling RNG.
-Sampled mode matches training; greedy mode picks lowest-cell maximum-logit ties.
-Fixed evaluation uses random-v1/heuristic-v1, equal X/O counts, X-first rules,
-nine-step bounds, root seed 20261015 by default, and shardable absolute indices.
-Greedy versus deterministic heuristic repeats one path per seat, not independent trials.
-
-Checkpoint evaluation hashes/loads one byte snapshot without modifying source
-weights, logs, or configuration. Reports identify hash/counters/mode/protocol,
-seeds, outcomes, lengths, and fixed errors. The CLI preflight and public report
-writer share destination validation: reserved training/monitoring names,
-development reports, `*.pt` checkpoints and snapshot directories reject, even if
-absent. Resolved paths are checked too. Every existing destination rejects,
-including hard links and symlinks; exclusive creation at the write boundary
-prevents truncation if a file appears after validation. Parents must exist.
-There is no report-overwrite bypass.
-Errors/truncations remain visible and yield nonzero CLI status. No optimizer in policy evaluation. Separate bounded search evaluation is described below.
-Held-out RNG namespaces do not imply unseen board positions.
-
-Analysis replaces only the learner with random/heuristic controls under matching
-engine/opponent/index schedules. Reject incomplete records or mismatched protocols.
-The primary effect is paired policy-minus-random score against random, equal
-seat weighting; SE=0.5*sqrt(SE_X^2+SE_O^2), approximate 95% interval ±1.96 SE.
-Positive lower bound and at least 30 games per seat meet the original Phase 4
-criterion for a checkpoint, not training-seed generalization or optimal play.
-
-Validate strictly increasing finite log rows; missing updates break plotted lines
-and restart the labeled 25-update trailing average. Self-play curves are not
-held-out strength over time. Optional Matplotlib renders headless PNG/SVG loss,
-entropy/KL/clipping/outcome/length curves and mean-score comparisons. Analysis
-requires separate absent/empty output; preserve input hashes/raw trusted reports.
-Aggregate figures/results live in docs/phase4 and dedicated result documents;
-checkpoints/logs/raw reports remain ignored under runs. Once evaluation guides
-tuning or checkpoint selection, reserve fresh final-test seeds.
+[Read this contract](docs/reference/ARCHITECTURE_DETAILS.md#evaluation-and-analysis).
 
 ## Development monitoring and performance
 
-`MonitoringConfig` is an optional `run_self_play_training(..., monitoring=...)`
-argument, disabled by default. A separate immutable monitoring manifest preserves
-legacy training manifests and requires identical settings on resume. At configured
-boundaries, complete checkpoint bytes are published exclusively using a temporary
-file and a same-directory hard link. Existing mismatched snapshots reject.
-`latest.pt` remains the authoritative resume marker. New development reports are
-atomic and reused by checkpoint hash on retry; the newest configured number of
-snapshots plus a separately pinned best are retained. Reports are retained even
-when their non-selected checkpoints age out. `best.json` selects equal-weighted
-random/heuristic × X/O mean score, earliest tie, without affecting collection.
-Evaluation failures preserve completed updates and can retry at the current
-boundary. Training is single-writer; no concurrent run-directory writers supported.
-
-Evaluation loads only copies on CPU and isolates/restores Python, NumPy and global
-CPU/initialized-CUDA RNG, including failure paths. Training shuffle/model/Adam and
-per-game/seat sampling schedules are untouched. Reports include seat-specific
-outcomes and approximate game-level intervals, census/visited tactics, entropy,
-position/action diversity and game/sample/optimizer counters. Missing historical
-log rows make cumulative sample counts unknown. New isolated experiments never
-modify the original completed run. Reserve fresh final seeds after tuning.
-
-PPO validates/clones its incoming batch once; internal minibatches inherit checked
-inputs. Public loss calls still validate independently, and every minibatch checks
-model outputs, losses and clipped gradients for nonfinite values. Finite flags and
-loss diagnostics are consolidated; float64 device accumulators retain the previous
-Python-float weighted summation arithmetic with one host transfer per update.
-Repeated reference comparisons found exact same-device model/Adam/shuffle equality.
-The collector remains sequential: the fixed-corpus batched inference probe has
-small numerical differences and does not prove identical sampling or end-to-end
-speed. Protocol/results: [Phase 4.5](PHASE45_RESULTS.md).
+[Read this contract](docs/reference/ARCHITECTURE_DETAILS.md#development-monitoring-and-performance).
 
 ## Experiment protocol identity
 
-Phase 4.5 uses byte-frozen, versioned machine settings under
-`training/protocols/phase45-v1.json`, including explicit PPO values rather than
-mutable defaults. The settings source digest is pinned; changed settings require
-a new protocol version. New v2 experiment manifests hash saved `settings.json`
-and the original explanatory `protocol.md`. Resume verifies both saved hashes
-and exact machine settings, independently of the current explanatory Markdown.
-Package data and Git attributes preserve frozen protocol bytes across checkouts.
-
-The sole supported historical v1 mapping requires exact equality of every saved
-manifest field and the original SHA-256 `9d55a0f8ae4c4a34fb69d7ce44508139390d5b9290fd846a79f8ef0b706f834f`.
-That hash is verified against a packaged original snapshot recovered from commit
-`e56dd90`; its declared settings and the historical runner match the frozen
-machine settings. No old manifest/hash is rewritten. Unknown identities reject
-with instructions to restore provenance or review a new explicit mapping.
-`training.experiments --validate-only` performs only this read-only protocol
-check, without weight loading, training, evaluation, migration or output writes.
-It does not establish artifact integrity or cross-version numerical equivalence.
+[Read this contract](docs/reference/ARCHITECTURE_DETAILS.md#experiment-protocol-identity).
 
 ## Public search-target learning
 
-`training.search_learning` implements a separate CPU feed-forward learner using
-the existing observation-only `NeuralEvaluator`, `SearchAgent` and public simulator.
-The engine owns real transitions; the collector supplies only filtered actor
-observations/legal actions to search. A single frozen evaluator serves both seats
-for all games collected in an update. Absolute game indices seed engine/seat
-streams using `boardgame-ai/search-learning/v1:{root}:{index}:{purpose}` (first
-eight SHA-256 bytes); search then retains its existing `search/v1` streams.
-
-Completed `SearchGame` replay records own observations, masks, root integer visits,
-selected actions, per-seat/global indices and undiscounted own-seat outcomes.
-Game-level metadata identifies frozen policy version/hash, absolute game index,
-search configuration and evaluator calls; incremental rewards verify outcome
-perspective. Public reconstruction validates the complete trajectory. Simulation
-traces, baseline matches, tactical categories and PPO batches are not inputs.
-
-Loss is mean visit-target cross entropy plus `.5*(v-z)^2`; targets are detached
-and legal-normalized, illegal log terms masked before multiplication. Finite
-predictions, losses, gradients and updated parameters are required. Adam uses
-explicit learning rate and gradient clipping. FIFO replay counts completed games;
-sample uniformly over games, then positions, with replacement using a private
-CPU Torch generator. Log replay age and sampled-position count. Current default
-capacity/batch/steps/collection/search settings follow the bridge design;
-`unroll_steps=0` rejects sequence unrolling. These are not experiment budgets.
-
-`training.search_run` requires an explicit total-update budget and absent/empty
-new output. Immutable `training.json` records configuration and learner identity.
-The separate search-outcome model/learner checkpoint schema contains CPU weights,
-Adam, replay, sampling RNG, counters, model mode and latest metrics. Restricted
-loading validates tensors, Adam, replay rules/provenance and absolute schedule.
-PPO checkpoints and generic PPO checkpoint evaluation are incompatible with it.
-The loaded model supports the existing raw-policy adapter programmatically.
-
-Save the authoritative checkpoint atomically before immutable per-update report
-publication. Resume republishes a missing current report from the checkpoint
-without regenerating games or repeating optimization. Existing mismatched reports
-reject; partial collection/optimization requires fresh reload of the last saved
-boundary. Configurations must match and total requested updates may only grow.
-Exact continuation is tested on the same CPU/runtime/thread setting. Single-writer
-ownership, atomic replacement and hard-link report publication are required.
-There is no CUDA learner, partial-episode resume or empirical strength claim.
-See [implementation evidence](docs/reviews/2026-10-16-search-target-implementation.md).
+[Read this contract](docs/reference/ARCHITECTURE_DETAILS.md#public-search-target-learning).
 
 ## Frozen policy diagnosis
 
-`python -m boardgame_ai.policy_audit` is a separate bounded CPU diagnostic, using
-existing observation/action encoders, collector, per-seat GAE, checkpoint loader
-and PPO interfaces. No training runner behavior changes. Public one-ply tactical
-checks use acting-seat observations and supplied actions; all immediate wins count,
-win takes precedence, blocks must remove every immediate threat, and unavoidable
-threats are separate. A census counts each reachable live X-first board once;
-seeded frozen-policy self-play separately reports visit and distinct-board counts.
-No symmetry reduction or solver. Undefined metrics are null.
-
-Trusted public-action replay independently verifies observations, masks, behavior
-probabilities/values, both-seat interval rewards and scalar GAE/targets. The first
-observed outcome traces retain seat perspective; absent outcome classes are explicit.
-The first configured number of unselected self-play games supplies every decision
-to a disposable update check. Two checkpoint copies retain Adam/shuffle state;
-independent loss/backward/clipping/Adam arithmetic is compared with production PPO,
-including parameters, moments, RNG, counters and weighted loss reports. Reports map
-batch indices back to game/seat/step. No updated checkpoint is saved. Tactical
-labels never enter batches. Source checkpoint/config/log bytes are checked unchanged;
-new report output must be outside the source directory. Requires stopped training,
-not concurrent-writer locking. Protocol and limitations: [diagnosis](POLICY_DIAGNOSIS.md).
+[Read this contract](docs/reference/ARCHITECTURE_DETAILS.md#frozen-policy-diagnosis).
 
 ## Extension boundaries
 
-The [roadmap](BOARDGAME_AI_PROJECT_PLAN.md) owns phase tasks and acceptance criteria;
-[progress](PROGRESS.md) identifies the current next milestone.
-[Public search evaluation](#public-search-evaluation) implements bounded
-Tic-Tac-Toe simulation and parent-seat vector backups. The separate self-generated
-visit/outcome learner and replay learning in the
-[search-learning design](SEARCH_LEARNING_DESIGN.md) have a bounded CPU implementation
-described below; strength, throughput and broader extensions remain unverified.
-Future batched collection needs per-game/seat RNG and numerical/sampling
-comparisons; changes in minibatch,
-collection size or sampling schedule require learning-quality experiments.
-
-Long-term: permitted rule-based MCTS → search-guided self-play targets/replay →
-learned representation/dynamics/prediction. Planning selects branches; evaluators
-estimate player-relative outcomes. A future observation evaluator may consume
-history; a simulation evaluator may consume an authorized simulation context
-and budget. A heuristic policy or terminal outcome adapter is not a general
-position evaluator. Keep PPO as a comparison, and do not treat search-selected
-moves as raw-policy PPO samples with incorrect behavior probabilities.
-
-Simulation must be reconstructed from permitted views/history, never supplied as
-an authoritative hidden-state clone. sample_hidden_state is only a future design;
-it must sample compatible worlds rather than expose actual secrets. Independent
-simulation RNG alternatives require an explicit contract. Naive sampled-world
-search risks strategy fusion. Chance, hidden information, recurrent context,
-same-player backups, and multiplayer/vector returns require explicit designs.
-Self-play replay must specify visibility, sequence length/context, sampling/reuse,
-game-length weighting, and compute budgets. Stale trajectories are not ordinary
-on-policy PPO. Shared backbones/candidate-action scoring and transfer experiments
-remain future multi-game work; negative transfer must be measured.
+[Read this contract](docs/reference/ARCHITECTURE_DETAILS.md#extension-boundaries).
 
 ## Verification
 
-Engine/rejection conformance helpers are in tests/contracts.py. New games must
-also test unseen-world input equivalence, observation mutation, event filtering,
-seeded chance, independent clones, and rejected-action RNG preservation.
-The test-only hidden-card engine is a fixture, not a production Phase 5 game.
-
-Tic-Tac-Toe rules are audited against a coordinate-based oracle over 5,478 boards
-(626 X wins, 316 O wins, 16 draws). The encoding audit checks both perspectives,
-seat relabeling, terminal behavior, and lossless board recovery without state access.
-Learning tests cover hand-computed GAE/returns/PPO, illegal gradients, storage/RNG
-isolation, optimizer changes, corruption rejection, exact checkpoint continuation,
-and CPU/CUDA resume. CUDA tests check real inputs/parameters/gradients/Adam device
-placement; portable files serialize tensors on CPU. Current validation results
-belong in [progress](PROGRESS.md) rather than historical per-task test counts here.
-
+[Read this contract](docs/reference/ARCHITECTURE_DETAILS.md#verification).
 
 ## Public search evaluation
 
-`boardgame_ai.search` implements the public Tic-Tac-Toe adapter, observation-only
-frozen neural evaluator and bounded PUCT Agent. It does not wrap or clone an
-engine. Constructor reachability/root-choice validation and independent exhaustive
-engine comparison cover both starters. Public branch states are immutable.
-
-Backups carry two seat returns; for leaf actor s, G[s]=v and G[1-s]=-v,
-then each edge adds its incremental rule rewards with gamma=1. Terminal continuation
-is zero. Selection reads Q for the parent actor, without turn-based sign flips.
-Limits, tie-breaking, private exploration namespaces and node accounting are in
-[the search-learning design](SEARCH_LEARNING_DESIGN.md). PPO values are clipped
-heuristic estimates.
-
-`python -m boardgame_ai.search.evaluation CHECKPOINT NEW_OUTPUT_DIRECTORY`
-executes the [Phase 7 protocol](PHASE7_PROTOCOL.md) on frozen CPU copies with
-global RNG isolation.
-It reports fixed-opponent matches, full tactical census, evaluator counts and
-latency; hashes verify source artifacts. No optimizer, replay or training targets.
-
-
-SearchAgent's optional `on_simulation` observer receives immutable public paths,
-rewards, leaf continuation, stop reason and per-edge vector returns after backup.
-It is diagnostic only and does not change selection; callback exceptions propagate.
-`boardgame_ai.search.diagnosis` replays prior heuristic-O match-zero records,
-independently reconstructs N/W/rewards, and exports public trees and leaf predictions.
-Post-decision one-step probes are separate from search calls; no diagnostic labels
-or baseline trajectories enter training. The destination must not exist.
+[Read this contract](docs/reference/ARCHITECTURE_DETAILS.md#public-search-evaluation).
 
 ## Shared multi-game learning
 
-The [operator v1 results](docs/phase6/MULTIGAME_RESULTS_V1.md), reviewed 2026-10-18,
-now quantify independent/shared strength, costs, unseen adaptation and retention.
-All 36 evaluations completed; sharing/transfer benefits are mixed or unproven,
-and one recovered wall-cost measurement remains uncertain. Implementation
-contracts below are unchanged; phase completion refers to that declared comparison.
+[Read this contract](docs/reference/ARCHITECTURE_DETAILS.md#shared-multi-game-learning).
 
-`models.multigame` projects each game's visible observation stream into one
-GRU(32,32). Per-game candidate and query projections score every supplied legal
-candidate; per-game scalar heads predict scaled own returns. Candidate order is
-preserved and logits permute with it. There is no fixed common action vocabulary,
-padding, engine reference or candidate legality inference. Empty candidates
-remain empty. Board adapters reuse observer-relative encoders; Guildworks uses
-new visible history events plus snapshot, with an independent cursor/memory per
-seat. Breakthrough rotates seat 1's board and source/target coordinates.
+### Phase 7 paired evaluation and calibration preparation
 
-`games.breakthrough` adds the frozen, public deterministic 5x5 transfer engine.
-Two home ranks/seat, straight empty or diagonal empty/enemy advances, far-rank or
-immobilization win, +1/-1 terminal rewards, no shaping/chance/draw. Rules and
-observation records are Torch-independent. No C games enter shared pretraining.
-
-`training.multigame` freezes latest weights for both self-play seats, collects
-complete own-seat episodes, accumulates interval rewards across repeated actors
-and opponent termination, and recomputes full BPTT from zero on each PPO epoch.
-Gamma=1/lambda=.95 and zero terminal bootstrap retain own-decision semantics.
-Guildworks rewards/values divide own points by 36; others divide by 1. Advantages
-normalize per game; equal-game mean losses accumulate into two Adam steps/update.
-Separate comparison models have independent identical-capacity backbones/adapters.
-Adaptation copies weights only, pairs untouched C adapters, resets Adam in both
-arms, updates on C only and preserves original old-game adapters for retention.
-
-`training.multigame_run` exposes frozen named jobs through a separate module CLI.
-The exact Connect Four source-compatibility map also records the seven additive
-Phase 6 Python modules; prior Connect Four implementation bytes remain unchanged.
-Existing run provenance is preserved, with no general mismatch override.
-The [protocol](docs/phase6/MULTIGAME_PROTOCOL_V1.md) defines all seeds, allocations,
-scales, success thresholds and cumulative caps. `--all` runs in dependency order;
-`--all --resume` validates/skips completed boundaries and starts absent jobs.
-`--check-only` is read-only. Wall jobs share 900 total seconds versus 3x300 for
-separate models; decision-ceiling jobs separately cap each game's accepted samples
-and report realized differences. Complete-game overflow is discarded and logged.
-`environment.jsonl` records completed attempts before PPO, including unsaved work;
-partial-game costs remain explicitly unknown. Per-game metrics track raw returns,
-losses, entropy/KL/clipping, games, decisions and presentations.
-
-Immutable settings/prose/initial/curve snapshots and deterministic source archives
-record dirty-source/runtime/device provenance. Restricted CPU-portable model/Adam
-restore validates identities, tensor shapes/finiteness, moments and counters.
-Atomic `latest.pt` precedes metrics append; torn tails back up before repair and
-missing rows remain unknown. Private acting randomness derives from absolute
-per-game schedules; deterministic whole-episode updates use no shuffle RNG.
-Conservative cumulative reservations survive hard kills. Partial optimizer work
-cannot publish; initialization crashes can leave unresumable directories. This
-is a single-writer design. Existing throttled progress rendering is reused.
-
-`training.multigame_evaluation` separately restores immutable CPU snapshots,
-evaluates both seats against random plus a paired control, and tests all old
-games before/after C adaptation with reset memories. Reports publish exclusively,
-retain partial results and never feed training. `training.multigame_report`
-validates source reports, emits per-seat/per-game strength and realized costs,
-seed-level paired transfer/forgetting intervals, complete adaptation curves and
-censored target costs. It reports missing evidence and never marks Phase 6 done.
-Random-opponent performance does not certify robust play against stronger agents.
-
-Windows atomic publication in the shared path now retries access/sharing/lock
-errors (5/32/33) six times with bounded backoff; other failures propagate.
-Explicit `--finalize-capped` is restricted to nonzero saved wall checkpoints
-within min(5 seconds, 1%) of a spent cap. It backs up the original run envelope,
-preserves trainer/ledger/provenance bytes, and adds p100 plus an immutable receipt.
-Timing is marked uncertain and cannot establish matched wall cost. No games or
-optimizer work run during this recovery. An exact source-digest map permits only
-the reviewed preceding version; arbitrary changes still reject resume.
+[Reference](docs/reference/ARCHITECTURE_DETAILS.md#phase-7-paired-evaluation-and-calibration-preparation).

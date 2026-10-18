@@ -23,7 +23,7 @@ Connect Four observation/action encoders, an independent policy/value model and
 complete-game latest-policy self-play collection, PPO optimization and portable
 trainer checkpoint restoration.
 See [architecture](../ARCHITECTURE.md#connect-four) for the implemented contract.
-The [roadmap](../BOARDGAME_AI_PROJECT_PLAN.md#phase-6--multi-game-learning)
+The [roadmap](archive/2026-10-18-BOARDGAME_AI_PROJECT_PLAN.md#phase-6--multi-game-learning)
 owns all Phase 6 tasks and acceptance criteria; [progress](../PROGRESS.md) owns
 current status. Connect Four has an engine, human-versus-random CLI and a
 programmatic self-play/PPO learner, bounded CPU run/resume/evaluation layer and
@@ -108,5 +108,5 @@ acceptance criterion in the roadmap.
 
 A shared backbone, multi-game sampler, additional new game, search, MuZero,
 replay learner, and additional Tic-Tac-Toe tuning are outside this first proposal.
-The [search-learning design](../SEARCH_LEARNING_DESIGN.md) retains the separate
+The [search-learning design](reference/SEARCH_LEARNING_DESIGN.md) retains the separate
 future search-target learner rationale.

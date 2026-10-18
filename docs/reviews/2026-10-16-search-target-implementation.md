@@ -1,7 +1,7 @@
 # Bounded public search-target learner
 
 Date: 2026-10-16. This implements the separate learner from
-[the bridge design](../../SEARCH_LEARNING_DESIGN.md), following the
+[the bridge design](../reference/SEARCH_LEARNING_DESIGN.md), following the
 [reliability milestone](2026-10-16-reliability-resolution.md).
 It is functional implementation evidence, not an experiment or strength result.
 

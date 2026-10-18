@@ -3,6 +3,65 @@
 This report records the brought-forward public-search evaluation and subsequent
 trace diagnosis. It does not claim completion of all planned Phase 7 tasks.
 
+**2026-10-18 preparation update:** the search-target learner described in the
+[implementation review](docs/reviews/2026-10-16-search-target-implementation.md)
+already exists. A new isolated paired evaluator accepts its checkpoints alongside
+independent PPO, with both-seat random/heuristic W/D/L, explicit byte identities,
+raw-policy latency and separately identified optional search. A separate calibration
+supervisor records environment/search/evaluator/optimizer/replay costs and enforces
+single-use cumulative caps. [Current audit and operator runbook](docs/phase7/COMPARISON_V1.md).
+At that preparation milestone only disposable development tests had run. The
+subsequent operator calibration and completed learner comparison are reviewed below.
+Phase 7 improvement acceptance remains unmet.
+The dated results and consumed roots below retain their original scope; statements
+about absent learners describe that historical evaluation, not current code.
+
+**Operator calibration reviewed, 2026-10-18:** all six preparation jobs complete;
+PPO 3.109–3.218 s and search-target 3.891–3.984 s/eight-game job. PPO used 65
+environment decisions, zero simulations, 65 collection calls and 260 presentations;
+search used 56 decisions, 1,792 simulations, 1,347 calls and 2,048 presentations.
+Each used eight Adam steps. Saved requests/source identities, raw metrics, costs
+and checkpoint counters agree, and checkpoint bytes repeat within each learner.
+[All measurements](docs/phase7/calibration-results-v1.json). Short startup-inclusive
+timing and unequal work do not demonstrate speedup or learning improvement.
+The [public study v1](docs/phase7/PUBLIC_STUDY_V1.md) now freezes numeric game/time/
+evaluation allocations and implements cumulative-capped supervision, resume and
+strict reporting. Operator training and the subsequent final comparison are now
+reviewed below. The completed comparison does not establish improvement.
+
+**Operator public-study training reviewed, 2026-10-18:** six jobs each reached
+64 updates/256 games in one complete measured attempt, with full metrics/cost
+histories and valid matching latest/final checkpoint hashes. Across three seeds,
+PPO used 5,653 decisions / 22,612 presentations / 14.953 seconds; search-target
+used 4,918 decisions / 157,376 simulations / 112,342 calls / 196,608 presentations /
+109.359 seconds. Both used 768 games and 768 Adam steps. No wall-matched or
+strength benefit follows from equal games. At training review, all three reserved
+final-evaluation preflights passed before the operator started evaluation. The pre-existing 841 artifacts
+remain byte-identical, and 1,090 current run files were hashed during review.
+
+**Completed public comparison v1, reviewed 2026-10-18:** all 6,144 final games
+completed without errors/truncations. Search-target raw score is **.32764** versus
+independent PPO **.34440**. The paired seed effect is **−1.68 percentage points
+[−3.81, +0.46]**: improvement is not established, and the interval does not establish
+PPO superiority either. All three point differences favor PPO. The predeclared
+heuristic-X guard also fails; its lower endpoint is −7.13 points versus the required
+−5. Heuristic-O passes the guard without establishing a positive improvement.
+Search used **7.31×** measured training wall time and **8.69×** presentations under
+the equal-game allocation, which is not a matched-compute study.
+
+[Full results, W/D/L, latency and limits](docs/phase7/PUBLIC_STUDY_V1_RESULTS.md)
+and [machine-readable evidence/artifact hashes](docs/phase7/public-study-v1-results.json)
+preserve the negative/inconclusive outcome. A read-only replay-fit diagnostic shows
+improved in-sample visit/outcome fit in all three search models; that fit does not
+explain or reverse the failed external comparison. All 7,252 saved run files retain
+their pre-review hashes. No additional game, learning update, repair or campaign
+ran during review. Final roots 20261208/20261209/20261210 are consumed; retain the
+independent PPO baseline and require a new declaration/fresh roots for any follow-up.
+This completed bounded comparison does **not** satisfy Phase 7's improvement
+acceptance or complete beliefs/search, chance/same-player, MuZero or broader
+planning-cost tasks. Phase 6 negative findings and its uncertain recovered wall
+measurement remain unchanged.
+
 Protocol: [predeclared budgets](PHASE7_PROTOCOL.md). Date: 2026-10-15.
 Frozen seed-45 update-1000 development-selected checkpoint, SHA256
 `b2f8e1c4c7b53f24646e13cba92e4d8ebd6ae32f60dcffa2b4f436cc1f274a80`.
@@ -176,7 +235,7 @@ python -m boardgame_ai.search.diagnosis runs/monitored-seed45/latest.pt runs/pha
 
 **Recorded decision after milestone review:** return to Phase 5's minimal playable
 game, mechanics and visibility tests. That follow-up has since completed at the
-bounded scope recorded in [Phase 5 results](PHASE5_RESULTS.md). The brought-forward
+bounded scope recorded in [Phase 5 results](docs/archive/PHASE5_RESULTS.md). The brought-forward
 search milestone is complete; solving Tic-Tac-Toe or further prior tuning is not a
 gate to broader platform work. See [PROGRESS.md](PROGRESS.md) for the current milestone.
 A fixed-root prior-concentration ablation remains optional deferred research, with

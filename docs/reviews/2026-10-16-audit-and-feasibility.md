@@ -178,8 +178,8 @@ The strongest warning comes from this project's own evidence. The original
 Tic-Tac-Toe policy became nearly deterministic in self-play, while losing almost
 every match against the heuristic. The diagnostic sample visited only 29 distinct
 acting-seat boards. Correct gradients on that distribution do not establish
-competence on other reachable positions. See [policy diagnosis](../../POLICY_DIAGNOSIS.md)
-and [Phase 4 results](../../PHASE4_RESULTS.md).
+competence on other reachable positions. See [policy diagnosis](../archive/POLICY_DIAGNOSIS.md)
+and [Phase 4 results](../archive/PHASE4_RESULTS.md).
 
 This does not prove that latest-policy self-play or PPO must fail. It does show
 that adding capacity, games, or training time is not yet an evidence-backed fix.

@@ -2,8 +2,8 @@
 
 This report records the reproducible Phase 3 evaluation controls and their limits.
 These are not training opponents or expert demonstrations. Learning uses self-play
-only; the methodology is in the [project plan](BOARDGAME_AI_PROJECT_PLAN.md), and
-the subsequent investigation is in [Phase 4.5 results](PHASE45_RESULTS.md).
+only; the methodology is in the [project plan](../../BOARDGAME_AI_PROJECT_PLAN.md), and
+the subsequent investigation is in [Phase 4.5 results](../../PHASE45_RESULTS.md).
 
 Recorded on 2026-10-14 for Phase 3, Task 5. Each fixed-seat matchup has 1,000
 matches, batch seed 20261014, indices 0–999, and a nine-decision limit. Seat 0

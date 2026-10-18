@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "status": "preparation-only; numerical training budgets pending operator calibration",
+  "training_seeds": [
+    771101,
+    771102,
+    771103
+  ],
+  "development_root": 20261207,
+  "final_roots": [
+    20261208,
+    20261209,
+    20261210
+  ],
+  "primary": "raw sampled equal-case score, search minus independent PPO",
+  "selection": "final scheduled checkpoint",
+  "primary_interval_lower_exclusive": 0,
+  "heuristic_seat_interval_lower_inclusive": -0.05,
+  "paired_seed_t_multiplier": 4.303,
+  "study_budgets": null,
+  "settings_sha256": {
+    "calibrate-ppo-v1.json": "9fcc712b3986156a9edd4ebb16d3d0a5a05425aed9cf54f4811df7eb009b942f",
+    "calibrate-search-v1.json": "eba71201d5031a70dbc444d4cac7f7b1d14cb3c2c1ef5ea86b50d5061336e75a",
+    "paired-evaluation-v1.json": "4045e817ece369342fab32c364ba77f1365c2eab683c26e52a30b166db0bd11d"
+  },
+  "calibration_jobs": 6,
+  "calibration_cumulative_child_seconds": 360
+}

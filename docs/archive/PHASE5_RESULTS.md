@@ -71,7 +71,7 @@ The stored evaluation report and checkpoint hash were rechecked after the run.
 
 ## Verification and limits
 
-Final regression results are recorded in [PROGRESS.md](PROGRESS.md#validation).
+Final regression results are recorded in [PROGRESS.md](2026-10-18-PROGRESS.md#validation).
 Tests cover shared engine conformance, same-player phase/round transitions,
 termination, rule rewards, empty/partial decks, forced pass, blocked placements,
 atomic rejection, clone independence, private/global RNG and hidden-world
@@ -85,4 +85,4 @@ is made. Human CLI opponents remain random only. Hidden-information search,
 public replay export, MuZero and multi-game learning remain future work.
 Phase 6 requires a bounded evaluation protocol and game choices before implementing
 a multi-game learner; its status and next milestone are maintained in
-[PROGRESS.md](PROGRESS.md) and the [project plan](BOARDGAME_AI_PROJECT_PLAN.md).
+[PROGRESS.md](../../PROGRESS.md) and the [project plan](../../BOARDGAME_AI_PROJECT_PLAN.md).

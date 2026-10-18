@@ -9,7 +9,7 @@ Checkpoint identity and the original 4,000-game protocol are in
 [policy evaluation](POLICY_EVALUATION.md).
 
 **Historical follow-up:** the weakness measured here motivated
-[Phase 4.5's completed investigation](PHASE45_RESULTS.md), including diagnosis,
+[Phase 4.5's completed investigation](../../PHASE45_RESULTS.md), including diagnosis,
 checkpoint monitoring and a bounded learning comparison. The measurements below
 remain the original Phase 4 results. Training stays latest-policy self-play only;
 fixed opponents here are evaluation tools, not teachers or training experience.
@@ -41,7 +41,7 @@ This uncertainty describes match RNG for one frozen checkpoint, not variability
 across training runs. The primary interval is exploratory evidence for this
 checkpoint/protocol, not an adjusted family of tests or an optimal-play claim.
 
-![Fixed-opponent comparison](docs/phase4/baseline-comparison.png)
+![Fixed-opponent comparison](../phase4/baseline-comparison.png)
 
 ## Training curves
 
@@ -58,7 +58,7 @@ not intermediate held-out strength measurements (earlier checkpoints were not re
 | Self-play O win rate | 25.88% | 0.19% |
 | Self-play draw rate | 14.94% | 0.00% |
 
-![Training diagnostics](docs/phase4/training-curves.png)
+![Training diagnostics](../phase4/training-curves.png)
 
 Loss/entropy fell while self-play became almost entirely X wins. Held-out tests
 show that this did not produce robust defense: the policy loses nearly every
@@ -90,5 +90,5 @@ Tracked figure copies live in docs/phase4; generated JSON, logs, and model weigh
 stay ignored under runs. Python 3.12.14, PyTorch 2.14.1+cu130, Matplotlib 3.11.2
 were used; evaluation/plots run on CPU. The subsequent read-only tactical and
 learning-signal diagnosis is recorded in [POLICY_DIAGNOSIS.md](POLICY_DIAGNOSIS.md).
-Policy robustness remains unresolved; see [current status](PROGRESS.md) for the
+Policy robustness remains unresolved; see [current status](../../PROGRESS.md) for the
 next milestone.

@@ -1,0 +1,71 @@
+{
+  "schema_version": 1,
+  "study_id": "phase7-public-equal-games-three-hour-v2",
+  "training_seeds": [
+    772201,
+    772202,
+    772203
+  ],
+  "final_roots": [
+    20261301,
+    20261302,
+    20261303
+  ],
+  "updates": 512,
+  "training_wall_seconds": 1740,
+  "evaluation_games_per_case": 256,
+  "evaluation_wall_seconds": 120,
+  "paired_seed_t_multiplier": 4.303,
+  "primary_interval_lower_exclusive": 0,
+  "heuristic_seat_interval_lower_inclusive": -0.05,
+  "selection": "final-scheduled-checkpoint",
+  "budget_axis": "equal-complete-self-play-games",
+  "calibration_report_sha256": "496a64c32f397caae0c7aaef0ef0aa287ce439c60189117944355a2247fa3477",
+  "learner_template": {
+    "schema_version": 1,
+    "operation": "calibrate-search",
+    "wall_seconds": 60,
+    "seed": 771001,
+    "evaluation": {
+      "games_per_case": 64,
+      "start_index": 0,
+      "mode": "sampled",
+      "search_simulations": []
+    },
+    "calibration": {
+      "updates": 2,
+      "games_per_update": 4,
+      "ppo": {
+        "learning_rate": 0.0003,
+        "gamma": 0.99,
+        "gae_lambda": 0.95,
+        "clip_ratio": 0.2,
+        "value_coefficient": 0.5,
+        "entropy_coefficient": 0.01,
+        "epochs": 4,
+        "minibatch_size": 64,
+        "max_grad_norm": 0.5,
+        "normalize_advantages": true
+      },
+      "search": {
+        "games_per_update": 4,
+        "optimizer_steps_per_update": 4,
+        "batch_size": 256,
+        "replay_capacity_games": 10000,
+        "seed": 771001,
+        "learning_rate": 0.0003,
+        "max_grad_norm": 0.5,
+        "unroll_steps": 0,
+        "search": {
+          "simulations": 32,
+          "max_nodes": 289,
+          "max_depth": 9,
+          "exploration": true
+        }
+      }
+    }
+  },
+  "max_total_training_seconds": 10800,
+  "training_reservations_seconds": 10440,
+  "termination_headroom_seconds": 360
+}

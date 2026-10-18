@@ -28,7 +28,7 @@ state, and resume behavior; evaluation reports remain trusted outputs.
 
 ## Frozen policy diagnostic boundary
 
-The [frozen policy audit](POLICY_DIAGNOSIS.md) accepts only a public acting-seat
+The [frozen policy audit](docs/archive/POLICY_DIAGNOSIS.md) accepts only a public acting-seat
 observation and its supplied legal actions. Public X-first board enumeration and one-ply checks are
 measurement only; no solver labels, tactical rewards or teacher actions enter PPO.
 Seeded trajectories come exclusively from the unchanged latest shared policy.
@@ -59,7 +59,7 @@ clone reaches a search agent. Search visit distributions/outcomes need a separat
 learner; they cannot masquerade as raw-policy PPO samples. Self-generated replay
 is distinct from an opponent pool. Hidden/chance simulations, privileged critics
 and private-world reconstruction remain unsupported. See the
-[search-learning design](SEARCH_LEARNING_DESIGN.md).
+[search-learning design](docs/reference/SEARCH_LEARNING_DESIGN.md).
 
 ## Ownership and player inputs
 
