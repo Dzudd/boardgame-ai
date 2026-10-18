@@ -145,7 +145,7 @@ def test_windows_retry_is_bounded_and_specific(
         assert destination.read_bytes() == original
         error = PermissionError("Disposable lock")
         if winerror is not None:
-            error.winerror = winerror
+            monkeypatch.setattr(error, "winerror", winerror, raising=False)
         raise error
 
     monkeypatch.setattr(publication, "_publish_json", deny)
@@ -167,7 +167,7 @@ def test_windows_transient_lock_eventually_publishes(
         calls.append(1)
         if len(calls) < 3:
             error = PermissionError("Disposable lock")
-            error.winerror = 5
+            monkeypatch.setattr(error, "winerror", 5, raising=False)
             raise error
         atomic_json(path, payload)
 
